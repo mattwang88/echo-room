@@ -1,6 +1,6 @@
 import type { AnalyzeResponseOutput } from '@/ai/flows/real-time-coaching';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Lightbulb, Zap, BarChartBig, MessageCircleQuestion } from 'lucide-react'; // Zap for Persuasiveness, BarChartBig for Technical Soundness
+import { Lightbulb, Zap, BarChartBig, MessageCircleQuestion, Brain, BookOpen } from 'lucide-react'; 
 
 interface CoachingPanelProps {
   feedback: AnalyzeResponseOutput | null;
@@ -13,7 +13,7 @@ const FeedbackItem: React.FC<{ title: string; content: string; icon: React.React
       {icon}
       <span className="ml-2">{title}</span>
     </div>
-    <p className="text-sm text-foreground/80">{content || "No specific feedback."}</p>
+    <p className="text-sm text-foreground/80 whitespace-pre-wrap">{content || "No specific feedback."}</p>
   </div>
 );
 
@@ -44,12 +44,15 @@ export function CoachingPanel({ feedback, isAiThinking }: CoachingPanelProps) {
             <FeedbackItem title="Clarity" content={feedback.clarity} icon={<Lightbulb className="h-5 w-5" />} />
             <FeedbackItem title="Persuasiveness" content={feedback.persuasiveness} icon={<Zap className="h-5 w-5" />} />
             <FeedbackItem title="Technical Soundness" content={feedback.technicalSoundness} icon={<BarChartBig className="h-5 w-5" />} />
+            <FeedbackItem title="Domain Knowledge" content={feedback.domainKnowledgeFeedback} icon={<Brain className="h-5 w-5" />} />
+            <FeedbackItem title="Suggested Learning Materials" content={feedback.suggestedLearningMaterials} icon={<BookOpen className="h-5 w-5" />} />
+            
             <div className="mt-6 pt-4 border-t">
               <h3 className="text-md font-semibold mb-1 text-primary flex items-center">
                  <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-thumbs-up"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a2 2 0 0 1 1.79 1.11L15 5.88Z"/><path d="M12 2v7.12"/></svg>
                  <span className="ml-2">Overall Feedback</span>
               </h3>
-              <p className="text-sm text-foreground/80">{feedback.overallFeedback}</p>
+              <p className="text-sm text-foreground/80 whitespace-pre-wrap">{feedback.overallFeedback}</p>
             </div>
           </>
         )}
