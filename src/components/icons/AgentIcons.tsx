@@ -1,6 +1,7 @@
-import type { AgentRole, ParticipantRole } from '@/lib/types';
+import type { ParticipantRole } from '@/lib/types';
 import { Cpu, Landmark, Package, Users, UserCircle2, BrainCircuit } from 'lucide-react';
 import type { LucideProps } from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 interface AgentIconProps extends LucideProps {
   role: ParticipantRole;
@@ -10,31 +11,32 @@ export const AgentIcon: React.FC<AgentIconProps> = ({ role, className, ...props 
   const defaultClassName = "h-8 w-8";
   switch (role) {
     case 'CTO':
-      return <Cpu className={`${defaultClassName} text-red-500 ${className || ''}`} {...props} />;
+      return <Cpu className={cn(defaultClassName, 'text-destructive', className)} {...props} />;
     case 'Finance':
-      return <Landmark className={`${defaultClassName} text-green-500 ${className || ''}`} {...props} />;
+      return <Landmark className={cn(defaultClassName, 'text-accent', className)} {...props} />;
     case 'Product':
-      return <Package className={`${defaultClassName} text-blue-500 ${className || ''}`} {...props} />;
+      return <Package className={cn(defaultClassName, 'text-primary', className)} {...props} />;
     case 'HR':
-      return <Users className={`${defaultClassName} text-yellow-500 ${className || ''}`} {...props} />;
+      // No direct yellow in theme, using secondary-foreground as a distinct option
+      return <Users className={cn(defaultClassName, 'text-secondary-foreground', className)} {...props} />;
     case 'User':
-      return <UserCircle2 className={`${defaultClassName} text-primary ${className || ''}`} {...props} />;
+      return <UserCircle2 className={cn(defaultClassName, 'text-primary', className)} {...props} />;
     case 'System':
-       return <BrainCircuit className={`${defaultClassName} text-muted-foreground ${className || ''}`} {...props} />;
+       return <BrainCircuit className={cn(defaultClassName, 'text-muted-foreground', className)} {...props} />;
     default:
-      return <UserCircle2 className={`${defaultClassName} text-gray-400 ${className || ''}`} {...props} />;
+      return <UserCircle2 className={cn(defaultClassName, 'text-muted-foreground', className)} {...props} />;
   }
 };
 
 export const getAgentColor = (role: ParticipantRole): string => {
   switch (role) {
-    case 'CTO': return 'text-red-500';
-    case 'Finance': return 'text-green-500';
-    case 'Product': return 'text-blue-500';
-    case 'HR': return 'text-yellow-500';
+    case 'CTO': return 'text-destructive';
+    case 'Finance': return 'text-accent';
+    case 'Product': return 'text-primary';
+    case 'HR': return 'text-secondary-foreground'; // Consistent with icon color
     case 'User': return 'text-primary';
     case 'System': return 'text-muted-foreground';
-    default: return 'text-gray-400';
+    default: return 'text-muted-foreground';
   }
 }
 
