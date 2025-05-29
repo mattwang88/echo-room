@@ -1,3 +1,4 @@
+
 import type { Scenario } from './types';
 
 export const scenarios: Scenario[] = [
@@ -37,6 +38,24 @@ export const scenarios: Scenario[] = [
     },
     maxTurns: 8,
   },
+  {
+    id: 'manager-1on1',
+    title: '1-on-1 with Direct Manager',
+    description: 'Discuss your performance, challenges, and career growth with your direct manager.',
+    objective: 'Have a constructive conversation about your recent performance, address any challenges you are facing, and discuss your career development goals with your manager.',
+    initialMessage: {
+      participant: 'Product', // Product role will act as the Manager
+      text: "Hi there. Thanks for making time for our 1-on-1. To start, how have things been going for you lately? What's on your mind?",
+    },
+    agentsInvolved: ['Product'], // Only 'Product' agent is involved, acting as the manager
+    personaConfig: {
+      ctoPersona: "You are the CTO. You are not participating in this 1-on-1 meeting.",
+      financePersona: "You are the Head of Finance. You are not participating in this 1-on-1 meeting.",
+      productPersona: "You are the user's Direct Manager (acting as Head of Product for this simulation). The user will share updates, challenges, or career aspirations. Listen empathetically. Your goal is to provide constructive feedback, ask clarifying questions to understand their perspective, and discuss potential solutions or growth opportunities. Respond in a supportive and guiding manner. Keep your responses concise, like a real manager in a 1-on-1 conversation, typically a few sentences followed by a question or two.",
+      hrPersona: "You are the Head of HR. You are not participating in this 1-on-1 meeting.",
+    },
+    maxTurns: 10,
+  }
 ];
 
 export const getScenarioById = (id: string): Scenario | undefined => {
