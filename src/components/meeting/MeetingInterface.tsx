@@ -27,6 +27,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
+    // STT related
+    isRecording,
+    handleToggleRecording,
+    isSTTSupported,
+    sttInterimTranscript,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -82,6 +87,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           onSubmit={submitUserResponse}
           isSending={isAiThinking}
           disabled={meetingEnded}
+          // STT Props
+          isRecording={isRecording}
+          onToggleRecording={handleToggleRecording}
+          isSTTSupported={isSTTSupported}
+          interimTranscript={sttInterimTranscript}
         />
       </div>
 
