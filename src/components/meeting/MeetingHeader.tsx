@@ -10,7 +10,7 @@ interface MeetingHeaderProps {
   // TTS related props
   isTTSEnabled?: boolean;
   toggleTTSEnabled?: () => void;
-  isTTSSupported?: boolean;
+  isTTSSupported?: boolean; // For Google Cloud TTS, this is always true if browser can play audio
   isTTSSpeaking?: boolean;
 }
 
@@ -19,7 +19,7 @@ export function MeetingHeader({
   onEndMeeting, 
   isTTSEnabled, 
   toggleTTSEnabled, 
-  isTTSSupported,
+  isTTSSupported, // This comes from useTextToSpeech, which assumes true for Google Cloud version
   isTTSSpeaking
 }: MeetingHeaderProps) {
   if (!scenario) {
@@ -43,14 +43,15 @@ export function MeetingHeader({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {isTTSSupported && toggleTTSEnabled && (
+            {/* The isTTSSupported check for the button is always true for Google Cloud TTS, 
+                so the button always renders if toggleTTSEnabled is provided. */}
+            {toggleTTSEnabled && (
               <Button 
                 variant="outline" 
                 size="icon" 
                 onClick={toggleTTSEnabled} 
                 className="h-9 w-9" 
                 title={isTTSEnabled ? "Disable Text-to-Speech" : "Enable Text-to-Speech"}
-                disabled={!isTTSSupported} // Note: isTTSSupported is always true for Google Cloud TTS version
               >
                 {isTTSSpeaking ? <VolumeX className="h-4 w-4 animate-pulse text-primary" /> : (isTTSEnabled ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />) }
               </Button>
