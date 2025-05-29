@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -26,6 +27,9 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
+    isTTSEnabled,
+    toggleTTS,
+    isTTSSupported,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -39,7 +43,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  if (!scenario && !meetingEnded) { // Show loading state if scenario is not yet loaded and meeting hasn't ended (e.g. redirecting to summary)
+  if (!scenario && !meetingEnded) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
         <Logo className="mb-4" />
@@ -55,9 +59,14 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   
   return (
     <div className="flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background">
-      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-h-screen">
-        <MeetingHeader scenario={scenario} onEndMeeting={handleEndMeeting} />
+        <MeetingHeader 
+          scenario={scenario} 
+          onEndMeeting={handleEndMeeting}
+          isTTSEnabled={isTTSEnabled}
+          onToggleTTS={toggleTTS}
+          isTTSSupported={isTTSSupported}
+        />
         
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
@@ -84,7 +93,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         />
       </div>
 
-      {/* Coaching Panel - visible on larger screens */}
       <aside className="w-full md:w-1/3 lg:w-1/4 border-l bg-card max-h-screen overflow-y-auto hidden md:block">
          <CoachingPanel feedback={currentCoaching} isAiThinking={isAiThinking && messages[messages.length-1]?.participant === 'User'} />
       </aside>
