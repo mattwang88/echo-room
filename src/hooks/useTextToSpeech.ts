@@ -11,16 +11,16 @@ interface UseTextToSpeechReturn {
   isTTSSupported: boolean;
   isTTSEnabled: boolean;
   toggleTTSEnabled: () => void;
-  isTTSSpeaking: boolean; // Added to match useMeetingSimulation's expectation
+  isTTSSpeaking: boolean; 
 }
 
 export function useTextToSpeech(): UseTextToSpeechReturn {
   const { toast } = useToast();
   const [isSpeakingState, setIsSpeakingState] = useState(false);
-  const [isTTSEnabled, setIsTTSEnabled] = useState(false); // Default to false
+  const [isTTSEnabled, setIsTTSEnabled] = useState(true); // Default to true
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
-  const previousIsTTSEnabledRef = useRef<boolean | undefined>(undefined); // Initialize with undefined
+  const previousIsTTSEnabledRef = useRef<boolean | undefined>(isTTSEnabled);
 
 
   const isTTSSupported = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
@@ -28,27 +28,24 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
   useEffect(() => {
     if (isTTSSupported) {
       synthRef.current = window.speechSynthesis;
-      // Ensure any lingering speech is cancelled on mount or if synth becomes available
       if (synthRef.current && (synthRef.current.pending || synthRef.current.speaking)) {
         console.log("[useTextToSpeech] Cancelling speech on mount/synth ready.");
         synthRef.current.cancel();
-        setIsSpeakingState(false); // Ensure state consistency
+        setIsSpeakingState(false); 
       }
     } else {
       console.warn("[useTextToSpeech] Text-to-Speech not supported by this browser.");
-      if (isTTSEnabled) setIsTTSEnabled(false); // Disable if not supported
+      if (isTTSEnabled) setIsTTSEnabled(false); 
     }
   }, [isTTSSupported, isTTSEnabled]);
 
   const cancel = useCallback(() => {
     if (synthRef.current && (synthRef.current.speaking || synthRef.current.pending)) {
       console.log("[useTextToSpeech] Cancelling speech via cancel().");
-      synthRef.current.cancel(); // This should trigger onend eventually.
+      synthRef.current.cancel(); 
     }
-    // We explicitly set isSpeakingState to false here for immediate UI feedback,
-    // as onend might be delayed or not fire if cancel() is called abruptly.
     if (isSpeakingState) setIsSpeakingState(false);
-    utteranceRef.current = null; // Clear the ref
+    utteranceRef.current = null; 
   }, [isSpeakingState]);
 
 
@@ -62,10 +59,9 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       return;
     }
 
-    // If already speaking, cancel the current utterance before starting a new one.
     if (synthRef.current.speaking || synthRef.current.pending) {
       console.log("[useTextToSpeech] Speech in progress. Cancelling previous before speaking new text.");
-      cancel(); // Use our cancel function which also updates state
+      cancel(); 
     }
 
     console.log(`[useTextToSpeech] Attempting to speak: "${text.substring(0, 30)}..."`);
@@ -73,7 +69,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     utterance.lang = lang;
     utterance.pitch = 1;
     utterance.rate = 1;
-    utterance.volume = 1; // Ensure volume is set
+    utterance.volume = 1; 
 
     utterance.onstart = () => {
       console.log("[useTextToSpeech] Speech onstart event.");
@@ -87,8 +83,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     };
 
     utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
-      // Log the raw event object to see its structure if it's behaving unexpectedly
-      console.warn("[useTextToSpeech] Raw SpeechSynthesisUtterance.onerror event object:", event); // Changed from console.error to console.warn
+      console.warn("[useTextToSpeech] Raw SpeechSynthesisUtterance.onerror event object:", event);
 
       let detailedErrorMessage = "An unknown error occurred with speech synthesis.";
       if (event && event.error) {
@@ -112,17 +107,18 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     try {
       synthRef.current.speak(utterance);
     } catch (error: any) {
-      console.error("[useTextToSpeech] Error calling synth.speak:", error); // Keep this as console.error for actual exceptions
+      console.error("[useTextToSpeech] Error calling synth.speak:", error);
       toast({
         title: "Speech Error",
         description: `Failed to initiate speech synthesis: ${error.message || 'Unknown reason'}.`,
         variant: "destructive",
       });
-      setIsSpeakingState(false); // Ensure state is false on sync error
+      setIsSpeakingState(false); 
     }
   }, [isTTSSupported, isTTSEnabled, toast, cancel]);
 
   useEffect(() => {
+    // Only show toast if it's not the initial render where isTTSEnabled might be true by default
     if (previousIsTTSEnabledRef.current !== undefined && previousIsTTSEnabledRef.current !== isTTSEnabled) {
       toast({
         title: "Text-to-Speech",
@@ -136,14 +132,13 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
   const toggleTTSEnabled = useCallback(() => {
     setIsTTSEnabled(prev => {
       const newState = !prev;
-      if (!newState && isSpeakingState) { // If disabling and currently speaking
+      if (!newState && isSpeakingState) { 
         cancel();
       }
       return newState;
     });
   }, [isSpeakingState, cancel]);
 
-  // Cleanup effect to cancel speech if the component unmounts while speaking
   useEffect(() => {
     return () => {
       if (synthRef.current && (synthRef.current.speaking || synthRef.current.pending)) {
