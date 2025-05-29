@@ -13,10 +13,10 @@ interface ResponseInputProps {
   onSubmit: () => void;
   isSending: boolean;
   disabled?: boolean; // General disabled state for the input (e.g., meeting ended)
-  // STT Props
-  isRecording?: boolean; // True if STT is active
-  onToggleRecording?: () => void; // Function to start/stop STT
-  isSTTSupported?: boolean; // True if browser supports STT
+  // STT Props, synchronized from useMeetingSimulation
+  isRecording?: boolean;
+  onToggleRecording?: () => void;
+  isSTTSupported?: boolean;
 }
 
 export function ResponseInput({
@@ -24,7 +24,7 @@ export function ResponseInput({
   onChange,
   onSubmit,
   isSending,
-  disabled,
+  disabled, // This is the overall disabled state (e.g. meetingEnded)
   isRecording,
   onToggleRecording,
   isSTTSupported,
@@ -52,10 +52,10 @@ export function ResponseInput({
     return "Type your response... (Voice input not supported by your browser)";
   };
 
-  // Textarea is disabled if globally disabled, or if STT is supported AND currently recording.
+  // Textarea is disabled if globally disabled, OR if STT is supported AND currently recording.
   const isTextareaDisabled = disabled || (isSTTSupported && isRecording);
   // Send button is disabled if textarea is disabled, or sending, or no value, or recording.
-  const isSendButtonDisabled = isTextareaDisabled || isSending || !value.trim() || isRecording;
+  const isSendButtonDisabled = isTextareaDisabled || isSending || !value.trim() || (isSTTSupported && isRecording);
   // Mic button is disabled if globally disabled or sending (but not just because STT isn't supported - click should give toast then).
   const isMicButtonDisabled = disabled || isSending;
 
@@ -69,11 +69,12 @@ export function ResponseInput({
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholderText()}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px] max-h-[150px] scrollbar-thin bg-transparent"
-          rows={1}
+          rows={1} // Start with 1 row, it will auto-grow based on Tailwind/CSS setup if configured
           disabled={isTextareaDisabled}
           aria-label="Your response"
         />
         <div className="flex flex-col space-y-1 flex-shrink-0" data-testid="response-buttons-wrapper">
+          {/* Send Button */}
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -93,7 +94,7 @@ export function ResponseInput({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>Send response (Enter)</p>
+                <p>{isSendButtonDisabled ? (isRecording ? "Stop recording to send" : "Type a message to send") : "Send response (Enter)"}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
