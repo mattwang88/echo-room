@@ -17,7 +17,6 @@ interface ResponseInputProps {
   isRecording?: boolean;
   onToggleRecording?: () => void;
   isSTTSupported?: boolean;
-  // interimTranscript prop is no longer needed for display here
 }
 
 export function ResponseInput({
@@ -41,17 +40,15 @@ export function ResponseInput({
   };
 
   const handleMicClick = () => {
-    if (isSending || disabled) return; // Don't allow mic toggle if main input is disabled or sending
-    // The onToggleRecording function (handleToggleRecording in useMeetingSimulation)
-    // will handle the toast if !isSTTSupported.
+    if (isSending || disabled) return; 
     if (onToggleRecording) {
-      onToggleRecording();
+      onToggleRecording(); // This will handle the toast if !isSTTSupported via useMeetingSimulation.
     }
   };
   
   const getPlaceholderText = () => {
     if (isRecording) return "Listening... Click mic to stop.";
-    if (isSTTSupported) return "Type or click mic to speak...";
+    if (isSTTSupported) return "Type your response or click the mic to speak...";
     return "Type your response... (Voice input not supported by browser)";
   }
 
@@ -64,24 +61,33 @@ export function ResponseInput({
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholderText()}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px] max-h-[150px] scrollbar-thin bg-transparent"
-          rows={1}
-          disabled={isSending || disabled} // Textarea is disabled while sending, but NOT necessarily while recording
+          rows={1} // Start with 1 row, auto-grows with content
+          disabled={isSending || disabled} 
           aria-label="Your response"
         />
         <div className="flex flex-col space-y-1 flex-shrink-0">
-          <Button
-            onClick={onSubmit}
-            disabled={isSending || disabled || !value.trim() || isRecording } // Also disable send if recording
-            size="icon"
-            className="h-9 w-9"
-          >
-            {isSending ? (
-              <Loader2 className="h-4 w-4 animate-spin" />
-            ) : (
-              <Send className="h-4 w-4" />
-            )}
-            <span className="sr-only">Send response</span>
-          </Button>
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  onClick={onSubmit}
+                  disabled={isSending || disabled || !value.trim() || isRecording } 
+                  size="icon"
+                  className="h-9 w-9"
+                  aria-label="Send response"
+                >
+                  {isSending ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Send className="h-4 w-4" />
+                  )}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>Send response (Enter)</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
 
           <TooltipProvider delayDuration={200}>
             <Tooltip>
@@ -90,8 +96,6 @@ export function ResponseInput({
                   variant={isRecording ? "destructive" : "outline"}
                   size="icon"
                   onClick={handleMicClick}
-                  // Mic button disabled only if main input is disabled or a message is sending.
-                  // Not disabled if !isSTTSupported, as clicking it will show a toast.
                   disabled={isSending || disabled} 
                   className="h-9 w-9"
                   aria-label={isRecording ? "Stop recording" : "Start recording"}
@@ -100,12 +104,15 @@ export function ResponseInput({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported by browser")}</p>
+                 <p>{isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported")}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
         </div>
       </div>
+      {/* The interim transcript display is removed as the main textarea will update live */}
     </div>
   );
 }
+
+    

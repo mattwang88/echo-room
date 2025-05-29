@@ -25,45 +25,38 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
   // Speech-to-Text
   const [isRecording, setIsRecording] = useState(false);
-  const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
+  const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>(""); 
 
   const {
     isListening: sttIsListening,
     startListening: sttStartListening,
     stopListening: sttStopListening,
     isSTTSupported,
-    sttError,
+    sttError, 
     clearSTTError,
   } = useSpeechToText({
-    onTranscript: (finalTranscript) => {
-      console.log("STT Final Transcript:", finalTranscript);
-      const newText = baseTextForSpeech + (baseTextForSpeech ? " " : "") + finalTranscript;
+    onTranscript: (finalTranscriptSegment) => {
+      console.log("STT Final Transcript Segment:", finalTranscriptSegment);
+      const newText = baseTextForSpeech + (baseTextForSpeech ? " " : "") + finalTranscriptSegment;
       setCurrentUserResponse(newText);
-      setBaseTextForSpeech(newText);
+      setBaseTextForSpeech(newText); 
     },
     onInterimTranscript: (interim) => {
-      console.log("[MeetingSimulation] Interim transcript received:", interim); // Added for debugging
       setCurrentUserResponse(baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim);
     },
     onListeningChange: (listening) => {
       setIsRecording(listening);
       if (!listening) {
-        setBaseTextForSpeech("");
+        setBaseTextForSpeech(""); 
       }
     }
   });
 
   useEffect(() => {
-    // This effect syncs the visual recording state with the hook's listening state if needed,
-    // but onListeningChange callback above should handle it.
-    // setIsRecording(sttIsListening); // This might be redundant if onListeningChange is robust.
-  }, [sttIsListening]);
-
-  useEffect(() => {
     if (sttError) {
-      // The toast is already shown by useSpeechToText hook.
+      console.error("STT Error in useMeetingSimulation:", sttError);
     }
-  }, [sttError, clearSTTError]);
+  }, [sttError]);
 
 
   useEffect(() => {
@@ -90,7 +83,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
         router.push('/');
       }
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenarioId, router, toast]);
 
   const addMessage = (participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
@@ -117,10 +110,10 @@ export function useMeetingSimulation(scenarioId: string | null) {
     try {
       localStorage.setItem('echoRoomMeetingSummary', JSON.stringify(summaryData));
       router.push(`/meeting/${scenario.id}/summary`);
-    } catch (error) {
+    } catch (error) { // Added opening curly brace
       console.error("Failed to save summary to localStorage:", error);
       toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
-    }
+    } // Added closing curly brace
   }, [scenario, messages, router, toast, isRecording, sttStopListening]);
 
   const submitUserResponse = async () => {
@@ -129,23 +122,25 @@ export function useMeetingSimulation(scenarioId: string | null) {
     const userMsg = currentUserResponse.trim();
     addMessage("User", userMsg);
     setCurrentUserResponse("");
-    setBaseTextForSpeech("");
+    setBaseTextForSpeech(""); 
     setIsAiThinking(true);
     setCurrentCoaching(null);
 
     try {
-      const coachingInput: AnalyzeResponseInput = { response: userMsg, context: scenario.objective };
+      const coachingInput: AnalyzeResponseInput = { response: userMsg, context: scenario.objective || "General Discussion" };
       const coachingResult = await analyzeResponse(coachingInput);
       setCurrentCoaching(coachingResult);
 
-      const semanticInput: EvaluateSemanticSkillInput = { responseText: userMsg, context: scenario.objective };
+      const semanticInput: EvaluateSemanticSkillInput = { responseText: userMsg, context: scenario.objective || "General Discussion" };
       const semanticResult = await evaluateSemanticSkill(semanticInput);
 
-      setMessages(prev => prev.map(msg =>
-        msg.text === userMsg && msg.participant === 'User' && !msg.coachingFeedback && msg.id === messages[messages.length - 1].id
-          ? { ...msg, coachingFeedback: coachingResult, semanticEvaluation: semanticResult }
-          : msg
-      ));
+      setMessages(prev => prev.map((msg, index) => {
+        if (index === prev.length -1 && msg.participant === 'User' && msg.text === userMsg) {
+            return { ...msg, coachingFeedback: coachingResult, semanticEvaluation: semanticResult };
+        }
+        return msg;
+      }));
+
 
       const activeAgents = scenario.agentsInvolved;
       if (activeAgents && activeAgents.length > 0) {
@@ -153,9 +148,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
         let agentPersona = "";
 
         if (scenario.id === 'manager-1on1' && agentToRespondRole === 'Product') {
-          agentPersona = scenario.personaConfig.productPersona;
+          agentPersona = scenario.personaConfig.productPersona; 
         } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
-          agentPersona = scenario.personaConfig.hrPersona;
+          agentPersona = scenario.personaConfig.hrPersona; 
         } else {
           switch (agentToRespondRole) {
             case 'CTO': agentPersona = scenario.personaConfig.ctoPersona; break;
@@ -168,9 +163,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
         if (agentPersona) {
           const singleAgentSimInput: SimulateSingleAgentResponseInput = {
             userResponse: userMsg,
-            agentRole: agentToRespondRole as AgentRole, // Ensure type compatibility
+            agentRole: agentToRespondRole as AgentRole, 
             agentPersona: agentPersona,
-            scenarioObjective: scenario.objective,
+            scenarioObjective: scenario.objective || "General Discussion",
           };
           const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
           if (agentResponse && agentResponse.agentFeedback) {
@@ -199,13 +194,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
   useEffect(() => {
     if (scenario?.maxTurns && currentTurn >= scenario.maxTurns && !meetingEnded) {
-      // Safeguard handled in submitUserResponse
+      // This check is primarily handled within submitUserResponse after turn increment
     }
   }, [currentTurn, scenario, meetingEnded, handleEndMeeting]);
 
 
   const handleToggleRecording = () => {
-    if (isRecording) {
+    if (sttIsListening) { 
       sttStopListening();
     } else {
       if (!isSTTSupported) {
@@ -216,8 +211,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
         });
         return;
       }
-      clearSTTError();
-      setBaseTextForSpeech(currentUserResponse);
+      clearSTTError(); 
+      setBaseTextForSpeech(currentUserResponse); 
       sttStartListening();
     }
   };
@@ -232,7 +227,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
-    isRecording,
+    isRecording: sttIsListening, 
     handleToggleRecording,
     isSTTSupported,
   };
