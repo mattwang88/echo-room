@@ -55,6 +55,24 @@ export const scenarios: Scenario[] = [
       hrPersona: "You are the Head of HR. You are not participating in this 1-on-1 meeting.",
     },
     maxTurns: 10,
+  },
+  {
+    id: 'job-resignation',
+    title: 'Resign My Job',
+    description: 'Inform your direct manager of your decision to resign and discuss the transition.',
+    objective: 'Professionally communicate your resignation to your manager, state your reasons constructively (if you choose to), and discuss an orderly transition plan. You may also be looped in with HR.',
+    initialMessage: {
+      participant: 'System', // System message to set the scene
+      text: "You've scheduled this meeting with your Direct Manager to discuss an important matter. Your manager is waiting. Please begin when you're ready.",
+    },
+    agentsInvolved: ['Product', 'HR'], // Manager (Product) and HR will be involved.
+    personaConfig: {
+      ctoPersona: "You are the CTO. You are not participating in this resignation discussion.",
+      financePersona: "You are the Head of Finance. You are not participating in this resignation discussion.",
+      productPersona: "You are the user's Direct Manager. The user has scheduled this meeting and is about to inform you of their decision to resign. Respond with professionalism and understanding, though you might express surprise or disappointment. Inquire about their reasons (without being pushy), their last day, and discuss knowledge transfer or transition plans. Keep your responses relatively concise and focused on the next steps. You may suggest involving HR for formal procedures.",
+      hrPersona: "You are the Head of HR. You will be looped into the conversation once the user has informed their manager about the resignation, or if the manager suggests involving you. Your role is to discuss the formal resignation process, last paycheck, benefits continuation (like COBRA), exit interview, and return of company property. Be clear, empathetic, and procedural.",
+    },
+    maxTurns: 7, // Resignation conversations are usually not extremely long.
   }
 ];
 
