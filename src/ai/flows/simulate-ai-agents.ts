@@ -38,12 +38,12 @@ const prompt = ai.definePrompt({
   name: 'simulateAiAgentsPrompt',
   input: {schema: SimulateAiAgentsInputSchema},
   output: {schema: SimulateAiAgentsOutputSchema},
-  prompt: `You are simulating a multi-persona meeting. Your goal is to make the AI agent responses human-like, conversational, constructive, AND CONCISE. Keep responses brief, ideally one or two sentences plus a question.
+  prompt: `You are simulating a multi-persona meeting. Your goal is to make the AI agent responses feel human-like, conversational, and constructive.
 
   The user will present a proposal. Each AI agent, from their specific role's viewpoint, should:
-  1. Express their initial feeling or reaction to the proposal BRIEFLY (e.g., "Tech-wise, I'm curious...", "Financially, my main thought is...").
-  2. Provide a VERY BRIEF comment or observation (one short sentence).
-  3. Ask ONE targeted follow-up question to clarify or explore a key aspect.
+  1. Express their initial feeling or reaction to the proposal (e.g., "From a tech perspective, I'm intrigued by...", "My initial concern financially is...").
+  2. Provide a brief comment or observation based on their expertise.
+  3. Ask 1-2 targeted follow-up questions to clarify or explore key aspects relevant to their role.
 
   Here is the user's proposal:
   {{{proposal}}}
@@ -54,12 +54,12 @@ const prompt = ai.definePrompt({
   Product: {{{productPersona}}} (Market fit, user value, competition, roadmap, strategy alignment)
   HR: {{{hrPersona}}} (Team structure, talent, culture, resourcing impact)
 
-  Please provide the feedback for each agent in the following format, embodying the human-like and CONCISE qualities:
+  Please provide the feedback for each agent in the following format, embodying the human-like qualities:
 
-  CTO Feedback: [CTO's brief feeling, very short comment, and 1 question]
-  Finance Feedback: [Finance agent's brief feeling, very short comment, and 1 question]
-  Product Feedback: [Product agent's brief feeling, very short comment, and 1 question]
-  HR Feedback: [HR agent's brief feeling, very short comment, and 1 question]`,
+  CTO Feedback: [CTO's feeling, comment, and 1-2 questions]
+  Finance Feedback: [Finance agent's feeling, comment, and 1-2 questions]
+  Product Feedback: [Product agent's feeling, comment, and 1-2 questions]
+  HR Feedback: [HR agent's feeling, comment, and 1-2 questions]`,
 });
 
 const simulateAiAgentsFlow = ai.defineFlow(

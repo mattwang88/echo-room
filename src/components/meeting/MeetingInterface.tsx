@@ -1,9 +1,8 @@
-
 'use client';
 
 import { useEffect, useRef } from 'react';
 import type { Scenario } from '@/lib/types';
-import { useMeetingSimulation } from '@/hooks/useMeetingSimulation'; // Updated import path if changed
+import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
 import { ChatMessage } from './ChatMessage';
 import { ResponseInput } from './ResponseInput';
@@ -27,15 +26,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
-    // Properties below were added for TTS/STT, revert to not include them if original useMeetingSimulation didn't have them
-    // isTTSEnabled,
-    // toggleTTS,
-    // isTTSSupported,
-    // startSTTListening,
-    // stopSTTListening,
-    // isSTTListening,
-    // isSTTSupported,
-    // interimTranscript,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -49,7 +39,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  if (!scenario && !meetingEnded) { 
+  if (!scenario && !meetingEnded) { // Show loading state if scenario is not yet loaded and meeting hasn't ended (e.g. redirecting to summary)
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
         <Logo className="mb-4" />
@@ -65,15 +55,9 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   
   return (
     <div className="flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background">
+      {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-h-screen">
-        <MeetingHeader 
-          scenario={scenario} 
-          onEndMeeting={handleEndMeeting}
-          // Pass original props for MeetingHeader, revert TTS props
-          isTTSEnabled={false} // Default or remove if not in original
-          onToggleTTS={() => {}} // Default or remove
-          isTTSSupported={false} // Default or remove
-        />
+        <MeetingHeader scenario={scenario} onEndMeeting={handleEndMeeting} />
         
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
@@ -97,15 +81,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           onSubmit={submitUserResponse}
           isSending={isAiThinking}
           disabled={meetingEnded}
-          // Revert STT props
-          // startRecording={startSTTListening}
-          // stopRecording={stopSTTListening}
-          // isRecording={isSTTListening}
-          // isSTTSupported={isSTTSupported}
-          // interimTranscript={interimTranscript}
         />
       </div>
 
+      {/* Coaching Panel - visible on larger screens */}
       <aside className="w-full md:w-1/3 lg:w-1/4 border-l bg-card max-h-screen overflow-y-auto hidden md:block">
          <CoachingPanel feedback={currentCoaching} isAiThinking={isAiThinking && messages[messages.length-1]?.participant === 'User'} />
       </aside>
