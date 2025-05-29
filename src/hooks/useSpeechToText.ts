@@ -13,14 +13,14 @@ interface UseSpeechToTextOptions {
 export function useSpeechToText({
   onTranscript,
   onInterimTranscript,
-  onListeningChange
+  onListeningChange // This prop MUST be memoized by the parent component
 }: UseSpeechToTextOptions) {
   const { toast } = useToast();
   const [isListeningState, setIsListeningState] = useState(false);
   const [sttError, setSttError] = useState<string | null>(null);
   const recognitionRef = useRef<SpeechRecognition | null>(null);
-
-  // Ref to keep track of the latest isListeningState for callbacks
+  
+  // Ref to ensure callbacks use the latest isListeningState
   const isListeningStateRef = useRef(isListeningState);
   useEffect(() => {
     isListeningStateRef.current = isListeningState;
@@ -29,18 +29,16 @@ export function useSpeechToText({
   const isSTTSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
   // Memoized handler to update internal state and call the prop callback
+  // This internal handleListeningChange is stable because onListeningChange (prop) should be stable
   const handleListeningChange = useCallback((newIsListening: boolean) => {
     setIsListeningState(prevState => {
-      // Only log and call prop if state actually changes to avoid redundant calls/logs
       if (prevState !== newIsListening) {
         console.log(`[useSpeechToText] State Update: isListening changing from ${prevState} to ${newIsListening}`);
-        if (onListeningChange) { // Check if the prop is provided
-            onListeningChange(newIsListening);
-        }
+        onListeningChange(newIsListening); // Call the memoized prop
       }
       return newIsListening;
     });
-  }, [onListeningChange]); // Dependency: onListeningChange prop
+  }, [onListeningChange]); // Depends on the memoized onListeningChange prop
 
   useEffect(() => {
     if (!isSTTSupported) {
@@ -48,23 +46,23 @@ export function useSpeechToText({
       return;
     }
 
-    console.log("[useSpeechToText] Effect: Initializing SpeechRecognition instance.");
+    console.log("[useSpeechToText] Effect: Initializing/Re-initializing SpeechRecognition instance.");
     const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
     recognitionRef.current = new SpeechRecognitionAPI();
     const recognition = recognitionRef.current;
 
-    recognition.continuous = true; // Keep listening even after a pause in speech
-    recognition.interimResults = true; // Get results as they are being processed
+    recognition.continuous = true;
+    recognition.interimResults = true;
     recognition.lang = 'en-US';
 
     recognition.onstart = () => {
       console.log("[useSpeechToText] onstart: Recognition service actually started.");
-      setSttError(null); // Clear previous errors
+      setSttError(null);
       handleListeningChange(true);
     };
 
     recognition.onresult = (event: SpeechRecognitionEvent) => {
-      console.log("[useSpeechToText] onresult: Received result event.");
+      // console.log("[useSpeechToText] onresult: Received result event.");
       let finalTranscriptSegment = '';
       let currentInterim = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
@@ -76,7 +74,7 @@ export function useSpeechToText({
       }
 
       if (currentInterim.trim() && onInterimTranscript) {
-        console.log("[useSpeechToText] onresult: Interim transcript:", currentInterim);
+        // console.log("[useSpeechToText] onresult: Interim transcript:", currentInterim);
         onInterimTranscript(currentInterim);
       }
 
@@ -88,48 +86,64 @@ export function useSpeechToText({
 
     recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       let errorMessage = "An unknown error occurred with speech recognition.";
-      // Specific error handling
       if (event.error === 'aborted') {
-        console.log("[useSpeechToText] onerror: Recognition aborted (e.g., by stopListening or API error).");
-        // No toast needed for user-initiated abort or programmatic abort.
-        handleListeningChange(false); // Ensure state is false
-        return; // Don't show a generic error toast for abort.
+        // This can happen if abort() is called, or if the service self-terminates unexpectedly
+        console.warn("[useSpeechToText] onerror: Recognition aborted (event.error: 'aborted'). This might be user-initiated or due to an API issue. Message:", event.message);
+        // If abort() was called programmatically, onListeningChange(false) should have already been called or will be by onend.
+        // If it's an unexpected abort, ensure the state is false.
+        handleListeningChange(false); 
+        return; 
       }
       switch (event.error) {
         case 'no-speech': errorMessage = "No speech was detected. Please try speaking again."; break;
         case 'audio-capture': errorMessage = "Microphone problem. Please ensure it's connected and enabled."; break;
-        case 'not-allowed': errorMessage = "Permission to use the microphone was denied. Please enable it in your browser settings."; break;
+        case 'not-allowed': errorMessage = "Permission to use the microphone was denied or has been revoked. Please enable it in your browser and OS settings."; break;
         case 'network': errorMessage = "A network error occurred during speech recognition. Please check your connection."; break;
         default: errorMessage = `Speech recognition error: ${event.error}. ${event.message || ''}`;
       }
       console.error('[useSpeechToText] onerror:', event.error, event.message, "Full event:", event);
       setSttError(errorMessage);
       toast({ title: "Voice Input Error", description: errorMessage, variant: "destructive" });
-      handleListeningChange(false); // Ensure listening state is false on error
+      handleListeningChange(false);
     };
 
     recognition.onend = () => {
-      console.log("[useSpeechToText] onend: Recognition service actually ended.");
-      handleListeningChange(false); // This is the primary place to set listening to false
+      console.log("[useSpeechToText] onend: Recognition service actually ended. Current isListeningStateRef:", isListeningStateRef.current);
+      // This is the definitive place to set listening to false when the service truly stops.
+      // It handles cases where stop is called, or if recognition stops by itself (e.g. long silence, though continuous is true).
+      handleListeningChange(false);
     };
 
     // Cleanup function
     return () => {
       if (recognitionRef.current) {
-        console.log("[useSpeechToText] Effect Cleanup: Aborting recognition and removing listeners. Current isListeningState:", isListeningStateRef.current);
+        console.log("[useSpeechToText] Effect Cleanup: Aborting recognition and removing listeners. Current isListeningState from ref:", isListeningStateRef.current);
+        // Detach all event handlers to prevent memory leaks or calls on unmounted components
         recognitionRef.current.onstart = null;
         recognitionRef.current.onresult = null;
         recognitionRef.current.onerror = null;
         recognitionRef.current.onend = null;
-        // Only abort if the instance exists and we believe it might be active.
-        // The onend or onerror should handle the state, but this is a safeguard.
-        if (isListeningStateRef.current) {
-           recognitionRef.current.abort();
+        
+        // Only abort if we believe it's still active or to ensure it's cleaned up.
+        // The onend or onerror should ideally handle the state, but this is a safeguard.
+        try {
+            if(isListeningStateRef.current) { // Check ref for most current state before aborting
+                console.log("[useSpeechToText] Effect Cleanup: Calling recognition.abort() as isListeningStateRef.current is true.");
+                recognitionRef.current.abort();
+            } else {
+                console.log("[useSpeechToText] Effect Cleanup: Skipping recognition.abort() as isListeningStateRef.current is false.");
+            }
+        } catch (e: any) {
+            console.warn("[useSpeechToText] Effect Cleanup: Error during recognition.abort():", e.name, e.message);
         }
-        recognitionRef.current = null;
+        recognitionRef.current = null; // Release the instance
+      } else {
+        console.log("[useSpeechToText] Effect Cleanup: recognitionRef.current is already null.");
       }
     };
-  }, [isSTTSupported, onTranscript, onInterimTranscript, toast, handleListeningChange]); // handleListeningChange is stable if onListeningChange prop is stable
+  // IMPORTANT: onListeningChange, onTranscript, onInterimTranscript props MUST be memoized by the parent.
+  // toast is stable from its hook. isSTTSupported changes only on mount.
+  }, [isSTTSupported, onTranscript, onInterimTranscript, toast, handleListeningChange, onListeningChange]);
 
 
   const startListening = useCallback(() => {
@@ -141,57 +155,68 @@ export function useSpeechToText({
       return;
     }
     
-    setSttError(null); // Clear previous errors before trying to start
+    if (!recognitionRef.current) {
+      console.error("[useSpeechToText] startListening: recognitionRef.current is null. Cannot start. This might happen if effect cleanup ran prematurely or STT not supported/initialized.");
+      toast({ title: "Voice Input Error", description: "Speech recognition service not ready. Please try again or refresh.", variant: "destructive" });
+      handleListeningChange(false); // Ensure UI reflects not listening
+      return;
+    }
 
-    if (recognitionRef.current && !isListeningStateRef.current) {
+    setSttError(null); 
+
+    if (!isListeningStateRef.current) { // Check ref to avoid race conditions
       try {
         console.log("[useSpeechToText] startListening: Attempting to call recognition.start().");
         recognitionRef.current.start();
         // isListeningState will be set to true by the 'onstart' event handler
       } catch (e: any) {
-        console.error("[useSpeechToText] Error synchronously thrown by recognition.start():", e.name, e.message);
+        console.error("[useSpeechToText] Error SYNCHRONOUSLY thrown by recognition.start():", e.name, e.message);
         let userMessage = "Could not start voice input. Please try again.";
-        if (e.name === 'NotAllowedError') userMessage = "Microphone permission denied. Please enable it in browser settings.";
+        if (e.name === 'NotAllowedError') userMessage = "Microphone permission denied. Please enable it in browser/OS settings.";
         else if (e.name === 'InvalidStateError') {
-            console.warn("[useSpeechToText] startListening: InvalidStateError - recognition might already be active or misconfigured. Attempting abort to reset.");
-            if (recognitionRef.current) recognitionRef.current.abort(); // Attempt to reset its state
-            userMessage = "Voice input is in an unexpected state. Please try clicking the mic again.";
+            console.warn("[useSpeechToText] startListening: InvalidStateError - recognition might be in an unexpected state. Aborting to reset if possible.");
+            if (recognitionRef.current) {
+              try { recognitionRef.current.abort(); } catch (abortErr) { console.warn("Error aborting on InvalidStateError:", abortErr); }
+            }
+            userMessage = "Voice input is in an unexpected state. It has been reset. Please try clicking the mic again.";
         }
         toast({ title: "Voice Input Error", description: userMessage, variant: "destructive" });
         setSttError(userMessage);
-        handleListeningChange(false); // Ensure state is false if start fails
+        handleListeningChange(false);
       }
-    } else if (isListeningStateRef.current) {
-        console.warn("[useSpeechToText] startListening: Called but already in 'isListeningState' (according to ref). Ignoring.");
-    } else if (!recognitionRef.current) {
-        console.error("[useSpeechToText] startListening: recognitionRef.current is null. Speech recognition not initialized. This might happen if STT is not supported or after component unmount. Please refresh.");
-        toast({ title: "Voice Input Error", description: "Speech recognition not initialized. Please refresh the page or ensure your browser is supported.", variant: "destructive" });
-        handleListeningChange(false); // Ensure UI reflects not listening
+    } else {
+        console.warn("[useSpeechToText] startListening: Called but already in 'isListeningState' (according to ref). Ignoring call to start().");
     }
-  }, [isSTTSupported, toast, handleListeningChange]); // handleListeningChange is stable
+  }, [isSTTSupported, toast, handleListeningChange]);
 
   const stopListening = useCallback(() => {
     console.log(`[useSpeechToText] stopListening called. Current isListeningState from ref: ${isListeningStateRef.current}`);
-    if (recognitionRef.current) {
-      if (isListeningStateRef.current) { // Check if it *thinks* it's listening
-        try {
-          console.log("[useSpeechToText] stopListening: Attempting to call recognition.abort().");
-          recognitionRef.current.abort(); // Use abort() for a more forceful stop
-          // The 'onerror' with 'aborted' or 'onend' handler should set isListeningState to false.
-        } catch (e: any) {
-          console.error("[useSpeechToText] Error during recognition.abort():", e.name, e.message);
-          handleListeningChange(false); // Ensure state is false if abort() throws
-        }
-      } else {
-        console.warn("[useSpeechToText] stopListening: Called but not in 'isListeningState' (according to ref). Recognition might have already stopped or failed to start.");
-        // If we think we are not listening, but user clicks stop, ensure the state is truly false.
-        handleListeningChange(false); 
+    if (!recognitionRef.current) {
+      console.warn("[useSpeechToText] stopListening: recognitionRef.current is null. Cannot stop. Ensuring isListening state is false.");
+      handleListeningChange(false);
+      return;
+    }
+
+    if (isListeningStateRef.current) { // Only try to abort if we think it's listening
+      try {
+        console.log("[useSpeechToText] stopListening: Attempting to call recognition.abort().");
+        recognitionRef.current.abort(); // abort() is more forceful. It should trigger 'onerror' with 'aborted' or 'onend'.
+        // We don't proactively set isListeningState to false here anymore,
+        // instead, we rely on the 'onend' or 'onerror' (for 'aborted' case) event handlers to do that.
+        // This makes the state reflect the true state of the recognition service.
+        // However, if those events don't fire, the state will remain true.
+        // Adding a proactive call here for immediate UI feedback and as a safeguard
+        // handleListeningChange(false); // This provides quicker UI feedback.
+      } catch (e: any) {
+        console.error("[useSpeechToText] Error during recognition.abort():", e.name, e.message);
+        // If abort throws, force state to false as a recovery attempt.
+        handleListeningChange(false);
       }
     } else {
-      console.warn("[useSpeechToText] stopListening: Called but recognitionRef.current is null.");
-      handleListeningChange(false); // Ensure UI reflects not listening
+      console.warn("[useSpeechToText] stopListening: Called but not in 'isListeningState' (according to ref). Recognition might have already stopped or failed to start. Forcing listening state to false.");
+      handleListeningChange(false); 
     }
-  }, [handleListeningChange]); // handleListeningChange is stable
+  }, [handleListeningChange]);
 
   const clearSTTError = useCallback(() => {
     setSttError(null);
@@ -206,3 +231,6 @@ export function useSpeechToText({
     clearSTTError,
   };
 }
+
+
+    
