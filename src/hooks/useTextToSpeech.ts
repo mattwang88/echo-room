@@ -20,7 +20,8 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
   const [isTTSEnabled, setIsTTSEnabled] = useState(false); // Default to false
   const utteranceRef = useRef<SpeechSynthesisUtterance | null>(null);
   const synthRef = useRef<SpeechSynthesis | null>(null);
-  const previousIsTTSEnabledRef = useRef<boolean>(isTTSEnabled); // Initialize with current state
+  const previousIsTTSEnabledRef = useRef<boolean | undefined>(undefined); // Initialize with undefined
+
 
   const isTTSSupported = typeof window !== 'undefined' && 'speechSynthesis' in window && 'SpeechSynthesisUtterance' in window;
 
@@ -87,7 +88,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
 
     utterance.onerror = (event: SpeechSynthesisErrorEvent) => {
       // Log the raw event object to see its structure if it's behaving unexpectedly
-      console.error("[useTextToSpeech] Raw SpeechSynthesisUtterance.onerror event object:", event);
+      console.warn("[useTextToSpeech] Raw SpeechSynthesisUtterance.onerror event object:", event); // Changed from console.error to console.warn
 
       let detailedErrorMessage = "An unknown error occurred with speech synthesis.";
       if (event && event.error) {
@@ -111,7 +112,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     try {
       synthRef.current.speak(utterance);
     } catch (error: any) {
-      console.error("[useTextToSpeech] Error calling synth.speak:", error);
+      console.error("[useTextToSpeech] Error calling synth.speak:", error); // Keep this as console.error for actual exceptions
       toast({
         title: "Speech Error",
         description: `Failed to initiate speech synthesis: ${error.message || 'Unknown reason'}.`,
@@ -119,18 +120,16 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       });
       setIsSpeakingState(false); // Ensure state is false on sync error
     }
-  }, [isTTSSupported, isTTSEnabled, toast, cancel]); // Added cancel to dependencies
+  }, [isTTSSupported, isTTSEnabled, toast, cancel]);
 
   useEffect(() => {
-    // Only show toast if isTTSEnabled has actually changed from its previous state
-    // and previousIsTTSEnabledRef.current is not undefined (to skip initial mount).
     if (previousIsTTSEnabledRef.current !== undefined && previousIsTTSEnabledRef.current !== isTTSEnabled) {
       toast({
         title: "Text-to-Speech",
         description: isTTSEnabled ? "Enabled" : "Disabled",
       });
     }
-    previousIsTTSEnabledRef.current = isTTSEnabled; // Update the ref *after* checking
+    previousIsTTSEnabledRef.current = isTTSEnabled;
   }, [isTTSEnabled, toast]);
 
 
@@ -161,6 +160,6 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     isTTSSupported,
     isTTSEnabled,
     toggleTTSEnabled,
-    isTTSSpeaking: isSpeakingState, // Expose isTTSSpeaking based on isSpeakingState
+    isTTSSpeaking: isSpeakingState,
   };
 }
