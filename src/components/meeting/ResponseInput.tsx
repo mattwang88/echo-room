@@ -53,34 +53,33 @@ export function ResponseInput({
 
   return (
     <div className="p-4 border-t bg-background sticky bottom-0">
-      <div className="flex items-start gap-2 bg-card p-2 rounded-lg shadow">
+      <div className="flex items-end gap-2 bg-card p-3 rounded-xl shadow-md">
         <Textarea
           value={displayValue}
           onChange={onChange}
           onKeyDown={handleKeyDown}
-          placeholder={isRecording ? "Listening..." : (isSTTSupported ? "Type your response or use the mic (Shift+Enter for new line)" : "Type your response (Shift+Enter for new line)")}
-          className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px]"
-          rows={3}
+          placeholder={isRecording ? "Listening..." : (isSTTSupported ? "Type or use mic (Shift+Enter for new line)" : "Type your response (Shift+Enter for new line)")}
+          className="flex-1 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none px-3 py-2 min-h-[40px] max-h-[150px] overflow-y-auto leading-tight"
+          rows={1}
           disabled={isSending || disabled || (isRecording && !!interimTranscript)}
           aria-label="Your response"
         />
-        <div className="flex flex-col gap-2 flex-shrink-0">
+        <div className="flex flex-col gap-1.5 flex-shrink-0">
           <Button
             onClick={onSubmit}
             disabled={isSending || disabled || !value.trim() || isRecording}
             size="icon"
             title="Send response"
-            className="h-10 w-10"
+            className="h-9 w-9" // Adjusted size for a more compact look
           >
             {isSending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
+              <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
-              <Send className="h-5 w-5" />
+              <Send className="h-4 w-4" />
             )}
             <span className="sr-only">Send response</span>
           </Button>
 
-          {/* Mic button logic starts here */}
           {typeof startRecording === 'function' && typeof stopRecording === 'function' ? (
             <>
               {isSTTSupported ? (
@@ -90,34 +89,32 @@ export function ResponseInput({
                   size="icon"
                   variant={isRecording ? "destructive" : "outline"}
                   title={isRecording ? "Stop recording" : "Start recording"}
-                  className="h-10 w-10"
+                  className="h-9 w-9" // Adjusted size
                 >
                   {isRecording ? (
-                    <MicOff className="h-5 w-5" />
+                    <MicOff className="h-4 w-4" />
                   ) : (
-                    <Mic className="h-5 w-5" />
+                    <Mic className="h-4 w-4" />
                   )}
                   <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
                 </Button>
               ) : (
-                // Displayed if STT is not supported
                 <div
-                  className="flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background cursor-not-allowed"
+                  className="flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background cursor-not-allowed"
                   title="Speech-to-text is not supported or not available in your browser."
                   aria-label="Speech-to-text not supported or not available"
                 >
-                  <MicOff className="h-5 w-5 text-muted-foreground" />
+                  <MicOff className="h-4 w-4 text-muted-foreground" />
                 </div>
               )}
             </>
-          ) : null } {/* End of Mic button logic */}
-          {/* Mic button logic ends here */}
+          ) : null }
         </div>
       </div>
-       {isRecording && interimTranscript && (
+       {(isRecording && interimTranscript && !value) && ( // Show "Listening: transcript" only if main input is empty
         <p className="text-xs text-muted-foreground mt-1 italic pl-1">Listening: {interimTranscript}</p>
       )}
-       {isRecording && !interimTranscript && !value &&(
+       {(isRecording && !interimTranscript && !value) && ( // Show "Listening..." only if main input and interim are empty
          <p className="text-xs text-muted-foreground mt-1 italic pl-1">Listening...</p>
        )}
     </div>
