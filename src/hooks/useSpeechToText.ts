@@ -63,41 +63,36 @@ export function useSpeechToText({
         } else if (event.error === 'audio-capture') {
             errorMessage = "Microphone problem. Ensure it's connected and permission is granted.";
         } else if (event.error === 'not-allowed') {
-            errorMessage = "Permission to use microphone was denied or has not been granted.";
+            errorMessage = "Permission to use microphone was denied or has not been granted. Please check your browser's site settings.";
         } else if (event.error === 'network') {
             errorMessage = "Network error during speech recognition.";
         }
         setError(errorMessage);
         if (onError) onError(errorMessage);
-        // Do not set isListening to false here if continuous is true and it's not a fatal error like 'not-allowed'
-        // However, for 'not-allowed' or critical errors, stopping might be appropriate.
         // The browser usually handles stopping recognition on critical errors.
-        // If it stops on its own, onend will fire.
+        // onend will fire to set isListening to false.
       };
 
       recognitionRef.current.onstart = () => {
         setIsListening(true);
         if (onListeningChange) onListeningChange(true);
-        setError(null); // Clear error on successful start
-        if (onError) onError(null); // Notify upstream that error is cleared
-        setInterimTranscript(""); // Clear interim transcript
+        setError(null); 
+        if (onError) onError(null); 
+        setInterimTranscript(""); 
       };
 
       recognitionRef.current.onend = () => {
         setIsListening(false);
         if (onListeningChange) onListeningChange(false);
-        // If recognition stops unexpectedly, onError might have already been called.
       };
 
     } else {
       setIsSupported(false);
-      // Don't set error here, let startListening handle it if user tries to use it.
     }
 
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
-         // Clean up event handlers to prevent memory leaks
         recognitionRef.current.onresult = null;
         recognitionRef.current.onerror = null;
         recognitionRef.current.onstart = null;
@@ -115,7 +110,6 @@ export function useSpeechToText({
       return;
     }
     if (isListening) {
-      // If already listening, perhaps do nothing or restart. For now, do nothing.
       return;
     }
     if (!recognitionRef.current) {
@@ -125,8 +119,12 @@ export function useSpeechToText({
       return;
     }
 
+    // Clear previous state before attempting to start
+    setError(null);
+    if (onError) onError(null);
+    setInterimTranscript("");
+
     try {
-      // Error and interim transcript are cleared in onstart
       recognitionRef.current.start();
       // isListening will be set to true by the 'onstart' event handler
     } catch (e: any) {
@@ -139,8 +137,10 @@ export function useSpeechToText({
       }
       setError(userFriendlyError);
       if (onError) onError(userFriendlyError);
+      setIsListening(false); // Ensure listening is false if start() throws
+      if (onListeningChange) onListeningChange(false);
     }
-  }, [isSupported, isListening, onError, recognitionRef]);
+  }, [isSupported, isListening, onError, onListeningChange, recognitionRef]);
 
   const stopListening = useCallback(() => {
     if (!isSupported || !isListening || !recognitionRef.current) return;
@@ -149,7 +149,6 @@ export function useSpeechToText({
         // isListening will be set to false by the 'onend' event handler
     } catch (e: any) {
         console.error("Error calling recognition.stop():", e);
-        // Usually, stop doesn't throw critical errors affecting user too much
     }
   }, [isSupported, isListening, recognitionRef]);
 
