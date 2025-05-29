@@ -35,8 +35,8 @@ export function useSpeechToText({
     if (SpeechRecognitionAPI) {
       setIsSupported(true);
       recognitionRef.current = new SpeechRecognitionAPI();
-      recognitionRef.current.continuous = true; // Keep listening until explicitly stopped
-      recognitionRef.current.interimResults = true; // Get interim results
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
       recognitionRef.current.lang = 'en-US';
 
       recognitionRef.current.onresult = (event: SpeechRecognitionEvent) => {
@@ -56,64 +56,102 @@ export function useSpeechToText({
       };
 
       recognitionRef.current.onerror = (event: SpeechRecognitionErrorEvent) => {
-        console.error('Speech recognition error:', event.error);
-        let errorMessage = event.error;
+        console.error('Speech recognition error:', event.error, event.message);
+        let errorMessage = event.message || event.error;
         if (event.error === 'no-speech') {
             errorMessage = "No speech detected. Please try again.";
         } else if (event.error === 'audio-capture') {
-            errorMessage = "Microphone problem. Please ensure it's working.";
+            errorMessage = "Microphone problem. Ensure it's connected and permission is granted.";
         } else if (event.error === 'not-allowed') {
-            errorMessage = "Permission to use microphone was denied.";
+            errorMessage = "Permission to use microphone was denied or has not been granted.";
+        } else if (event.error === 'network') {
+            errorMessage = "Network error during speech recognition.";
         }
         setError(errorMessage);
         if (onError) onError(errorMessage);
-        setIsListening(false);
-        if (onListeningChange) onListeningChange(false);
+        // Do not set isListening to false here if continuous is true and it's not a fatal error like 'not-allowed'
+        // However, for 'not-allowed' or critical errors, stopping might be appropriate.
+        // The browser usually handles stopping recognition on critical errors.
+        // If it stops on its own, onend will fire.
       };
 
       recognitionRef.current.onstart = () => {
         setIsListening(true);
         if (onListeningChange) onListeningChange(true);
-        setError(null);
-        if (onError) onError(null);
-        setInterimTranscript("");
+        setError(null); // Clear error on successful start
+        if (onError) onError(null); // Notify upstream that error is cleared
+        setInterimTranscript(""); // Clear interim transcript
       };
 
       recognitionRef.current.onend = () => {
         setIsListening(false);
         if (onListeningChange) onListeningChange(false);
-        // If it stops automatically and we want it to be continuous until stopListening is called,
-        // we might need to restart it here under certain conditions, but for now, explicit stop is cleaner.
+        // If recognition stops unexpectedly, onError might have already been called.
       };
 
     } else {
       setIsSupported(false);
-      setError("Speech recognition not supported in this browser.");
-      if (onError) onError("Speech recognition not supported in this browser.");
+      // Don't set error here, let startListening handle it if user tries to use it.
     }
 
     return () => {
       if (recognitionRef.current) {
         recognitionRef.current.stop();
+         // Clean up event handlers to prevent memory leaks
+        recognitionRef.current.onresult = null;
+        recognitionRef.current.onerror = null;
+        recognitionRef.current.onstart = null;
+        recognitionRef.current.onend = null;
       }
     };
   }, [onTranscript, onListeningChange, onError]);
 
+
   const startListening = useCallback(() => {
-    if (!isSupported || isListening || !recognitionRef.current) return;
-    try {
-      recognitionRef.current.start();
-    } catch (e) {
-      console.error("Error starting recognition:", e);
-      setError("Failed to start listening.");
-      if (onError) onError("Failed to start listening.");
+    if (!isSupported) {
+      const errorMsg = "Speech recognition not supported in this browser.";
+      setError(errorMsg);
+      if (onError) onError(errorMsg);
+      return;
     }
-  }, [isSupported, isListening, onError]);
+    if (isListening) {
+      // If already listening, perhaps do nothing or restart. For now, do nothing.
+      return;
+    }
+    if (!recognitionRef.current) {
+      const errorMsg = "Speech recognition component not ready.";
+      setError(errorMsg);
+      if (onError) onError(errorMsg);
+      return;
+    }
+
+    try {
+      // Error and interim transcript are cleared in onstart
+      recognitionRef.current.start();
+      // isListening will be set to true by the 'onstart' event handler
+    } catch (e: any) {
+      console.error("Error calling recognition.start():", e);
+      let userFriendlyError = "Failed to start listening. Please ensure microphone permissions are granted.";
+      if (e.name === 'InvalidStateError') {
+          userFriendlyError = "Cannot start listening now, speech recognition might already be active or in an invalid state.";
+      } else if (e.name === 'NotAllowedError') {
+           userFriendlyError = "Microphone access was denied. Please enable it in your browser settings.";
+      }
+      setError(userFriendlyError);
+      if (onError) onError(userFriendlyError);
+    }
+  }, [isSupported, isListening, onError, recognitionRef]);
 
   const stopListening = useCallback(() => {
     if (!isSupported || !isListening || !recognitionRef.current) return;
-    recognitionRef.current.stop();
-  }, [isSupported, isListening]);
+    try {
+        recognitionRef.current.stop();
+        // isListening will be set to false by the 'onend' event handler
+    } catch (e: any) {
+        console.error("Error calling recognition.stop():", e);
+        // Usually, stop doesn't throw critical errors affecting user too much
+    }
+  }, [isSupported, isListening, recognitionRef]);
 
   return { startListening, stopListening, isListening, isSupported, error, interimTranscript };
 }

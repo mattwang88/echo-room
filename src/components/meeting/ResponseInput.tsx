@@ -42,14 +42,17 @@ export function ResponseInput({
   };
 
   const handleMicClick = () => {
-    if (isRecording && stopRecording) {
+    if (!startRecording || !stopRecording) return; // Should not happen if props are correctly passed
+
+    if (isRecording) {
       stopRecording();
-    } else if (!isRecording && startRecording) {
+    } else {
       startRecording();
     }
   };
 
   const displayValue = isRecording && interimTranscript ? `${value} ${interimTranscript}`.trim() : value;
+  const canSubmit = !isSending && !disabled && value.trim() && !isRecording;
 
   return (
     <div className="p-4 border-t bg-background sticky bottom-0">
@@ -67,7 +70,7 @@ export function ResponseInput({
         <div className="flex flex-col gap-1.5 flex-shrink-0">
           <Button
             onClick={onSubmit}
-            disabled={isSending || disabled || !value.trim() || isRecording}
+            disabled={!canSubmit}
             size="icon"
             title="Send response"
             className="h-9 w-9"
@@ -80,34 +83,30 @@ export function ResponseInput({
             <span className="sr-only">Send response</span>
           </Button>
 
-          {/* Microphone Button Section */}
-          {isSTTSupported ? (
+          {/* Microphone Button Section - always render interactive style */}
+          {typeof startRecording === 'function' && typeof stopRecording === 'function' && (
             <Button
               onClick={handleMicClick}
-              disabled={isSending || disabled}
+              disabled={isSending || disabled} // Still disabled if sending or overall input is disabled
               size="icon"
               variant={isRecording ? "destructive" : "outline"}
-              title={isRecording ? "Stop recording" : "Start recording"}
+              title={
+                !isSTTSupported 
+                  ? "Speech-to-text not supported in your browser" 
+                  : isRecording 
+                    ? "Stop recording" 
+                    : "Start recording"
+              }
               className="h-9 w-9"
             >
               {isRecording ? (
                 <MicOff className="h-4 w-4" />
               ) : (
-                <Mic className="h-4 w-4" />
+                // Show Mic icon. If not supported, clicking it will trigger error via startRecording.
+                <Mic className="h-4 w-4" /> 
               )}
               <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
             </Button>
-          ) : (
-            // Render disabled placeholder if STT is not supported but functions are notionally available
-             (typeof startRecording === 'function' && typeof stopRecording === 'function') && (
-                <div
-                    className="flex items-center justify-center h-9 w-9 rounded-md border border-input bg-background cursor-not-allowed"
-                    title="Speech-to-text is not supported or not available in your browser."
-                    aria-label="Speech-to-text not supported or not available"
-                >
-                    <MicOff className="h-4 w-4 text-muted-foreground" />
-                </div>
-             )
           )}
         </div>
       </div>
