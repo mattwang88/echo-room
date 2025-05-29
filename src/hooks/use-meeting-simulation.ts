@@ -1,13 +1,18 @@
+
 "use client";
 
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Scenario, Message, AgentRole, MeetingSummaryData, ParticipantRole } from '@/lib/types';
+import type { Scenario, Message, MeetingSummaryData, ParticipantRole, AgentRole } from '@/lib/types';
 import { getScenarioById } from '@/lib/scenarios';
-import { simulateAiAgents, type SimulateAiAgentsInput } from '@/ai/flows/simulate-ai-agents';
+// import { simulateAiAgents, type SimulateAiAgentsInput } from '@/ai/flows/simulate-ai-agents'; // Replaced by single agent response
+import { simulateSingleAgentResponse, type SimulateSingleAgentResponseInput } from '@/ai/flows/simulate-single-agent-response';
 import { analyzeResponse, type AnalyzeResponseInput, type AnalyzeResponseOutput } from '@/ai/flows/real-time-coaching';
 import { evaluateSemanticSkill, type EvaluateSemanticSkillInput, type EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import { useToast } from "@/hooks/use-toast";
+import { useSpeechToText } from './useSpeechToText';
+import { useTextToSpeech } from './useTextToSpeech';
+
 
 export function useMeetingSimulation(scenarioId: string | null) {
   const router = useRouter();
@@ -19,6 +24,53 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [meetingEnded, setMeetingEnded] = useState<boolean>(false);
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentCoaching, setCurrentCoaching] = useState<AnalyzeResponseOutput | null>(null);
+  const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0); // For cycling through agents
+
+  // Speech-to-Text
+  const { 
+    isListening: sttIsListening, 
+    startListening: sttStartListening, 
+    stopListening: sttStopListening, 
+    isSTTSupported,
+    interimTranscript: sttHookInterimTranscript,
+    error: sttError,
+    clearSTTError,
+  } = useSpeechToText({
+    onTranscript: (transcript) => {
+      setCurrentUserResponse(prev => (prev ? prev.trim() + " " : "") + transcript);
+      setSttInterimTranscript(""); 
+    },
+    onInterimTranscript: (interim) => {
+      setSttInterimTranscript(interim);
+    },
+    onListeningChange: (listening) => {
+      setIsRecording(listening);
+      if (!listening) { 
+        setSttInterimTranscript("");
+      }
+    }
+  });
+  const [isRecording, setIsRecording] = useState(false);
+  const [sttInterimTranscript, setSttInterimTranscript] = useState("");
+
+  useEffect(() => {
+    if (sttError) {
+      toast({ title: "Voice Input Error", description: sttError, variant: "destructive"});
+      clearSTTError(); // Clear error after showing toast
+    }
+  }, [sttError, toast, clearSTTError]);
+
+  // Text-to-Speech
+  const { speak, cancelSpeech, isTTSEnabled, toggleTTSEnabled, isTTSSupported, isSpeaking } = useTextToSpeech();
+  
+  useEffect(() => {
+    setIsRecording(sttIsListening);
+  }, [sttIsListening]);
+
+  useEffect(() => {
+    setSttInterimTranscript(sttHookInterimTranscript);
+  }, [sttHookInterimTranscript]);
+
 
   useEffect(() => {
     if (scenarioId) {
@@ -31,29 +83,47 @@ export function useMeetingSimulation(scenarioId: string | null) {
           text: foundScenario.initialMessage.text,
           timestamp: Date.now(),
         }]);
+        if (isTTSEnabled && foundScenario.initialMessage.text) {
+          speak(foundScenario.initialMessage.text);
+        }
         setCurrentTurn(0);
         setMeetingEnded(false);
         setCurrentCoaching(null);
+        setCurrentUserResponse("");
+        setIsRecording(false);
+        setSttInterimTranscript("");
+        setCurrentAgentIndex(0); // Reset agent cycle
       } else {
         toast({ title: "Error", description: "Scenario not found.", variant: "destructive" });
         router.push('/');
       }
     }
-  }, [scenarioId, router, toast]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scenarioId, router, toast]); // speak should not be in deps to avoid re-triggering on voice change
 
   const addMessage = (participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
-    setMessages(prev => [...prev, { 
-      id: Date.now().toString() + participant, 
+    const newMessage: Message = { 
+      id: Date.now().toString() + participant + Math.random(), 
       participant, 
       text, 
       timestamp: Date.now(),
       coachingFeedback,
       semanticEvaluation,
-    }]);
+    };
+    setMessages(prev => [...prev, newMessage]);
+
+    if (isTTSEnabled && (participant !== 'User' && participant !== 'System')) {
+      speak(text);
+    }
+     if (isTTSEnabled && participant === 'System' && text.startsWith("The meeting time is up")) { // Speak system end message
+      speak(text);
+    }
   };
 
   const handleEndMeeting = useCallback(() => {
     if (!scenario) return;
+    if (isRecording) sttStopListening(); 
+    if (isSpeaking) cancelSpeech();
     setMeetingEnded(true);
     const summaryData: MeetingSummaryData = {
       scenarioTitle: scenario.title,
@@ -67,61 +137,75 @@ export function useMeetingSimulation(scenarioId: string | null) {
       console.error("Failed to save summary to localStorage:", error);
       toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
     }
-  }, [scenario, messages, router, toast]);
+  }, [scenario, messages, router, toast, isRecording, sttStopListening, isSpeaking, cancelSpeech]);
 
   const submitUserResponse = async () => {
-    if (!currentUserResponse.trim() || !scenario || isAiThinking) return;
+    if (!currentUserResponse.trim() || !scenario || isAiThinking || isRecording) return;
 
-    addMessage("User", currentUserResponse);
-    const userMsg = currentUserResponse;
+    const userMsg = currentUserResponse.trim();
+    addMessage("User", userMsg);
     setCurrentUserResponse("");
     setIsAiThinking(true);
-    setCurrentCoaching(null); // Clear previous coaching
+    setCurrentCoaching(null); 
 
     try {
-      // 1. Real-time Coaching
       const coachingInput: AnalyzeResponseInput = { response: userMsg, context: scenario.objective };
       const coachingResult = await analyzeResponse(coachingInput);
       setCurrentCoaching(coachingResult);
       
-      // 2. Semantic Skill Evaluation
       const semanticInput: EvaluateSemanticSkillInput = { responseText: userMsg, context: scenario.objective };
       const semanticResult = await evaluateSemanticSkill(semanticInput);
 
-      // Update last user message with feedback (optional, or store differently)
-      setMessages(prev => prev.map(msg => msg.text === userMsg && msg.participant === "User" && !msg.coachingFeedback 
+      setMessages(prev => prev.map(msg => 
+        msg.text === userMsg && msg.participant === "User" && !msg.coachingFeedback && msg.id === messages[messages.length-1].id 
         ? {...msg, coachingFeedback: coachingResult, semanticEvaluation: semanticResult} 
         : msg
       ));
       
-      // 3. AI Agent Simulation
-      // For simplicity, let's assume all involved agents respond in one go via simulateAiAgents
-      const agentSimInput: SimulateAiAgentsInput = {
-        proposal: userMsg, // User's latest response acts as the proposal
-        ctoPersona: scenario.personaConfig.ctoPersona,
-        financePersona: scenario.personaConfig.financePersona,
-        productPersona: scenario.personaConfig.productPersona,
-        hrPersona: scenario.personaConfig.hrPersona,
-      };
-      const agentResponses = await simulateAiAgents(agentSimInput);
+      // Single Agent Response Logic
+      const activeAgents = scenario.agentsInvolved;
+      if (activeAgents && activeAgents.length > 0) {
+        const agentToRespondRole = activeAgents[currentAgentIndex];
+        let agentPersona = "";
 
-      if (scenario.agentsInvolved.includes('CTO') && agentResponses.ctoFeedback) {
-        addMessage('CTO', agentResponses.ctoFeedback);
+        // Special handling for manager-1on1 scenario where Product is Manager
+        if (scenario.id === 'manager-1on1' && agentToRespondRole === 'Product') {
+            agentPersona = scenario.personaConfig.productPersona; // This is the manager's persona
+        } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
+            agentPersona = scenario.personaConfig.hrPersona;
+        } else {
+            switch (agentToRespondRole) {
+                case 'CTO': agentPersona = scenario.personaConfig.ctoPersona; break;
+                case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
+                case 'Product': agentPersona = scenario.personaConfig.productPersona; break;
+                case 'HR': agentPersona = scenario.personaConfig.hrPersona; break;
+            }
+        }
+        
+
+        if (agentPersona) {
+          const singleAgentSimInput: SimulateSingleAgentResponseInput = {
+            userResponse: userMsg,
+            agentRole: agentToRespondRole,
+            agentPersona: agentPersona,
+            scenarioObjective: scenario.objective,
+          };
+          const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
+          if (agentResponse && agentResponse.agentFeedback) {
+            addMessage(agentToRespondRole, agentResponse.agentFeedback);
+          }
+          setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
+        } else {
+           console.warn(`No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
+           // Potentially add a system message or skip agent turn if persona is missing
+        }
       }
-      if (scenario.agentsInvolved.includes('Finance') && agentResponses.financeFeedback) {
-        addMessage('Finance', agentResponses.financeFeedback);
-      }
-      if (scenario.agentsInvolved.includes('Product') && agentResponses.productFeedback) {
-        addMessage('Product', agentResponses.productFeedback);
-      }
-      if (scenario.agentsInvolved.includes('HR') && agentResponses.hrFeedback) {
-        addMessage('HR', agentResponses.hrFeedback);
-      }
+      // End Single Agent Response Logic
 
       setCurrentTurn(prev => prev + 1);
       if (scenario.maxTurns && currentTurn + 1 >= scenario.maxTurns) {
         addMessage("System", "The meeting time is up. This session has now concluded.");
-        handleEndMeeting();
+        handleEndMeeting(); 
       }
 
     } catch (error) {
@@ -135,13 +219,26 @@ export function useMeetingSimulation(scenarioId: string | null) {
   
   useEffect(() => {
     if (scenario?.maxTurns && currentTurn >= scenario.maxTurns && !meetingEnded) {
-        // This condition might already be handled in submitUserResponse,
-        // but as a safeguard or if turns increment differently.
-        // addMessage("System", "The meeting time is up. This session has now concluded.");
-        // handleEndMeeting();
+      // Safeguard handled in submitUserResponse
     }
   }, [currentTurn, scenario, meetingEnded, handleEndMeeting]);
 
+
+  const handleToggleRecording = () => {
+    if (isRecording) {
+      sttStopListening();
+    } else {
+      if (!isSTTSupported) {
+        toast({
+          title: "Speech-to-Text Not Supported",
+          description: "Your browser does not currently support the Web Speech API for voice input.",
+          variant: "destructive",
+        });
+        return;
+      }
+      sttStartListening();
+    }
+  };
 
   return {
     scenario,
@@ -153,5 +250,17 @@ export function useMeetingSimulation(scenarioId: string | null) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
+    // STT related
+    isRecording,
+    handleToggleRecording,
+    isSTTSupported,
+    sttInterimTranscript,
+    // TTS related
+    isTTSEnabled,
+    toggleTTSEnabled,
+    isTTSSupported,
+    isTTSSpeaking: isSpeaking,
+    cancelSpeech,
   };
 }
+
