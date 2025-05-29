@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef } from 'react';
@@ -39,7 +40,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  if (!scenario && !meetingEnded) { // Show loading state if scenario is not yet loaded and meeting hasn't ended (e.g. redirecting to summary)
+  if (!scenario && !meetingEnded) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
         <Logo className="mb-4" />
@@ -62,7 +63,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
             {messages.map((msg) => (
-              <ChatMessage key={msg.id} message={msg} />
+              <ChatMessage key={msg.id} message={msg} scenarioId={scenarioId} />
             ))}
             {isAiThinking && messages[messages.length-1]?.participant === 'User' && (
               <div className="flex items-end gap-2 mb-4 justify-start">
