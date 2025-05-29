@@ -31,22 +31,23 @@ export function useMeetingSimulation(scenarioId: string | null) {
     if (!isMountedRef.current) return;
     console.log(`[MeetingSimulation] STT Listening state changed via callback: ${listening}. Updating isRecording.`);
     setIsRecording(listening);
-  }, [setIsRecording]);
+  }, [setIsRecording]); // setIsRecording is stable
 
   const handleSttTranscript = useCallback((finalTranscriptSegment: string) => {
     if (!isMountedRef.current) return;
     console.log("[MeetingSimulation] STT Final Transcript Segment Received:", finalTranscriptSegment);
     setBaseTextForSpeech(prev => {
-      const newText = prev + (prev ? " " : "") + finalTranscriptSegment;
+      const newText = (prev ? prev + " " : "") + finalTranscriptSegment;
       setCurrentUserResponse(newText); 
       return newText; 
     });
-  }, [setCurrentUserResponse]);
+  }, [setCurrentUserResponse]); // setCurrentUserResponse is stable
 
   const handleSttInterimTranscript = useCallback((interim: string) => {
     if (!isMountedRef.current) return;
+    // console.log("[MeetingSimulation] STT Interim transcript received:", interim); // Can be noisy
     setCurrentUserResponse(baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim);
-  }, [baseTextForSpeech, setCurrentUserResponse]);
+  }, [baseTextForSpeech, setCurrentUserResponse]); // Add setCurrentUserResponse
 
   const {
     isListening: sttInternalIsListening, 
@@ -65,16 +66,17 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (isRecording) { 
+      if (sttInternalIsListening) { // Check against internal STT listening state on unmount
+        console.log("[MeetingSimulation] Unmounting: Stopping STT recording.");
         sttStopListening();
       }
     };
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  }, [sttInternalIsListening, sttStopListening]);
 
   useEffect(() => {
     if (sttError) {
       console.error("[MeetingSimulation] Observed STT Error from useSpeechToText hook:", sttError);
+      // Toast is already handled by useSpeechToText
     }
   }, [sttError]);
 
@@ -98,7 +100,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
         setCurrentUserResponse("");
         setBaseTextForSpeech(""); 
         setCurrentAgentIndex(0); 
-        if (isRecording) {
+        if (isRecording) { // check local isRecording state
           console.log("[MeetingSimulation] Scenario changed while STT recording. Stopping STT.");
           sttStopListening();
         }
@@ -109,7 +111,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, router, toast]); 
+  }, [scenarioId, router, toast]); // isRecording and sttStopListening removed to prevent loop on scenario change
 
   const addMessage = useCallback((participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
     if (!isMountedRef.current) return;
@@ -155,9 +157,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
     if (isRecording) { 
       console.log("[MeetingSimulation] submitUserResponse: STT recording was active. Stopping it now.");
-      sttStopListening();
+      sttStopListening(); // This will set isRecording to false via callback
       toast({ title: "Recording Stopped", description: "Voice input stopped. Please review and send your message.", variant: "default"});
-      return;
+      return; 
     }
 
     const userMsg = currentUserResponse.trim();
@@ -271,6 +273,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isRecording,
     handleToggleRecording,
     isSTTSupported: browserSupportsSTT, 
-    sttInternalIsListening, 
+    sttInternalIsListening, // For diagnostic UI
   };
 }
