@@ -58,21 +58,21 @@ export const scenarios: Scenario[] = [
   },
   {
     id: 'job-resignation',
-    title: 'Resign My Job',
-    description: 'Inform your direct manager of your decision to resign and discuss the transition.',
-    objective: 'Professionally communicate your resignation to your manager, state your reasons constructively (if you choose to), and discuss an orderly transition plan. You may also be looped in with HR.',
+    title: 'Resign My Job (with HR)',
+    description: 'Inform HR of your decision to resign and discuss the offboarding process.',
+    objective: 'Professionally communicate your resignation directly to HR, state your reasons constructively (if you choose to), and discuss the formal offboarding process.',
     initialMessage: {
-      participant: 'System', // System message to set the scene
-      text: "You've scheduled this meeting with your Direct Manager to discuss an important matter. Your manager is waiting. Please begin when you're ready.",
+      participant: 'HR', // Initial message from HR
+      text: "Hello. I understand you wanted to speak with me regarding your employment. Please, have a seat. How can I help you today?",
     },
-    agentsInvolved: ['Product', 'HR'], // Manager (Product) and HR will be involved.
+    agentsInvolved: ['HR'], // Only HR is involved in this version.
     personaConfig: {
-      ctoPersona: "You are the CTO. You are not participating in this resignation discussion.",
-      financePersona: "You are the Head of Finance. You are not participating in this resignation discussion.",
-      productPersona: "You are the user's Direct Manager. The user has scheduled this meeting and is about to inform you of their decision to resign. Respond with professionalism and understanding, though you might express surprise or disappointment. Inquire about their reasons (without being pushy), their last day, and discuss knowledge transfer or transition plans. Keep your responses relatively concise and focused on the next steps. You may suggest involving HR for formal procedures.",
-      hrPersona: "You are the Head of HR. You will be looped into the conversation once the user has informed their manager about the resignation, or if the manager suggests involving you. Your role is to discuss the formal resignation process, last paycheck, benefits continuation (like COBRA), exit interview, and return of company property. Be clear, empathetic, and procedural.",
+      ctoPersona: "You are the CTO. You are not participating in this meeting.",
+      financePersona: "You are the Head of Finance. You are not participating in this meeting.",
+      productPersona: "You are the user's Direct Manager. You are not participating in this meeting; the user is speaking directly with HR.",
+      hrPersona: "You are the Head of HR. The user has scheduled this meeting, likely to inform you of their decision to resign. Listen to their decision with empathy. Then, clearly guide them through the formal resignation process: discuss their intended last day, the process for the final paycheck, options for benefits continuation (like COBRA), the purpose and scheduling of an exit interview, and the procedure for returning company property. Keep your responses professional, procedural, and supportive.",
     },
-    maxTurns: 7, // Resignation conversations are usually not extremely long.
+    maxTurns: 7, 
   }
 ];
 
