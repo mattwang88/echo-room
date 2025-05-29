@@ -20,11 +20,11 @@ interface ResponseInputProps {
   interimTranscript?: string;
 }
 
-export function ResponseInput({ 
-  value, 
-  onChange, 
-  onSubmit, 
-  isSending, 
+export function ResponseInput({
+  value,
+  onChange,
+  onSubmit,
+  isSending,
   disabled,
   startRecording,
   stopRecording,
@@ -51,7 +51,6 @@ export function ResponseInput({
 
   const displayValue = isRecording && interimTranscript ? `${value} ${interimTranscript}`.trim() : value;
 
-
   return (
     <div className="p-4 border-t bg-background sticky bottom-0">
       <div className="flex items-start gap-2 bg-card p-2 rounded-lg shadow">
@@ -62,43 +61,46 @@ export function ResponseInput({
           placeholder={isRecording ? "Listening..." : (isSTTSupported ? "Type your response or use the mic (Shift+Enter for new line)" : "Type your response (Shift+Enter for new line)")}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px]"
           rows={3}
-          disabled={isSending || disabled || (isRecording && !!interimTranscript)} 
+          disabled={isSending || disabled || (isRecording && !!interimTranscript)}
           aria-label="Your response"
         />
-        <div className="flex flex-col gap-2">
+        <div className="flex flex-col gap-2 flex-shrink-0"> {/* Added flex-shrink-0 */}
           {/* Mic button logic starts here */}
-          {startRecording && stopRecording && ( 
-            isSTTSupported ? (
-              <Button 
-                onClick={handleMicClick} 
-                disabled={isSending || disabled} 
-                size="icon" 
-                variant={isRecording ? "destructive" : "outline"}
-                title={isRecording ? "Stop recording" : "Start recording"}
-                className="h-10 w-10"
-              >
-                {isRecording ? (
-                  <MicOff className="h-5 w-5" />
-                ) : (
-                  <Mic className="h-5 w-5" />
-                )}
-                <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
-              </Button>
-            ) : (
-              // Displayed if STT is not supported
-              <div 
-                className="flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background cursor-not-allowed" 
-                title="Speech-to-text is not supported in your browser."
-                aria-label="Speech-to-text not supported"
-              >
-                <MicOff className="h-5 w-5 text-muted-foreground" />
-              </div>
-            )
-          )}
+          {typeof startRecording === 'function' && typeof stopRecording === 'function' ? (
+            <>
+              {isSTTSupported ? (
+                <Button
+                  onClick={handleMicClick}
+                  disabled={isSending || disabled}
+                  size="icon"
+                  variant={isRecording ? "destructive" : "outline"}
+                  title={isRecording ? "Stop recording" : "Start recording"}
+                  className="h-10 w-10"
+                >
+                  {isRecording ? (
+                    <MicOff className="h-5 w-5" />
+                  ) : (
+                    <Mic className="h-5 w-5" />
+                  )}
+                  <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
+                </Button>
+              ) : (
+                // Displayed if STT is not supported
+                <div
+                  className="flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background cursor-not-allowed"
+                  title="Speech-to-text is not supported or not available in your browser."
+                  aria-label="Speech-to-text not supported or not available"
+                >
+                  <MicOff className="h-5 w-5 text-muted-foreground" />
+                </div>
+              )}
+            </>
+          ) : null } {/* End of Mic button logic, renders null if functions not provided */}
           {/* Mic button logic ends here */}
-          <Button 
-            onClick={onSubmit} 
-            disabled={isSending || disabled || !value.trim() || isRecording} 
+
+          <Button
+            onClick={onSubmit}
+            disabled={isSending || disabled || !value.trim() || isRecording}
             size="icon"
             title="Send response"
             className="h-10 w-10"
