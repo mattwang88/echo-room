@@ -36,17 +36,22 @@ export function useMeetingSimulation(scenarioId: string | null) {
     clearSTTError,
   } = useSpeechToText({
     onTranscript: (finalTranscriptSegment) => {
-      console.log("STT Final Transcript Segment:", finalTranscriptSegment);
+      console.log("[MeetingSimulation] STT Final Transcript Segment:", finalTranscriptSegment);
       const newText = baseTextForSpeech + (baseTextForSpeech ? " " : "") + finalTranscriptSegment;
       setCurrentUserResponse(newText);
       setBaseTextForSpeech(newText); 
     },
     onInterimTranscript: (interim) => {
+       console.log("[MeetingSimulation] STT Interim transcript received:", interim);
       setCurrentUserResponse(baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim);
     },
     onListeningChange: (listening) => {
       setIsRecording(listening);
       if (!listening) {
+        // When recording stops, the current user response is already set from onTranscript/onInterimTranscript.
+        // We might want to reset baseTextForSpeech here *if* we intend each recording session to be completely fresh,
+        // or keep it if we want to allow pausing and resuming speech into the same text.
+        // For now, let's clear it to make each recording session discrete after it stops.
         setBaseTextForSpeech(""); 
       }
     }
@@ -55,6 +60,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   useEffect(() => {
     if (sttError) {
       console.error("STT Error in useMeetingSimulation:", sttError);
+      // Toast is already handled in useSpeechToText
     }
   }, [sttError]);
 
@@ -84,7 +90,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, router, toast]);
+  }, [scenarioId, router, toast]); // Removed clearSTTError from deps as it's stable
 
   const addMessage = (participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
     const newMessage: Message = {
@@ -110,10 +116,10 @@ export function useMeetingSimulation(scenarioId: string | null) {
     try {
       localStorage.setItem('echoRoomMeetingSummary', JSON.stringify(summaryData));
       router.push(`/meeting/${scenario.id}/summary`);
-    } catch (error) { // Added opening curly brace
+    } catch (error) {
       console.error("Failed to save summary to localStorage:", error);
       toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
-    } // Added closing curly brace
+    }
   }, [scenario, messages, router, toast, isRecording, sttStopListening]);
 
   const submitUserResponse = async () => {
@@ -135,6 +141,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
       const semanticResult = await evaluateSemanticSkill(semanticInput);
 
       setMessages(prev => prev.map((msg, index) => {
+        // Ensure we are targeting the correct user message that was just added.
+        // Check against a unique ID or a combination of text and timestamp if IDs are not set before this.
+        // For simplicity, assuming the last message that is 'User' and matches text is the one.
         if (index === prev.length -1 && msg.participant === 'User' && msg.text === userMsg) {
             return { ...msg, coachingFeedback: coachingResult, semanticEvaluation: semanticResult };
         }
@@ -146,12 +155,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
       if (activeAgents && activeAgents.length > 0) {
         const agentToRespondRole = activeAgents[currentAgentIndex];
         let agentPersona = "";
-
+        
+        // Determine persona based on scenario and role
         if (scenario.id === 'manager-1on1' && agentToRespondRole === 'Product') {
           agentPersona = scenario.personaConfig.productPersona; 
         } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
           agentPersona = scenario.personaConfig.hrPersona; 
-        } else {
+        } else { // Default persona mapping
           switch (agentToRespondRole) {
             case 'CTO': agentPersona = scenario.personaConfig.ctoPersona; break;
             case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
@@ -204,11 +214,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       sttStopListening();
     } else {
       if (!isSTTSupported) {
-        toast({
-          title: "Speech-to-Text Not Supported",
-          description: "Your browser does not currently support the Web Speech API for voice input.",
-          variant: "destructive",
-        });
+        // Toast is already handled in useSpeechToText's startListening if not supported
         return;
       }
       clearSTTError(); 
@@ -227,7 +233,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
-    isRecording: sttIsListening, 
+    isRecording: sttIsListening, // Use sttIsListening directly
     handleToggleRecording,
     isSTTSupported,
   };

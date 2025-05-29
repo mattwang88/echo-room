@@ -40,9 +40,9 @@ export function ResponseInput({
   };
 
   const handleMicClick = () => {
-    if (isSending || disabled) return; 
+    // Let useSpeechToText handle toasts if not supported, when onToggleRecording is called.
     if (onToggleRecording) {
-      onToggleRecording(); // This will handle the toast if !isSTTSupported via useMeetingSimulation.
+      onToggleRecording();
     }
   };
   
@@ -61,8 +61,8 @@ export function ResponseInput({
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholderText()}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px] max-h-[150px] scrollbar-thin bg-transparent"
-          rows={1} // Start with 1 row, auto-grows with content
-          disabled={isSending || disabled} 
+          rows={1} 
+          disabled={isSending || disabled || isRecording} // Disable textarea while recording as well
           aria-label="Your response"
         />
         <div className="flex flex-col space-y-1 flex-shrink-0">
@@ -89,6 +89,7 @@ export function ResponseInput({
             </Tooltip>
           </TooltipProvider>
 
+          {/* Always render the mic button structure, style depends on isRecording */}
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -96,9 +97,10 @@ export function ResponseInput({
                   variant={isRecording ? "destructive" : "outline"}
                   size="icon"
                   onClick={handleMicClick}
+                  // Disable mic button if sending message or if main component is disabled
                   disabled={isSending || disabled} 
                   className="h-9 w-9"
-                  aria-label={isRecording ? "Stop recording" : "Start recording"}
+                  aria-label={isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported")}
                 >
                   {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
                 </Button>
@@ -110,9 +112,6 @@ export function ResponseInput({
           </TooltipProvider>
         </div>
       </div>
-      {/* The interim transcript display is removed as the main textarea will update live */}
     </div>
   );
 }
-
-    

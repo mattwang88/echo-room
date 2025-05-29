@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { Scenario } from '@/lib/types';
+// Removed Scenario import as it's not directly used here, only via useMeetingSimulation
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
 import { ChatMessage } from './ChatMessage';
@@ -44,6 +44,17 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
+  // This diagnostic message can be removed once STT is confirmed working or issues are resolved.
+  const STTSupportMessage = () => (
+    <div className="p-2 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300">
+      Speech-to-Text Supported by Browser: {isSTTSupported ? 'Yes' : 'No'}
+      {isSTTSupported && isRecording !== undefined && (
+        <span className="ml-2">| Currently Recording: {isRecording ? 'Yes' : 'No'}</span>
+      )}
+    </div>
+  );
+
+
   if (!scenario && !meetingEnded) { 
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
@@ -67,6 +78,9 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           onEndMeeting={handleEndMeeting} 
         />
         
+        {/* Render STT Diagnostic Message */}
+        <STTSupportMessage />
+
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
             {messages.map((msg) => (
@@ -103,5 +117,3 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
-
-    
