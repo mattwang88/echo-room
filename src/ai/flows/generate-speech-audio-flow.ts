@@ -1,3 +1,4 @@
+
 'use server';
 /**
  * @fileOverview Generates speech audio from text using Google Cloud Text-to-Speech.
@@ -15,7 +16,7 @@ import type { protos } from '@google-cloud/text-to-speech';
 const GenerateSpeechAudioInputSchema = z.object({
   text: z.string().describe('The text to synthesize into speech.'),
   languageCode: z.string().optional().default('en-US').describe('The language code (e.g., "en-US").'),
-  voiceName: z.string().optional().default('en-US-Wavenet-D').describe('The voice name (e.g., "en-US-Wavenet-D" - a high-quality Wavenet voice).'),
+  voiceName: z.string().optional().default('en-US-Chirp3-HD-Achernar').describe('The voice name (e.g., "en-US-Chirp3-HD-Achernar" - a high-quality Wavenet voice).'),
 });
 export type GenerateSpeechAudioInput = z.infer<typeof GenerateSpeechAudioInputSchema>;
 
@@ -41,11 +42,16 @@ const generateSpeechAudioFlow = ai.defineFlow(
   },
   async (input) => {
     console.log(`[generateSpeechAudioFlow] Received input for TTS: "${input.text.substring(0,50)}..."`);
+    
+    // Ensure defaults are used if properties are not explicitly passed in the input
+    const langCode = input.languageCode || GenerateSpeechAudioInputSchema.shape.languageCode._def.defaultValue();
+    const voiceName = input.voiceName || GenerateSpeechAudioInputSchema.shape.voiceName._def.defaultValue();
+
     const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
       input: {text: input.text},
       voice: {
-        languageCode: input.languageCode!,
-        name: input.voiceName!,
+        languageCode: langCode,
+        name: voiceName,
       },
       audioConfig: {
         audioEncoding: 'MP3', // MP3 is widely supported and good for web.
@@ -53,7 +59,7 @@ const generateSpeechAudioFlow = ai.defineFlow(
     };
 
     try {
-      console.log(`[generateSpeechAudioFlow] Requesting speech synthesis with voice: ${input.voiceName}, lang: ${input.languageCode}`);
+      console.log(`[generateSpeechAudioFlow] Requesting speech synthesis with voice: ${voiceName}, lang: ${langCode}`);
       const [response] = await ttsClient.synthesizeSpeech(request);
       
       if (!response.audioContent) {
