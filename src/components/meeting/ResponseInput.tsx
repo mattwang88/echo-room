@@ -7,7 +7,7 @@ import { Send, Loader2, Mic, MicOff } from 'lucide-react';
 import type React from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-import { useEffect } from 'react';
+// import { useEffect } from 'react'; // Removed if no longer needed
 
 interface ResponseInputProps {
   value: string;
@@ -36,14 +36,15 @@ export function ResponseInput({
 }: ResponseInputProps) {
   const { toast } = useToast();
 
-  useEffect(() => {
-    console.log('[ResponseInput Props Check]', {
-      isSTTSupported,
-      isRecording,
-      startRecordingExists: typeof startRecording === 'function',
-      stopRecordingExists: typeof stopRecording === 'function',
-    });
-  }, [isSTTSupported, isRecording, startRecording, stopRecording]);
+  // Removed useEffect for console.log as it's no longer the primary debug focus.
+  // useEffect(() => {
+  //   console.log('[ResponseInput Props Check]', {
+  //     isSTTSupported,
+  //     isRecording,
+  //     startRecordingExists: typeof startRecording === 'function',
+  //     stopRecordingExists: typeof stopRecording === 'function',
+  //   });
+  // }, [isSTTSupported, isRecording, startRecording, stopRecording]);
 
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
@@ -113,32 +114,33 @@ export function ResponseInput({
             <span className="sr-only">Send response</span>
           </Button>
 
-          {/* Simplified Microphone Button for Debugging */}
           <Button
-            data-testid="mic-button-debug"
+            data-testid="mic-button" // Changed from mic-button-debug
             onClick={handleMicClick}
-            disabled={isSending || disabled || !isSTTSupported} // Disable if not supported
+            // Button is disabled only if sending or general disable, not by !isSTTSupported
+            disabled={isSending || disabled} 
             size="icon"
             variant={isRecording ? "destructive" : "outline"}
             title={
               !isSTTSupported 
-                ? "Speech-to-text not supported. Click for details." 
+                ? "Speech-to-text not supported by your browser. Click for details." 
                 : isRecording 
                   ? "Stop recording" 
                   : "Start recording"
             }
             className="h-9 w-9"
           >
-            {isRecording ? 'Stop' : 'Mic'} {/* Simple Text Instead of Icon */}
+            {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
             <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
           </Button>
         </div>
       </div>
-       {(isRecording && interimTranscript && !value) && (
-        <p className="text-xs text-muted-foreground mt-1 italic pl-1" data-testid="interim-transcript-display-1">Listening: {interimTranscript}</p>
+       {/* Cleaned up interim transcript display a bit */}
+       {(isRecording && interimTranscript && !value.trim()) && (
+        <p className="text-xs text-muted-foreground mt-1 italic pl-1" data-testid="interim-transcript-display">Listening: {interimTranscript}</p>
       )}
-       {(isRecording && !interimTranscript && !value) && (
-         <p className="text-xs text-muted-foreground mt-1 italic pl-1" data-testid="interim-transcript-display-2">Listening...</p>
+       {(isRecording && !interimTranscript && !value.trim()) && (
+         <p className="text-xs text-muted-foreground mt-1 italic pl-1" data-testid="listening-indicator">Listening...</p>
        )}
     </div>
   );
