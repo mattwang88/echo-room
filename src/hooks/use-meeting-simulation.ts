@@ -10,7 +10,7 @@ import { analyzeResponse, type AnalyzeResponseInput, type AnalyzeResponseOutput 
 import { evaluateSemanticSkill, type EvaluateSemanticSkillInput, type EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from './useSpeechToText';
-import { useTextToSpeech } from './useTextToSpeech'; // Added
+import { useTextToSpeech } from './useTextToSpeech';
 
 export function useMeetingSimulation(scenarioId: string | null) {
   const router = useRouter();
@@ -28,8 +28,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
   const isMountedRef = useRef(true);
 
-
-  // Text-to-Speech Hook
   const { 
     speak: ttsSpeak, 
     cancel: ttsCancel, 
@@ -39,13 +37,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isTTSSpeaking
   } = useTextToSpeech();
 
-  // Memoized STT callbacks
   const handleSttListeningChange = useCallback((listening: boolean) => {
     if (!isMountedRef.current) return;
     console.log(`[MeetingSimulation] STT Listening state changed via callback: ${listening}. Updating isRecording.`);
     setIsRecording(listening);
-    if (listening && isTTSEnabled && isTTSSpeaking) { // If STT starts while TTS is speaking
-      ttsCancel(); // Stop TTS
+    if (listening && isTTSEnabled && isTTSSpeaking) {
+      console.log('[MeetingSimulation] STT started while TTS was speaking. Cancelling TTS.');
+      ttsCancel(); 
     }
   }, [setIsRecording, isTTSEnabled, isTTSSpeaking, ttsCancel]);
 
@@ -54,18 +52,19 @@ export function useMeetingSimulation(scenarioId: string | null) {
     console.log("[MeetingSimulation] STT Final Transcript Segment Received:", finalTranscriptSegment);
     setBaseTextForSpeech(prev => {
       const newText = prev + (prev ? " " : "") + finalTranscriptSegment;
-      setCurrentUserResponse(newText);
-      return newText;
+      setCurrentUserResponse(newText); // Update current user response for display
+      return newText; // This updates baseTextForSpeech for the next segment
     });
   }, [setCurrentUserResponse]);
 
   const handleSttInterimTranscript = useCallback((interim: string) => {
     if (!isMountedRef.current) return;
+    // console.log("[MeetingSimulation] STT Interim transcript received:", interim);
     setCurrentUserResponse(baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim);
   }, [baseTextForSpeech, setCurrentUserResponse]);
 
   const {
-    isListening: sttInternalIsListening,
+    isListening: sttInternalIsListening, // Renamed to avoid conflict if needed, though not directly used in this hook's return
     startListening: sttStartListening,
     stopListening: sttStopListening,
     isSTTSupported,
@@ -84,16 +83,18 @@ export function useMeetingSimulation(scenarioId: string | null) {
       if (isTTSEnabled && isTTSSpeaking) {
         ttsCancel();
       }
-      if (isRecording) {
+      if (isRecording) { // Use the isRecording state managed by this hook
         sttStopListening();
       }
     };
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []); // Empty array ensures this runs only on mount and unmount
+  }, []);
 
   useEffect(() => {
     if (sttError) {
       console.error("[MeetingSimulation] Observed STT Error from useSpeechToText hook:", sttError);
+      // Optionally, display a toast or handle the error in the UI if desired
+      // toast({ title: "Voice Input Error", description: sttError, variant: "destructive" });
     }
   }, [sttError]);
 
@@ -109,27 +110,32 @@ export function useMeetingSimulation(scenarioId: string | null) {
           timestamp: Date.now(),
         };
         setMessages([initialMsg]);
+        
         if (isTTSEnabled) {
+          console.log(`[MeetingSimulation] Initial scenario setup: TTS is enabled. Speaking initial message: "${initialMsg.text.substring(0,50)}..."`);
           ttsSpeak(initialMsg.text);
+        } else {
+          console.log(`[MeetingSimulation] Initial scenario setup: TTS is NOT enabled. Not speaking initial message.`);
         }
+
         setCurrentTurn(0);
         setMeetingEnded(false);
         setCurrentCoaching(null);
         setCurrentUserResponse("");
-        setBaseTextForSpeech("");
-        setCurrentAgentIndex(0);
+        setBaseTextForSpeech(""); // Reset base text for new scenario
+        setCurrentAgentIndex(0); // Reset agent index
         if (isRecording) {
-          console.log("[MeetingSimulation] Scenario changed while recording. Stopping STT.");
+          console.log("[MeetingSimulation] Scenario changed while STT recording. Stopping STT.");
           sttStopListening();
         }
-        clearSTTError();
+        clearSTTError(); // Clear any previous STT errors
       } else {
         toast({ title: "Error", description: "Scenario not found.", variant: "destructive" });
         router.push('/');
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, router, toast, isTTSEnabled, ttsSpeak]); // Added ttsSpeak and isTTSEnabled
+  }, [scenarioId, router, toast, isTTSEnabled, ttsSpeak]); // isTTSEnabled and ttsSpeak are from useTextToSpeech
 
   const addMessage = useCallback((participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
     if (!isMountedRef.current) return;
@@ -144,9 +150,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
     setMessages(prev => [...prev, newMessage]);
 
     if (participant !== 'User' && isTTSEnabled) {
-      if (isRecording) { // If user is recording, stop their recording before TTS speaks
+      if (isRecording) { 
+          console.log('[MeetingSimulation] addMessage: STT is recording, stopping STT before TTS speaks.');
           sttStopListening();
       }
+      console.log(`[MeetingSimulation] addMessage: TTS is enabled. Speaking message from ${participant}: "${text.substring(0,50)}..."`);
       ttsSpeak(text);
     }
   }, [isTTSEnabled, ttsSpeak, isRecording, sttStopListening]);
@@ -158,6 +166,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       sttStopListening();
     }
     if (isTTSEnabled && isTTSSpeaking) {
+       console.log("[MeetingSimulation] handleEndMeeting: Cancelling TTS if speaking.");
       ttsCancel();
     }
     setMeetingEnded(true);
@@ -182,14 +191,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
       }
       return;
     }
-    if (isRecording) {
+    if (isRecording) { // If user clicks send while still technically recording (e.g. STT didn't auto-stop fast enough)
+      console.log("[MeetingSimulation] submitUserResponse: STT recording was active. Stopping it now.");
       sttStopListening();
       toast({ title: "Recording Stopped", description: "Voice input stopped. Please review and send your message.", variant: "default"});
+      // Do not submit yet, let the user confirm the transcribed text.
       return;
     }
 
     const userMsg = currentUserResponse.trim();
-    // Add user message optimistically without feedback/eval first
     const userMessageId = Date.now().toString() + 'User' + Math.random();
      setMessages(prev => [...prev, {
       id: userMessageId,
@@ -199,7 +209,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }]);
 
     setCurrentUserResponse("");
-    setBaseTextForSpeech("");
+    setBaseTextForSpeech(""); // Important to reset base for next STT input
     setIsAiThinking(true);
     setCurrentCoaching(null);
 
@@ -212,7 +222,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
       const semanticInput: EvaluateSemanticSkillInput = { responseText: userMsg, context: contextForAI };
       const semanticResult = await evaluateSemanticSkill(semanticInput);
 
-      // Update the user message with feedback and evaluation
       setMessages(prev => prev.map(msg =>
         msg.id === userMessageId
           ? { ...msg, coachingFeedback: coachingResult, semanticEvaluation: semanticResult }
@@ -229,6 +238,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
         } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
              agentPersona = scenario.personaConfig.hrPersona;
         } else {
+            // Default persona mapping for other scenarios
             switch (agentToRespondRole) {
                 case 'CTO': agentPersona = scenario.personaConfig.ctoPersona; break;
                 case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
@@ -275,17 +285,19 @@ export function useMeetingSimulation(scenarioId: string | null) {
       toast({ title: "Unsupported Feature", description: "Speech-to-text is not available in your browser.", variant: "destructive"});
       return;
     }
-    clearSTTError();
+    clearSTTError(); // Clear previous errors before attempting to toggle
 
     if (isRecording) {
       console.log("[MeetingSimulation] Calling sttStopListening() from useSpeechToText.");
       sttStopListening();
     } else {
       if (isTTSEnabled && isTTSSpeaking) {
+        console.log('[MeetingSimulation] Mic button clicked while TTS speaking. Cancelling TTS.');
         ttsCancel(); // Stop TTS if it's speaking
       }
       console.log("[MeetingSimulation] Calling sttStartListening() from useSpeechToText.");
-      setBaseTextForSpeech(currentUserResponse);
+      // Preserve current text if user starts speaking after typing
+      setBaseTextForSpeech(currentUserResponse); 
       sttStartListening();
     }
   };
@@ -304,7 +316,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isRecording,
     handleToggleRecording,
     isSTTSupported,
-    sttInternalIsListening,
+    sttInternalIsListening, // Expose this to show detailed STT state if needed by UI
     // TTS related
     isTTSEnabled,
     toggleTTSEnabled,
@@ -312,3 +324,4 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isTTSSpeaking,
   };
 }
+
