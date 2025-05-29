@@ -63,8 +63,17 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     <div className="flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background">
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-h-screen">
-        <MeetingHeader scenario={scenario} onEndMeeting={handleEndMeeting} />
+        <MeetingHeader 
+          scenario={scenario} 
+          onEndMeeting={handleEndMeeting} 
+          // The TTS toggle functionality would also be passed here if re-enabled
+        />
         
+        {/* Temporary Diagnostic Message */}
+        <div className="p-2 bg-yellow-100 text-yellow-700 text-xs text-center">
+          STT Supported (from MeetingInterface): {isSTTSupported ? 'Yes' : 'No'}
+        </div>
+
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
             {messages.map((msg) => (
