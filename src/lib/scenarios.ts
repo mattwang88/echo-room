@@ -60,19 +60,18 @@ export const scenarios: Scenario[] = [
     id: 'job-resignation',
     title: 'Resign My Job (with HR)',
     description: 'Inform HR of your decision to resign and discuss the offboarding process.',
-    objective: 'Professionally communicate your resignation directly to HR, state your reasons constructively (if you choose to), and discuss the formal offboarding process.',
     initialMessage: {
       participant: 'HR', // Initial message from HR
-      text: "Hello. I understand you wanted to speak with me regarding your employment. Please, have a seat. How can I help you today?",
+      text: "Hello. I understand you wanted to speak with me regarding your employment. Please, have a seat. What's on your mind?",
     },
     agentsInvolved: ['HR'], // Only HR is involved in this version.
     personaConfig: {
       ctoPersona: "You are the CTO. You are not participating in this meeting.",
       financePersona: "You are the Head of Finance. You are not participating in this meeting.",
       productPersona: "You are the user's Direct Manager. You are not participating in this meeting; the user is speaking directly with HR.",
-      hrPersona: "You are the Head of HR. The user has scheduled this meeting, likely to inform you of their decision to resign. Listen to their decision with empathy. Then, clearly guide them through the formal resignation process: discuss their intended last day, the process for the final paycheck, options for benefits continuation (like COBRA), the purpose and scheduling of an exit interview, and the procedure for returning company property. Keep your responses professional, procedural, and supportive.",
+      hrPersona: "You are the Head of HR. The user has scheduled this meeting, likely to inform you of their decision to resign. Your tone should be one of clear displeasure and anger, but keep your responses very brief and to the point – typically one or two short, sharp sentences. Express your disappointment or frustration. Despite your anger, you must still briefly outline the necessary offboarding procedures: ask for the intended last day, mention the final paycheck, benefits continuation, exit interview, and return of company property. Get straight to the procedural points after a short, angry remark.",
     },
-    maxTurns: 7, 
+    maxTurns: 7,
   }
 ];
 
