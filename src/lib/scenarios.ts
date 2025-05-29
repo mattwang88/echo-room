@@ -60,6 +60,7 @@ export const scenarios: Scenario[] = [
     id: 'job-resignation',
     title: 'Resign My Job (with HR)',
     description: 'Inform HR of your decision to resign and discuss the offboarding process.',
+    objective: 'Professionally inform HR of your decision to resign, understand the offboarding process, and agree on the next steps including your last day.', // Added objective
     initialMessage: {
       participant: 'HR', // Initial message from HR
       text: "Hello. I understand you wanted to speak with me regarding your employment. Please, have a seat. What's on your mind?",
