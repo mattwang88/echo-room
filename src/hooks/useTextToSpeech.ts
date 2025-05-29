@@ -10,7 +10,7 @@ interface UseTextToSpeechReturn {
   speak: (text: string, participant?: string) => void;
   cancelCurrentSpeech: () => void;
   isTTSSpeaking: boolean;
-  isTTSSupported: boolean; 
+  isTTSSupported: boolean;
 }
 
 export function useTextToSpeech(): UseTextToSpeechReturn {
@@ -19,9 +19,9 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
   const [isTTSSpeaking, setIsTTSSpeakingState] = useState(false);
   
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  // To prevent race conditions or speaking stale text if a new request comes in while one is fetching
-  const currentSpeechJobIdRef = useRef<number>(0); 
-  const isSpeakingStateRef = useRef(isTTSSpeaking); // Ref to get current speaking state in async contexts
+  const isSpeakingStateRef = useRef(isTTSSpeaking);
+  const currentSpeechTextRef = useRef<string | null>(null); // To track what's currently intended to be spoken
+  const initialLoadDoneRef = useRef(false); // To manage toast for initial enable state
 
   useEffect(() => {
     isSpeakingStateRef.current = isTTSSpeaking;
@@ -29,29 +29,31 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
 
   useEffect(() => {
     audioRef.current = new Audio();
-    const currentAudioElement = audioRef.current; 
+    const currentAudioElement = audioRef.current;
 
     const handleAudioEnd = () => {
-      console.log("[useTextToSpeech] HTMLAudioElement 'ended' event.");
-      // Only set speaking to false if this was the active job
+      console.log("[useTextToSpeech] HTMLAudioElement 'ended' event for text:", currentSpeechTextRef.current);
       if (isSpeakingStateRef.current) {
          setIsTTSSpeakingState(false);
       }
+      currentSpeechTextRef.current = null;
     };
 
     const handleAudioError = (e: Event) => {
       const mediaError = (e.target as HTMLAudioElement)?.error;
-      if (mediaError && mediaError.code === MediaError.MEDIA_ERR_ABORTED) {
-        console.warn("[useTextToSpeech] HTMLAudioElement playback aborted (likely intentional cancellation).");
+      const currentText = currentSpeechTextRef.current;
+      currentSpeechTextRef.current = null; // Clear current text on error
+
+      if (mediaError && (mediaError.code === MediaError.MEDIA_ERR_ABORTED || mediaError.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED && mediaError.message?.includes("empty"))) {
+        console.warn(`[useTextToSpeech] HTMLAudioElement playback ${mediaError.code === MediaError.MEDIA_ERR_ABORTED ? 'aborted' : 'source empty'} (likely intentional cancellation or no audio data). Text was: "${currentText ? currentText.substring(0,30) + '...' : 'N/A'}"`);
       } else {
         console.error("[useTextToSpeech] HTMLAudioElement 'error' event:", e, mediaError);
         toast({
           title: "Audio Playback Error",
-          description: `Could not play audio. Code: ${mediaError?.code}, Message: ${mediaError?.message || 'Unknown error'}`,
+          description: `Could not play audio for "${currentText ? currentText.substring(0,30) + '...' : 'message'}". Code: ${mediaError?.code}, Message: ${mediaError?.message || 'Unknown error'}`,
           variant: "destructive",
         });
       }
-       // Only set speaking to false if this was the active job
       if (isSpeakingStateRef.current) {
         setIsTTSSpeakingState(false);
       }
@@ -62,26 +64,30 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
 
     return () => {
       console.log("[useTextToSpeech] Cleanup: Pausing audio and removing listeners.");
-      currentAudioElement.pause();
-      currentAudioElement.removeAttribute('src'); 
-      currentAudioElement.load(); 
-      currentAudioElement.removeEventListener('ended', handleAudioEnd);
-      currentAudioElement.removeEventListener('error', handleAudioError);
+      if (currentAudioElement) {
+        currentAudioElement.pause();
+        currentAudioElement.removeAttribute('src');
+        currentAudioElement.load(); // Reset the audio element
+        currentAudioElement.removeEventListener('ended', handleAudioEnd);
+        currentAudioElement.removeEventListener('error', handleAudioError);
+      }
+      currentSpeechTextRef.current = null;
     };
   }, [toast]);
 
+
   const cancelCurrentSpeech = useCallback(() => {
-    console.log("[useTextToSpeech] cancelCurrentSpeech called.");
-    currentSpeechJobIdRef.current += 1; 
+    console.log("[useTextToSpeech] cancelCurrentSpeech called for text:", currentSpeechTextRef.current);
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
+      audioRef.current.removeAttribute('src'); // Important to prevent playing stale audio
+      audioRef.current.load(); // Reset
     }
-    if (isSpeakingStateRef.current) { 
+    if (isSpeakingStateRef.current) {
         setIsTTSSpeakingState(false);
     }
-  }, []); 
+    currentSpeechTextRef.current = null;
+  }, []);
 
   const speak = useCallback(async (text: string, participant?: string) => {
     if (!isTTSEnabled || !text.trim() || participant === 'User') {
@@ -90,53 +96,62 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       else console.log("[useTextToSpeech] Speak called with empty text, skipping.");
       return;
     }
-    
-    // If already speaking, cancel and wait briefly.
-    // This uses isSpeakingStateRef.current to get the most up-to-date value.
+
+    // If already speaking, cancel and wait briefly for the cancellation to process.
     if (isSpeakingStateRef.current) {
-        console.log("[useTextToSpeech] Already speaking, cancelling previous speech.");
-        cancelCurrentSpeech(); 
-        await new Promise(resolve => setTimeout(resolve, 150)); // Small delay for cancellation
+        console.log("[useTextToSpeech] Speak called while already speaking. Cancelling previous speech:", currentSpeechTextRef.current);
+        cancelCurrentSpeech();
+        await new Promise(resolve => setTimeout(resolve, 150)); // Small delay
+    }
+    
+    // Check again if TTS is still enabled after potential delay
+    if (!isTTSEnabled) {
+        console.log("[useTextToSpeech] TTS was disabled during cancellation delay. Aborting new speech.");
+        return;
     }
 
-
-    const jobId = ++currentSpeechJobIdRef.current; 
-    console.log(`[useTextToSpeech] Starting speech job ${jobId} for text: "${text.substring(0,30)}..."`);
+    currentSpeechTextRef.current = text; // Set what we intend to speak
     setIsTTSSpeakingState(true);
+    console.log(`[useTextToSpeech] Attempting to speak via Google Cloud TTS flow: "${text.substring(0,50)}..."`);
 
     try {
-      console.log(`[useTextToSpeech] Attempting to speak via Google Cloud TTS flow (Job ${jobId}): "${text.substring(0,50)}..."`);
-      const input: GenerateSpeechAudioInput = { text }; // Using default voice/lang from flow
+      const input: GenerateSpeechAudioInput = { text };
       const result = await generateSpeechAudio(input);
 
-      if (currentSpeechJobIdRef.current !== jobId) {
-        console.log(`[useTextToSpeech] Speech job ${jobId} was cancelled or superseded while fetching audio. Aborting play.`);
-        if (isSpeakingStateRef.current) setIsTTSSpeakingState(false); 
+      // Crucially, check if this is still the text we want to speak and if we are still in speaking mode
+      if (currentSpeechTextRef.current !== text || !isSpeakingStateRef.current) {
+        console.log(`[useTextToSpeech] Speech request for "${text.substring(0,30)}..." was superseded or cancelled while fetching. Aborting play.`);
+        if (isSpeakingStateRef.current && currentSpeechTextRef.current !== text) {
+          // If we are still 'speaking' but for a *different* text, don't turn off speaking state yet.
+          // This case should be rare with the improved cancellation.
+        } else {
+          setIsTTSSpeakingState(false);
+        }
         return;
       }
 
       if (result && result.audioContentDataUri && audioRef.current) {
-        console.log(`[useTextToSpeech] Job ${jobId}: Received audioContentDataUri. Starts with: ${result.audioContentDataUri.substring(0, 70)}...`);
+        console.log(`[useTextToSpeech] Received audioContentDataUri from backend. Starts with: ${result.audioContentDataUri.substring(0, 70)}... Attempting to play.`);
         audioRef.current.src = result.audioContentDataUri;
         await audioRef.current.play();
-        console.log(`[useTextToSpeech] Job ${jobId}: audioRef.play() initiated.`);
+        console.log(`[useTextToSpeech] audioRef.play() initiated for "${text.substring(0,30)}..."`);
       } else {
-        throw new Error("No audio content received or audio element not ready.");
+        throw new Error("No audio content received from backend or audio element not ready.");
       }
     } catch (error) {
-      console.error(`[useTextToSpeech] Job ${jobId}: Error in speak function:`, error);
-      if (currentSpeechJobIdRef.current === jobId) { // Only show error if this job wasn't cancelled
+      console.error(`[useTextToSpeech] Error in speak function for text "${text.substring(0,30)}...":`, error);
+      if (currentSpeechTextRef.current === text && isSpeakingStateRef.current) { // Only show error if this job wasn't cancelled and still intended to speak
         toast({
           title: "Text-to-Speech Error",
           description: `Could not play speech: ${error instanceof Error ? error.message : String(error)}`,
           variant: "destructive",
         });
-        setIsTTSSpeakingState(false);
-      } else {
-         console.log(`[useTextToSpeech] Job ${jobId}: Error occurred, but job was already cancelled. Suppressing toast.`);
+        setIsTTSSpeakingState(false); // Ensure speaking state is false on error for this specific job
+        currentSpeechTextRef.current = null;
       }
     }
   }, [isTTSEnabled, toast, cancelCurrentSpeech]);
+
 
   const toggleTTSEnabled = useCallback(() => {
     setIsTTSEnabled(prev => {
@@ -145,11 +160,18 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       if (!newState) {
         cancelCurrentSpeech();
       }
-      // Optional: Add toast notification for enable/disable confirmation here if desired
-      // e.g., toast({ title: `Text-to-Speech ${newState ? 'Enabled' : 'Disabled'}` });
+      // Only toast if initial load is done, to prevent toast on first render
+      if (initialLoadDoneRef.current) {
+        toast({ title: `Text-to-Speech ${newState ? 'Enabled' : 'Disabled'}` });
+      }
       return newState;
     });
-  }, [cancelCurrentSpeech]);
+  }, [cancelCurrentSpeech, toast]);
+
+  useEffect(() => {
+    initialLoadDoneRef.current = true;
+  }, []);
+
 
   return {
     isTTSEnabled,
@@ -157,6 +179,6 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     speak,
     cancelCurrentSpeech,
     isTTSSpeaking,
-    isTTSSupported: true, // We assume the backend flow makes it "supported" by the app
+    isTTSSupported: true, // Assumes backend and audio playback are supported
   };
 }

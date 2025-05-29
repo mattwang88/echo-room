@@ -76,7 +76,7 @@ const generateSpeechAudioFlow = ai.defineFlow(
       
       const audioContentDataUri = `data:audio/mp3;base64,${audioBase64}`;
       
-      console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Data URI starts with: ${audioContentDataUri.substring(0, 70)}...`);
+      console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Data URI starts with: ${audioContentDataUri.substring(0, 70)}... Audio content length: ${response.audioContent.length}`);
       return { audioContentDataUri };
 
     } catch (error) {
