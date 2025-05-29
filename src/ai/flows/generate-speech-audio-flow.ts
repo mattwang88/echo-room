@@ -49,9 +49,6 @@ const generateSpeechAudioFlow = ai.defineFlow(
       },
       audioConfig: {
         audioEncoding: 'MP3', // MP3 is widely supported and good for web.
-        // You can adjust speakingRate, pitch, etc. here if needed
-        // speakingRate: 1.0,
-        // pitch: 0,
       },
     };
 
@@ -63,15 +60,23 @@ const generateSpeechAudioFlow = ai.defineFlow(
         throw new Error('No audio content received from Text-to-Speech API.');
       }
 
-      // Ensure audioContent is treated as Buffer or Uint8Array for base64 conversion
-      const audioBytes = response.audioContent instanceof Uint8Array 
-        ? response.audioContent 
-        : Buffer.from(response.audioContent as string, 'binary'); // Fallback, assuming binary string if not Uint8Array
-
-      const audioBase64 = Buffer.from(audioBytes).toString('base64');
+      let audioBase64: string;
+      if (typeof response.audioContent === 'string') {
+        // It's already base64 encoded string from the API (less common for this specific API response type)
+        audioBase64 = response.audioContent;
+        console.log(`[generateSpeechAudioFlow] Audio content was already a string (presumed base64). Length: ${audioBase64.length}`);
+      } else if (response.audioContent instanceof Uint8Array || response.audioContent instanceof Buffer) {
+        // It's Uint8Array or Buffer (raw bytes) - this is the typical format for audioContent
+        audioBase64 = Buffer.from(response.audioContent).toString('base64');
+        console.log(`[generateSpeechAudioFlow] Converted audio bytes (Uint8Array/Buffer) to base64. Original byte length: ${response.audioContent.byteLength || response.audioContent.length}, Base64 length: ${audioBase64.length}`);
+      } else {
+        console.error('[generateSpeechAudioFlow] Audio content is not in a recognized format. Content type:', typeof response.audioContent, response.audioContent);
+        throw new Error('Audio content is not in a recognized format (string, Uint8Array, or Buffer).');
+      }
+      
       const audioContentDataUri = `data:audio/mp3;base64,${audioBase64}`;
       
-      console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Audio content length: ${audioBytes.length}`);
+      console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Data URI starts with: ${audioContentDataUri.substring(0, 70)}...`);
       return { audioContentDataUri };
 
     } catch (error) {
