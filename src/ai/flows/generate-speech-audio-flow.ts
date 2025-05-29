@@ -16,7 +16,8 @@ import type { protos } from '@google-cloud/text-to-speech';
 const GenerateSpeechAudioInputSchema = z.object({
   text: z.string().describe('The text to synthesize into speech.'),
   languageCode: z.string().optional().default('en-US').describe('The language code (e.g., "en-US").'),
-  voiceName: z.string().optional().default('en-US-Chirp3-HD-Achernar').describe('The voice name (e.g., "en-US-Chirp3-HD-Achernar" - a high-quality Wavenet voice).'),
+  // Upgraded default to a Neural2 voice for better quality out of the box
+  voiceName: z.string().optional().default('en-US-Neural2-A').describe('The voice name (e.g., "en-US-Neural2-A" - a high-quality Neural2 voice).'),
 });
 export type GenerateSpeechAudioInput = z.infer<typeof GenerateSpeechAudioInputSchema>;
 
@@ -47,14 +48,18 @@ const generateSpeechAudioFlow = ai.defineFlow(
     const langCode = input.languageCode || GenerateSpeechAudioInputSchema.shape.languageCode._def.defaultValue();
     const voiceName = input.voiceName || GenerateSpeechAudioInputSchema.shape.voiceName._def.defaultValue();
 
+    console.log(`[generateSpeechAudioFlow] Using voice: ${voiceName}, lang: ${langCode}`);
+
     const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
-      input: {text: input.text},
+      input: {text: input.text}, // For SSML, this would be {ssml: input.text}
       voice: {
         languageCode: langCode,
         name: voiceName,
       },
       audioConfig: {
         audioEncoding: 'MP3', // MP3 is widely supported and good for web.
+        // You can add effectsProfileId here for different audio profiles if needed, e.g.
+        // effectsProfileId: ['telephony-class-application'] 
       },
     };
 
@@ -82,7 +87,7 @@ const generateSpeechAudioFlow = ai.defineFlow(
       
       const audioContentDataUri = `data:audio/mp3;base64,${audioBase64}`;
       
-      console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Data URI starts with: ${audioContentDataUri.substring(0, 70)}... Audio content length: ${response.audioContent.length}`);
+      console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Data URI starts with: ${audioContentDataUri.substring(0, 70)}... Audio content length (bytes of original Uint8Array/Buffer): ${response.audioContent.length}`);
       return { audioContentDataUri };
 
     } catch (error) {
@@ -91,3 +96,4 @@ const generateSpeechAudioFlow = ai.defineFlow(
     }
   }
 );
+
