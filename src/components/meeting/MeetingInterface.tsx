@@ -32,6 +32,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     sttInterimTranscript,
+    // TTS related props removed
+    // isTTSEnabled,
+    // toggleTTSEnabled,
+    // isTTSSupported,
+    // isTTSSpeaking,
+    // cancelSpeech,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -66,10 +72,9 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <MeetingHeader 
           scenario={scenario} 
           onEndMeeting={handleEndMeeting} 
-          // The TTS toggle functionality would also be passed here if re-enabled
+          // TTS related props removed from MeetingHeader call
         />
         
-        {/* Temporary Diagnostic Message */}
         <div className="p-2 bg-yellow-100 text-yellow-700 text-xs text-center">
           STT Supported (from MeetingInterface): {isSTTSupported ? 'Yes' : 'No'}
         </div>

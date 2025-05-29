@@ -11,8 +11,7 @@ import { analyzeResponse, type AnalyzeResponseInput, type AnalyzeResponseOutput 
 import { evaluateSemanticSkill, type EvaluateSemanticSkillInput, type EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from './useSpeechToText';
-import { useTextToSpeech } from './useTextToSpeech';
-
+// import { useTextToSpeech } from './useTextToSpeech'; // Removed problematic import
 
 export function useMeetingSimulation(scenarioId: string | null) {
   const router = useRouter();
@@ -60,8 +59,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
   }, [sttError, toast, clearSTTError]);
 
-  // Text-to-Speech
-  const { speak, cancelSpeech, isTTSEnabled, toggleTTSEnabled, isTTSSupported, isSpeaking } = useTextToSpeech();
+  // Text-to-Speech - All TTS logic removed
+  // const { speak, cancelSpeech, isTTSEnabled, toggleTTSEnabled, isTTSSupported, isSpeaking } = useTextToSpeech();
   
   useEffect(() => {
     setIsRecording(sttIsListening);
@@ -83,9 +82,10 @@ export function useMeetingSimulation(scenarioId: string | null) {
           text: foundScenario.initialMessage.text,
           timestamp: Date.now(),
         }]);
-        if (isTTSEnabled && foundScenario.initialMessage.text) {
-          speak(foundScenario.initialMessage.text);
-        }
+        // Removed TTS call for initial message
+        // if (isTTSEnabled && foundScenario.initialMessage.text) {
+        //   speak(foundScenario.initialMessage.text);
+        // }
         setCurrentTurn(0);
         setMeetingEnded(false);
         setCurrentCoaching(null);
@@ -99,7 +99,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       }
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, router, toast]); // speak should not be in deps to avoid re-triggering on voice change
+  }, [scenarioId, router, toast]);
 
   const addMessage = (participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
     const newMessage: Message = { 
@@ -112,18 +112,20 @@ export function useMeetingSimulation(scenarioId: string | null) {
     };
     setMessages(prev => [...prev, newMessage]);
 
-    if (isTTSEnabled && (participant !== 'User' && participant !== 'System')) {
-      speak(text);
-    }
-     if (isTTSEnabled && participant === 'System' && text.startsWith("The meeting time is up")) { // Speak system end message
-      speak(text);
-    }
+    // Removed TTS calls for new messages
+    // if (isTTSEnabled && (participant !== 'User' && participant !== 'System')) {
+    //   speak(text);
+    // }
+    //  if (isTTSEnabled && participant === 'System' && text.startsWith("The meeting time is up")) { 
+    //   speak(text);
+    // }
   };
 
   const handleEndMeeting = useCallback(() => {
     if (!scenario) return;
     if (isRecording) sttStopListening(); 
-    if (isSpeaking) cancelSpeech();
+    // Removed TTS cancelSpeech call
+    // if (isSpeaking) cancelSpeech();
     setMeetingEnded(true);
     const summaryData: MeetingSummaryData = {
       scenarioTitle: scenario.title,
@@ -137,7 +139,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       console.error("Failed to save summary to localStorage:", error);
       toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
     }
-  }, [scenario, messages, router, toast, isRecording, sttStopListening, isSpeaking, cancelSpeech]);
+  }, [scenario, messages, router, toast, isRecording, sttStopListening]);
 
   const submitUserResponse = async () => {
     if (!currentUserResponse.trim() || !scenario || isAiThinking || isRecording) return;
@@ -157,20 +159,18 @@ export function useMeetingSimulation(scenarioId: string | null) {
       const semanticResult = await evaluateSemanticSkill(semanticInput);
 
       setMessages(prev => prev.map(msg => 
-        msg.text === userMsg && msg.participant === "User" && !msg.coachingFeedback && msg.id === messages[messages.length-1].id 
+        msg.text === userMsg && msg.participant === 'User' && !msg.coachingFeedback && msg.id === messages[messages.length-1].id 
         ? {...msg, coachingFeedback: coachingResult, semanticEvaluation: semanticResult} 
         : msg
       ));
       
-      // Single Agent Response Logic
       const activeAgents = scenario.agentsInvolved;
       if (activeAgents && activeAgents.length > 0) {
         const agentToRespondRole = activeAgents[currentAgentIndex];
         let agentPersona = "";
 
-        // Special handling for manager-1on1 scenario where Product is Manager
         if (scenario.id === 'manager-1on1' && agentToRespondRole === 'Product') {
-            agentPersona = scenario.personaConfig.productPersona; // This is the manager's persona
+            agentPersona = scenario.personaConfig.productPersona; 
         } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
             agentPersona = scenario.personaConfig.hrPersona;
         } else {
@@ -182,7 +182,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
             }
         }
         
-
         if (agentPersona) {
           const singleAgentSimInput: SimulateSingleAgentResponseInput = {
             userResponse: userMsg,
@@ -197,10 +196,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
           setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
         } else {
            console.warn(`No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
-           // Potentially add a system message or skip agent turn if persona is missing
         }
       }
-      // End Single Agent Response Logic
 
       setCurrentTurn(prev => prev + 1);
       if (scenario.maxTurns && currentTurn + 1 >= scenario.maxTurns) {
@@ -255,12 +252,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
     handleToggleRecording,
     isSTTSupported,
     sttInterimTranscript,
-    // TTS related
-    isTTSEnabled,
-    toggleTTSEnabled,
-    isTTSSupported,
-    isTTSSpeaking: isSpeaking,
-    cancelSpeech,
+    // TTS related properties removed from return object
+    // isTTSEnabled,
+    // toggleTTSEnabled,
+    // isTTSSupported,
+    // isTTSSpeaking: isSpeaking,
+    // cancelSpeech,
   };
 }
-
