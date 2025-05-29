@@ -2,7 +2,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-// Removed Scenario import as it's not directly used here, only via useMeetingSimulation
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
 import { ChatMessage } from './ChatMessage';
@@ -28,9 +27,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleEndMeeting,
     currentCoaching,
     // STT related
-    isRecording,
+    isRecording, // This is now the synchronized state from useMeetingSimulation
     handleToggleRecording,
     isSTTSupported,
+    sttInternalIsListening, // For debugging if needed
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -44,13 +44,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  // This diagnostic message can be removed once STT is confirmed working or issues are resolved.
   const STTSupportMessage = () => (
     <div className="p-2 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300">
       Speech-to-Text Supported by Browser: {isSTTSupported ? 'Yes' : 'No'}
       {isSTTSupported && isRecording !== undefined && (
         <span className="ml-2">| Currently Recording: {isRecording ? 'Yes' : 'No'}</span>
       )}
+      {/* For debugging: <span className="ml-2">| Internal STT Hook Listening: {sttInternalIsListening ? 'Yes' : 'No'}</span> */}
     </div>
   );
 
@@ -78,7 +78,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           onEndMeeting={handleEndMeeting} 
         />
         
-        {/* Render STT Diagnostic Message */}
         <STTSupportMessage />
 
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
@@ -117,3 +116,4 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
+

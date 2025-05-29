@@ -12,11 +12,11 @@ interface ResponseInputProps {
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit: () => void;
   isSending: boolean;
-  disabled?: boolean;
+  disabled?: boolean; // General disabled state for the input (e.g., meeting ended)
   // STT Props
-  isRecording?: boolean; // This will be true if STT is active
-  onToggleRecording?: () => void;
-  isSTTSupported?: boolean;
+  isRecording?: boolean; // True if STT is active
+  onToggleRecording?: () => void; // Function to start/stop STT
+  isSTTSupported?: boolean; // True if browser supports STT
 }
 
 export function ResponseInput({
@@ -33,6 +33,7 @@ export function ResponseInput({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
+      // Allow submission only if not sending, not globally disabled, value is present, AND not currently recording.
       if (!isSending && !disabled && value.trim() && !isRecording) {
         onSubmit();
       }
@@ -40,17 +41,24 @@ export function ResponseInput({
   };
 
   const handleMicClick = () => {
-    // The useSpeechToText hook handles the toast if not supported when onToggleRecording calls startListening.
     if (onToggleRecording) {
       onToggleRecording();
     }
   };
 
   const getPlaceholderText = () => {
-    if (isRecording) return "Listening... Click mic to stop.";
+    if (isRecording) return "Listening... Click mic again to stop.";
     if (isSTTSupported) return "Type your response or click the mic to speak...";
     return "Type your response... (Voice input not supported by your browser)";
-  }
+  };
+
+  // Textarea is disabled if globally disabled, or if STT is supported AND currently recording.
+  const isTextareaDisabled = disabled || (isSTTSupported && isRecording);
+  // Send button is disabled if textarea is disabled, or sending, or no value, or recording.
+  const isSendButtonDisabled = isTextareaDisabled || isSending || !value.trim() || isRecording;
+  // Mic button is disabled if globally disabled or sending (but not just because STT isn't supported - click should give toast then).
+  const isMicButtonDisabled = disabled || isSending;
+
 
   return (
     <div className="p-4 border-t bg-background sticky bottom-0">
@@ -62,7 +70,7 @@ export function ResponseInput({
           placeholder={getPlaceholderText()}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px] max-h-[150px] scrollbar-thin bg-transparent"
           rows={1}
-          disabled={isSending || disabled || (isSTTSupported && isRecording)} // Disable textarea if STT is supported and actively recording.
+          disabled={isTextareaDisabled}
           aria-label="Your response"
         />
         <div className="flex flex-col space-y-1 flex-shrink-0" data-testid="response-buttons-wrapper">
@@ -71,7 +79,7 @@ export function ResponseInput({
               <TooltipTrigger asChild>
                 <Button
                   onClick={onSubmit}
-                  disabled={isSending || disabled || !value.trim() || isRecording}
+                  disabled={isSendButtonDisabled}
                   size="icon"
                   className="h-9 w-9"
                   aria-label="Send response"
@@ -98,7 +106,7 @@ export function ResponseInput({
                   variant={isRecording ? "destructive" : "outline"}
                   size="icon"
                   onClick={handleMicClick}
-                  disabled={isSending || disabled} // Only disable if sending or globally disabled
+                  disabled={isMicButtonDisabled} 
                   className="h-9 w-9"
                   aria-label={isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported by browser")}
                   data-testid="mic-button"
@@ -113,10 +121,6 @@ export function ResponseInput({
           </TooltipProvider>
         </div>
       </div>
-       {/* Diagnostic message for STT support, can be removed or conditionally rendered */}
-      {/* <div className="text-xs text-muted-foreground pt-1 text-center">
-        STT Supported: {isSTTSupported ? 'Yes' : 'No'} | Recording: {isRecording ? 'Yes' : 'No'}
-      </div> */}
     </div>
   );
 }
