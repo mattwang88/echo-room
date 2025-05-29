@@ -49,7 +49,7 @@ export function ResponseInput({
     }
   };
 
-  const displayValue = isRecording && interimTranscript ? `${value} ${interimTranscript}` : value;
+  const displayValue = isRecording && interimTranscript ? `${value} ${interimTranscript}`.trim() : value;
 
 
   return (
@@ -59,29 +59,39 @@ export function ResponseInput({
           value={displayValue}
           onChange={onChange}
           onKeyDown={handleKeyDown}
-          placeholder={isRecording ? "Listening..." : "Type your response or use the mic (Shift+Enter for new line)"}
+          placeholder={isRecording ? "Listening..." : (isSTTSupported ? "Type your response or use the mic (Shift+Enter for new line)" : "Type your response (Shift+Enter for new line)")}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px]"
           rows={3}
-          disabled={isSending || disabled || isRecording}
+          disabled={isSending || disabled || (isRecording && !interimTranscript)} // Disable textarea while recording unless there's interim transcript to prevent direct typing over it.
           aria-label="Your response"
         />
         <div className="flex flex-col gap-2">
-          {isSTTSupported && startRecording && stopRecording && (
-            <Button 
-              onClick={handleMicClick} 
-              disabled={isSending || disabled} 
-              size="icon" 
-              variant={isRecording ? "destructive" : "outline"}
-              title={isRecording ? "Stop recording" : "Start recording"}
-              className="h-10 w-10"
-            >
-              {isRecording ? (
-                <MicOff className="h-5 w-5" />
-              ) : (
-                <Mic className="h-5 w-5" />
-              )}
-              <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
-            </Button>
+          {startRecording && stopRecording && ( // Check if functions are available
+            isSTTSupported ? (
+              <Button 
+                onClick={handleMicClick} 
+                disabled={isSending || disabled} 
+                size="icon" 
+                variant={isRecording ? "destructive" : "outline"}
+                title={isRecording ? "Stop recording" : "Start recording"}
+                className="h-10 w-10"
+              >
+                {isRecording ? (
+                  <MicOff className="h-5 w-5" />
+                ) : (
+                  <Mic className="h-5 w-5" />
+                )}
+                <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
+              </Button>
+            ) : (
+              <div 
+                className="flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background cursor-not-allowed" 
+                title="Speech-to-text is not supported in your browser."
+                aria-label="Speech-to-text not supported"
+              >
+                <MicOff className="h-5 w-5 text-muted-foreground" />
+              </div>
+            )
           )}
           <Button 
             onClick={onSubmit} 
@@ -102,6 +112,9 @@ export function ResponseInput({
        {isRecording && interimTranscript && (
         <p className="text-xs text-muted-foreground mt-1 italic pl-1">Listening: {interimTranscript}</p>
       )}
+       {isRecording && !interimTranscript && !value &&(
+         <p className="text-xs text-muted-foreground mt-1 italic pl-1">Listening...</p>
+       )}
     </div>
   );
 }
