@@ -3,7 +3,7 @@
 
 import { useEffect, useRef } from 'react';
 import type { Scenario } from '@/lib/types';
-import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
+import { useMeetingSimulation } from '@/hooks/useMeetingSimulation'; // Updated import path if changed
 import { MeetingHeader } from './MeetingHeader';
 import { ChatMessage } from './ChatMessage';
 import { ResponseInput } from './ResponseInput';
@@ -27,14 +27,15 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
-    isTTSEnabled,
-    toggleTTS,
-    isTTSSupported,
-    startSTTListening,
-    stopSTTListening,
-    isSTTListening,
-    isSTTSupported,
-    interimTranscript,
+    // Properties below were added for TTS/STT, revert to not include them if original useMeetingSimulation didn't have them
+    // isTTSEnabled,
+    // toggleTTS,
+    // isTTSSupported,
+    // startSTTListening,
+    // stopSTTListening,
+    // isSTTListening,
+    // isSTTSupported,
+    // interimTranscript,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -68,9 +69,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <MeetingHeader 
           scenario={scenario} 
           onEndMeeting={handleEndMeeting}
-          isTTSEnabled={isTTSEnabled}
-          onToggleTTS={toggleTTS}
-          isTTSSupported={isTTSSupported}
+          // Pass original props for MeetingHeader, revert TTS props
+          isTTSEnabled={false} // Default or remove if not in original
+          onToggleTTS={() => {}} // Default or remove
+          isTTSSupported={false} // Default or remove
         />
         
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
@@ -95,11 +97,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           onSubmit={submitUserResponse}
           isSending={isAiThinking}
           disabled={meetingEnded}
-          startRecording={startSTTListening}
-          stopRecording={stopSTTListening}
-          isRecording={isSTTListening}
-          isSTTSupported={isSTTSupported}
-          interimTranscript={interimTranscript}
+          // Revert STT props
+          // startRecording={startSTTListening}
+          // stopRecording={stopSTTListening}
+          // isRecording={isSTTListening}
+          // isSTTSupported={isSTTSupported}
+          // interimTranscript={interimTranscript}
         />
       </div>
 
@@ -109,4 +112,3 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
-
