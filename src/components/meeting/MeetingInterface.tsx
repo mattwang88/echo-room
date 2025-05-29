@@ -27,10 +27,15 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleEndMeeting,
     currentCoaching,
     // STT related
-    isRecording, // This is now the synchronized state from useMeetingSimulation
+    isRecording,
     handleToggleRecording,
     isSTTSupported,
-    sttInternalIsListening, // For debugging if needed
+    sttInternalIsListening,
+    // TTS related
+    isTTSEnabled,
+    toggleTTSEnabled,
+    isTTSSupported,
+    isTTSSpeaking,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -50,7 +55,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       {isSTTSupported && isRecording !== undefined && (
         <span className="ml-2">| Currently Recording: {isRecording ? 'Yes' : 'No'}</span>
       )}
-      {/* For debugging: <span className="ml-2">| Internal STT Hook Listening: {sttInternalIsListening ? 'Yes' : 'No'}</span> */}
+       <span className="ml-2">| TTS Supported: {isTTSSupported ? 'Yes' : 'No'}</span>
+       {isTTSSupported && (
+          <span className="ml-2">| TTS Enabled: {isTTSEnabled ? 'Yes' : 'No'}</span>
+       )}
+       {isTTSSupported && isTTSEnabled && (
+          <span className="ml-2">| TTS Speaking: {isTTSSpeaking ? 'Yes' : 'No'}</span>
+       )}
     </div>
   );
 
@@ -76,6 +87,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <MeetingHeader 
           scenario={scenario} 
           onEndMeeting={handleEndMeeting} 
+          // TTS Props
+          isTTSEnabled={isTTSEnabled}
+          toggleTTSEnabled={toggleTTSEnabled}
+          isTTSSupported={isTTSSupported}
+          isTTSSpeaking={isTTSSpeaking}
         />
         
         <STTSupportMessage />
@@ -116,4 +132,3 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
-

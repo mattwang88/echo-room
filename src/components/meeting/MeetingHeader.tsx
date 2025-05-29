@@ -2,27 +2,25 @@
 import type { Scenario } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
-// Removed TTS related icons: Volume2, VolumeX
+import { LogOut, Volume2, VolumeX } from 'lucide-react';
 
 interface MeetingHeaderProps {
   scenario: Scenario | null;
   onEndMeeting: () => void;
-  // Removed TTS related props
-  // isTTSEnabled?: boolean;
-  // toggleTTSEnabled?: () => void;
-  // isTTSSupported?: boolean;
-  // isTTSSpeaking?: boolean;
+  // TTS related props
+  isTTSEnabled?: boolean;
+  toggleTTSEnabled?: () => void;
+  isTTSSupported?: boolean;
+  isTTSSpeaking?: boolean;
 }
 
 export function MeetingHeader({ 
   scenario, 
   onEndMeeting, 
-  // Removed TTS related props from destructuring
-  // isTTSEnabled, 
-  // toggleTTSEnabled, 
-  // isTTSSupported,
-  // isTTSSpeaking
+  isTTSEnabled, 
+  toggleTTSEnabled, 
+  isTTSSupported,
+  isTTSSpeaking
 }: MeetingHeaderProps) {
   if (!scenario) {
     return (
@@ -45,19 +43,19 @@ export function MeetingHeader({
             </CardDescription>
           </div>
           <div className="flex items-center gap-2">
-            {/* Removed TTS Toggle Button */}
-            {/* {isTTSSupported && toggleTTSEnabled && (
+            {isTTSSupported && toggleTTSEnabled && (
               <Button 
                 variant="outline" 
                 size="icon" 
                 onClick={toggleTTSEnabled} 
                 className="h-9 w-9" 
                 title={isTTSEnabled ? "Disable Text-to-Speech" : "Enable Text-to-Speech"}
+                disabled={!isTTSSupported}
               >
-                {isTTSSpeaking ? <VolumeX className="h-4 w-4 animate-pulse" /> : (isTTSEnabled ? <Volume2 className="h-4 w-4" /> : <VolumeX className="h-4 w-4" />) }
+                {isTTSSpeaking ? <VolumeX className="h-4 w-4 animate-pulse text-primary" /> : (isTTSEnabled ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />) }
               </Button>
-            )} */}
-            <Button variant="outline" size="sm" onClick={onEndMeeting} className="ml-4">
+            )}
+            <Button variant="outline" size="sm" onClick={onEndMeeting} className="ml-auto">
               <LogOut className="mr-2 h-4 w-4" /> End Meeting
             </Button>
           </div>
