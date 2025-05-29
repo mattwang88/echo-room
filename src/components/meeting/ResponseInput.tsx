@@ -64,7 +64,22 @@ export function ResponseInput({
           disabled={isSending || disabled || (isRecording && !!interimTranscript)}
           aria-label="Your response"
         />
-        <div className="flex flex-col gap-2 flex-shrink-0"> {/* Added flex-shrink-0 */}
+        <div className="flex flex-col gap-2 flex-shrink-0">
+          <Button
+            onClick={onSubmit}
+            disabled={isSending || disabled || !value.trim() || isRecording}
+            size="icon"
+            title="Send response"
+            className="h-10 w-10"
+          >
+            {isSending ? (
+              <Loader2 className="h-5 w-5 animate-spin" />
+            ) : (
+              <Send className="h-5 w-5" />
+            )}
+            <span className="sr-only">Send response</span>
+          </Button>
+
           {/* Mic button logic starts here */}
           {typeof startRecording === 'function' && typeof stopRecording === 'function' ? (
             <>
@@ -95,23 +110,8 @@ export function ResponseInput({
                 </div>
               )}
             </>
-          ) : null } {/* End of Mic button logic, renders null if functions not provided */}
+          ) : null } {/* End of Mic button logic */}
           {/* Mic button logic ends here */}
-
-          <Button
-            onClick={onSubmit}
-            disabled={isSending || disabled || !value.trim() || isRecording}
-            size="icon"
-            title="Send response"
-            className="h-10 w-10"
-          >
-            {isSending ? (
-              <Loader2 className="h-5 w-5 animate-spin" />
-            ) : (
-              <Send className="h-5 w-5" />
-            )}
-            <span className="sr-only">Send response</span>
-          </Button>
         </div>
       </div>
        {isRecording && interimTranscript && (
