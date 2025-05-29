@@ -62,11 +62,12 @@ export function ResponseInput({
           placeholder={isRecording ? "Listening..." : (isSTTSupported ? "Type your response or use the mic (Shift+Enter for new line)" : "Type your response (Shift+Enter for new line)")}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px]"
           rows={3}
-          disabled={isSending || disabled || (isRecording && !interimTranscript)} // Disable textarea while recording unless there's interim transcript to prevent direct typing over it.
+          disabled={isSending || disabled || (isRecording && !!interimTranscript)} 
           aria-label="Your response"
         />
         <div className="flex flex-col gap-2">
-          {startRecording && stopRecording && ( // Check if functions are available
+          {/* Mic button logic starts here */}
+          {startRecording && stopRecording && ( 
             isSTTSupported ? (
               <Button 
                 onClick={handleMicClick} 
@@ -84,6 +85,7 @@ export function ResponseInput({
                 <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
               </Button>
             ) : (
+              // Displayed if STT is not supported
               <div 
                 className="flex items-center justify-center h-10 w-10 rounded-md border border-input bg-background cursor-not-allowed" 
                 title="Speech-to-text is not supported in your browser."
@@ -93,6 +95,7 @@ export function ResponseInput({
               </div>
             )
           )}
+          {/* Mic button logic ends here */}
           <Button 
             onClick={onSubmit} 
             disabled={isSending || disabled || !value.trim() || isRecording} 
