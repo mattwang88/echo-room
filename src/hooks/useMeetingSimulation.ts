@@ -10,6 +10,7 @@ import { analyzeResponse, type AnalyzeResponseInput, type AnalyzeResponseOutput 
 import { evaluateSemanticSkill, type EvaluateSemanticSkillInput, type EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import { useToast } from "@/hooks/use-toast";
 import { useTextToSpeech } from './useTextToSpeech';
+import { useSpeechToText } from './useSpeechToText';
 
 export function useMeetingSimulation(scenarioId: string | null) {
   const router = useRouter();
@@ -22,8 +23,34 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentCoaching, setCurrentCoaching] = useState<AnalyzeResponseOutput | null>(null);
 
-  const { speak, cancel, isSpeaking, isSupported: isTTSSupported } = useTextToSpeech();
+  const { speak, cancel: cancelTTS, isSpeaking: isTTSSpeaking, isSupported: isTTSSupported } = useTextToSpeech();
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(false);
+
+  const handleTranscript = useCallback((transcript: string) => {
+    setCurrentUserResponse(prev => prev ? prev + " " + transcript : transcript);
+  }, []);
+
+  const handleSTTListeningChange = (listening: boolean) => {
+    // Can use this for UI updates if needed, e.g. global listening indicator
+  };
+  
+  const handleSTTError = useCallback((error: string | null) => {
+    if (error) {
+      toast({ title: "Speech Recognition Error", description: error, variant: "destructive" });
+    }
+  }, [toast]);
+
+  const { 
+    startListening: startSTTListening, 
+    stopListening: stopSTTListening, 
+    isListening: isSTTListening, 
+    isSupported: isSTTSupported,
+    interimTranscript, 
+  } = useSpeechToText({ 
+    onTranscript: handleTranscript,
+    onListeningChange: handleSTTListeningChange,
+    onError: handleSTTError,
+  });
 
   const toggleTTS = useCallback(() => {
     if (!isTTSSupported) {
@@ -33,12 +60,12 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
     setIsTTSEnabled(prev => {
       const newState = !prev;
-      if (!newState && isSpeaking) {
-        cancel(); // If turning TTS off and it's speaking, cancel it.
+      if (!newState && isTTSSpeaking) {
+        cancelTTS(); 
       }
       return newState;
     });
-  }, [isTTSSupported, isSpeaking, cancel, toast]);
+  }, [isTTSSupported, isTTSSpeaking, cancelTTS, toast]);
 
   useEffect(() => {
     if (scenarioId) {
@@ -63,7 +90,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
         router.push('/');
       }
     }
-  }, [scenarioId, router, toast]); // speak, isTTSEnabled, isTTSSupported removed from deps to avoid re-speaking initial message on toggle
+  }, [scenarioId, router, toast]); 
 
 
   const addMessage = useCallback((participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
@@ -78,15 +105,16 @@ export function useMeetingSimulation(scenarioId: string | null) {
     setMessages(prev => [...prev, newMessage]);
     
     if (isTTSEnabled && participant !== 'User' && isTTSSupported) {
-      if (isSpeaking) cancel(); // Cancel previous if any
+      if (isTTSSpeaking) cancelTTS(); 
       speak(text);
     }
-  }, [isTTSEnabled, speak, isTTSSupported, isSpeaking, cancel]);
+  }, [isTTSEnabled, speak, isTTSSupported, isTTSSpeaking, cancelTTS]);
 
 
   const handleEndMeeting = useCallback(() => {
     if (!scenario) return;
-    if (isSpeaking) cancel(); // Stop any ongoing speech
+    if (isTTSSpeaking) cancelTTS(); 
+    if (isSTTListening) stopSTTListening();
     setMeetingEnded(true);
     const summaryData: MeetingSummaryData = {
       scenarioTitle: scenario.title,
@@ -100,16 +128,16 @@ export function useMeetingSimulation(scenarioId: string | null) {
       console.error("Failed to save summary to localStorage:", error);
       toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
     }
-  }, [scenario, messages, router, toast, isSpeaking, cancel]);
+  }, [scenario, messages, router, toast, isTTSSpeaking, cancelTTS, isSTTListening, stopSTTListening]);
 
   const submitUserResponse = async () => {
     if (!currentUserResponse.trim() || !scenario || isAiThinking) return;
 
-    if (isSpeaking) cancel(); // Stop AI speech if user submits response
+    if (isTTSSpeaking) cancelTTS();
+    if (isSTTListening) stopSTTListening();
 
-    // Add user message immediately to the UI
+
     const userText = currentUserResponse;
-    // We need to use the functional form of setMessages if addMessage is not stable enough due to dependencies
     setMessages(prev => [...prev, { 
       id: Date.now().toString() + "User" + Math.random(), 
       participant: "User", 
@@ -128,9 +156,10 @@ export function useMeetingSimulation(scenarioId: string | null) {
       const semanticInput: EvaluateSemanticSkillInput = { responseText: userText, context: scenario.objective };
       const semanticResultPromise = evaluateSemanticSkill(semanticInput);
 
-      const [coachingResult, semanticResult] = await Promise.all([coachingInput, semanticResultPromise]);
+      // The promises return the input types, changed to AnalyzeResponseOutput and EvaluateSemanticSkillOutput
+      const [coachingResult, semanticResult] = await Promise.all([coachingResultPromise, semanticResultPromise]);
       
-      setCurrentCoaching(coachingResult as AnalyzeResponseOutput); // Cast because it could be input type
+      setCurrentCoaching(coachingResult as AnalyzeResponseOutput); 
 
       setMessages(prev => prev.map(msg => 
         (msg.text === userText && msg.participant === "User" && !msg.coachingFeedback) 
@@ -147,7 +176,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
       };
       const agentResponses = await simulateAiAgents(agentSimInput);
 
-      // Sequentially add agent messages to allow TTS to play them one by one if enabled
       const agentTurns: { role: AgentRole, feedback: string }[] = [];
       if (scenario.agentsInvolved.includes('CTO') && agentResponses.ctoFeedback) {
         agentTurns.push({role: 'CTO', feedback: agentResponses.ctoFeedback});
@@ -163,15 +191,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
       }
 
       for (const turn of agentTurns) {
-        // A short delay can help TTS distinguish messages if they come too fast
-        // await new Promise(resolve => setTimeout(resolve, 250)); 
         addMessage(turn.role, turn.feedback);
       }
 
       setCurrentTurn(prev => prev + 1);
       if (scenario.maxTurns && currentTurn + 1 >= scenario.maxTurns) {
         addMessage("System", "The meeting time is up. This session has now concluded.");
-        handleEndMeeting(); // This will also cancel speech
+        handleEndMeeting(); 
       }
 
     } catch (error) {
@@ -184,13 +210,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
   };
   
   useEffect(() => {
-    // This effect ensures that TTS is cancelled if the component unmounts while speaking.
     return () => {
-      if (isSpeaking) {
-        cancel();
+      if (isTTSSpeaking) {
+        cancelTTS();
+      }
+      if (isSTTListening) {
+        stopSTTListening();
       }
     };
-  }, [isSpeaking, cancel]);
+  }, [isTTSSpeaking, cancelTTS, isSTTListening, stopSTTListening]);
 
 
   return {
@@ -206,5 +234,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isTTSEnabled,
     toggleTTS,
     isTTSSupported,
+    startSTTListening,
+    stopSTTListening,
+    isSTTListening,
+    isSTTSupported,
+    interimTranscript,
   };
 }
+
