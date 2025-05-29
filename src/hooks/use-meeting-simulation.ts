@@ -25,33 +25,30 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
   // Speech-to-Text
   const [isRecording, setIsRecording] = useState(false);
-  const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>(""); 
+  const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
 
   const {
     isListening: sttIsListening,
     startListening: sttStartListening,
     stopListening: sttStopListening,
     isSTTSupported,
-    sttError, 
+    sttError,
     clearSTTError,
   } = useSpeechToText({
     onTranscript: (finalTranscript) => {
       console.log("STT Final Transcript:", finalTranscript);
       const newText = baseTextForSpeech + (baseTextForSpeech ? " " : "") + finalTranscript;
       setCurrentUserResponse(newText);
-      setBaseTextForSpeech(newText); 
+      setBaseTextForSpeech(newText);
     },
     onInterimTranscript: (interim) => {
-      // console.log("STT Interim Transcript:", interim); // Potentially very noisy
+      console.log("[MeetingSimulation] Interim transcript received:", interim); // Added for debugging
       setCurrentUserResponse(baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim);
     },
     onListeningChange: (listening) => {
       setIsRecording(listening);
       if (!listening) {
-        // When listening fully stops, currentUserResponse should hold the latest text.
-        // Reset baseTextForSpeech so the next recording session starts fresh 
-        // or from newly typed text.
-        setBaseTextForSpeech(""); 
+        setBaseTextForSpeech("");
       }
     }
   });
@@ -65,9 +62,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
   useEffect(() => {
     if (sttError) {
       // The toast is already shown by useSpeechToText hook.
-      // We might want to do additional app-specific error handling here if needed.
-      // For now, just ensure the error state is cleared after some time or action.
-      // clearSTTError(); // Or clear it on next successful STT action.
     }
   }, [sttError, clearSTTError]);
 
@@ -90,14 +84,14 @@ export function useMeetingSimulation(scenarioId: string | null) {
         setIsRecording(false);
         setBaseTextForSpeech("");
         setCurrentAgentIndex(0);
-        clearSTTError(); // Clear any lingering STT errors from previous sessions
+        clearSTTError();
       } else {
         toast({ title: "Error", description: "Scenario not found.", variant: "destructive" });
         router.push('/');
       }
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [scenarioId, router, toast]); // Removed clearSTTError from here as it's better handled contextually
+  }, [scenarioId, router, toast]);
 
   const addMessage = (participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
     const newMessage: Message = {
@@ -135,7 +129,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     const userMsg = currentUserResponse.trim();
     addMessage("User", userMsg);
     setCurrentUserResponse("");
-    setBaseTextForSpeech(""); 
+    setBaseTextForSpeech("");
     setIsAiThinking(true);
     setCurrentCoaching(null);
 
@@ -158,11 +152,10 @@ export function useMeetingSimulation(scenarioId: string | null) {
         const agentToRespondRole = activeAgents[currentAgentIndex];
         let agentPersona = "";
 
-        // Specific persona handling for scenarios like 'manager-1on1' or 'job-resignation'
         if (scenario.id === 'manager-1on1' && agentToRespondRole === 'Product') {
-          agentPersona = scenario.personaConfig.productPersona; // Manager persona
+          agentPersona = scenario.personaConfig.productPersona;
         } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
-          agentPersona = scenario.personaConfig.hrPersona; // HR resignation persona
+          agentPersona = scenario.personaConfig.hrPersona;
         } else {
           switch (agentToRespondRole) {
             case 'CTO': agentPersona = scenario.personaConfig.ctoPersona; break;
@@ -175,7 +168,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
         if (agentPersona) {
           const singleAgentSimInput: SimulateSingleAgentResponseInput = {
             userResponse: userMsg,
-            agentRole: agentToRespondRole,
+            agentRole: agentToRespondRole as AgentRole, // Ensure type compatibility
             agentPersona: agentPersona,
             scenarioObjective: scenario.objective,
           };
@@ -186,7 +179,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
           setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
         } else {
            console.warn(`No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
-           // Potentially add a generic system message or skip agent turn
         }
       }
 
@@ -213,10 +205,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
 
   const handleToggleRecording = () => {
-    if (isRecording) { 
+    if (isRecording) {
       sttStopListening();
-      // baseTextForSpeech will be cleared by onListeningChange(false) when STT actually stops
-    } else { 
+    } else {
       if (!isSTTSupported) {
         toast({
           title: "Speech-to-Text Not Supported",
@@ -225,8 +216,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
         });
         return;
       }
-      clearSTTError(); // Clear any previous STT errors before starting
-      setBaseTextForSpeech(currentUserResponse); // Store current typed text
+      clearSTTError();
+      setBaseTextForSpeech(currentUserResponse);
       sttStartListening();
     }
   };
@@ -241,10 +232,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
-    // STT related
     isRecording,
     handleToggleRecording,
     isSTTSupported,
-    // sttInterimTranscript is no longer passed down as currentUserResponse updates live
   };
 }
