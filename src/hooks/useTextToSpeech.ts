@@ -9,7 +9,7 @@ interface UseTextToSpeechReturn {
   speak: (text: string, lang?: string, voiceName?: string) => void;
   cancel: () => void;
   isSpeaking: boolean;
-  isTTSSupported: boolean; // Will always be true as it relies on backend
+  isTTSSupported: boolean; 
   isTTSEnabled: boolean;
   toggleTTSEnabled: () => void;
   isTTSSpeaking: boolean;
@@ -18,16 +18,14 @@ interface UseTextToSpeechReturn {
 export function useTextToSpeech(): UseTextToSpeechReturn {
   const { toast } = useToast();
   const [isSpeakingState, setIsSpeakingState] = useState(false);
-  const [isTTSEnabled, setIsTTSEnabled] = useState(true); // Default to true
+  const [isTTSEnabled, setIsTTSEnabled] = useState(true); 
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const previousIsTTSEnabledRef = useRef<boolean | undefined>();
-  const currentSpeechTextRef = useRef<string | null>(null); // To track what's currently meant to be spoken
+  const currentSpeechTextRef = useRef<string | null>(null);
 
-  // Since we're using a backend service, TTS is "supported" if the flow can be called.
   const isTTSSupported = true; 
 
   useEffect(() => {
-    // Create a persistent audio element
     audioRef.current = new Audio();
     const audioElement = audioRef.current;
 
@@ -56,7 +54,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       audioElement.removeEventListener('error', handleAudioError);
       if (audioElement) {
         audioElement.pause();
-        audioElement.src = ""; // Clean up
+        audioElement.src = ""; 
       }
       audioRef.current = null;
     };
@@ -67,7 +65,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
     if (previousIsTTSEnabledRef.current !== undefined && previousIsTTSEnabledRef.current !== isTTSEnabled) {
       toast({
         title: "Text-to-Speech",
-        description: isTTSEnabled ? "Enabled using Google Cloud TTS" : "Disabled",
+        description: isTTSEnabled ? "Enabled (Google Cloud TTS)" : "Disabled",
       });
     }
     previousIsTTSEnabledRef.current = isTTSEnabled;
@@ -76,7 +74,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
   const cancel = useCallback(() => {
     if (audioRef.current) {
       audioRef.current.pause();
-      audioRef.current.src = ""; // Clear source to stop download/playback
+      audioRef.current.src = ""; 
       console.log("[useTextToSpeech] Audio playback cancelled.");
     }
     if (isSpeakingState) {
@@ -95,19 +93,17 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
         return;
     }
 
-    // If already speaking something else, cancel it first.
-    // If trying to speak the same text, do nothing (or maybe restart if desired)
     if (isSpeakingState) {
         if (currentSpeechTextRef.current === text) {
-            console.log("[useTextToSpeech] Speak called with the same text already playing.");
-            return; // Or audioRef.current.play() if paused and want to resume
+            console.log("[useTextToSpeech] Speak called with the same text already playing/requested.");
+            return; 
         }
         console.log("[useTextToSpeech] Speech in progress. Cancelling previous before speaking new text.");
-        cancel(); // This sets isSpeakingState to false
+        cancel(); 
     }
     
-    console.log(`[useTextToSpeech] Attempting to speak via Google Cloud TTS: "${text.substring(0, 30)}..."`);
-    setIsSpeakingState(true); // Set speaking state optimistically
+    console.log(`[useTextToSpeech] Attempting to speak via Google Cloud TTS flow: "${text.substring(0, 50)}..."`); // Verification log
+    setIsSpeakingState(true); 
     currentSpeechTextRef.current = text;
 
     try {
@@ -116,17 +112,14 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
       
       const result = await generateSpeechAudio(input);
       
-      // Check if this speech request is still the active one
       if (currentSpeechTextRef.current !== text) {
-        console.log("[useTextToSpeech] Speech request for different text completed, ignoring.");
-        // isSpeakingState should have been reset by a subsequent call's cancel() or direct cancel()
+        console.log("[useTextToSpeech] Speech request for different text completed, ignoring old result.");
         return;
       }
 
       if (result.audioContentDataUri && audioRef.current) {
         audioRef.current.src = result.audioContentDataUri;
         await audioRef.current.play();
-        // isSpeakingState remains true, will be set to false by 'ended' or 'error' event, or by cancel()
       } else {
         throw new Error("No audio content received from backend.");
       }
@@ -137,8 +130,7 @@ export function useTextToSpeech(): UseTextToSpeechReturn {
         description: `Could not synthesize or play audio: ${error.message || 'Unknown error'}`,
         variant: "destructive",
       });
-      // Ensure speaking state is false if an error occurs before or during play
-      if(currentSpeechTextRef.current === text) { // Only reset if this was the active request
+      if(currentSpeechTextRef.current === text) { 
         setIsSpeakingState(false);
         currentSpeechTextRef.current = null;
       }
