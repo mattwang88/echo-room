@@ -23,18 +23,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [currentCoaching, setCurrentCoaching] = useState<AnalyzeResponseOutput | null>(null);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
 
-  // Speech-to-Text
-  const [isRecording, setIsRecording] = useState(false);
-  // baseTextForSpeech stores text that was in the input *before* STT started for the current utterance,
-  // or the accumulated final transcript of the current multi-segment utterance.
-  const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
+  const [isRecording, setIsRecording] = useState(false); // Local state reflecting STT active status
+  const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>(""); // Text before STT starts for current utterance
 
   const {
-    isListening: sttIsListening,
+    isListening: sttIsListening, // isListening from the hook
     startListening: sttStartListening,
     stopListening: sttStopListening,
     isSTTSupported,
-    sttError, // We can observe this if needed, but useSpeechToText handles toasts
+    sttError,
     clearSTTError,
   } = useSpeechToText({
     onTranscript: (finalTranscriptSegment) => {
@@ -48,24 +45,22 @@ export function useMeetingSimulation(scenarioId: string | null) {
       setCurrentUserResponse(baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim);
     },
     onListeningChange: (listening) => {
+      // This is the callback from useSpeechToText hook when its internal isListening state changes.
+      // We use this to update our local isRecording state.
       console.log("[MeetingSimulation] STT Listening state changed from hook:", listening);
       setIsRecording(listening);
-      if (!listening && sttIsListening) {
-        // This case means the hook reported it stopped, but our local sttIsListening was still true.
-        // This might happen if onListeningChange is called slightly before sttIsListening from the hook updates.
-        // It's mostly for logging; setIsRecording(listening) is the key action.
-        console.log("[MeetingSimulation] STT hook reported stop, local sttIsListening was true.");
+      if (!listening) {
+        // Optional: if you want to clear baseTextForSpeech only when recording fully stops
+        // setBaseTextForSpeech(""); // Or handle this when starting a new recording
       }
-      // When recording actually stops (listening becomes false), we don't clear currentUserResponse here.
-      // It holds the final transcript. baseTextForSpeech will be reset when a new recording starts.
     }
   });
 
-   // Effect to monitor sttError from the hook if needed for additional logic
    useEffect(() => {
     if (sttError) {
       console.error("[MeetingSimulation] Observed STT Error from hook:", sttError);
-      // Toast is already handled by useSpeechToText hook for most errors
+      // Toast is handled by useSpeechToText hook for most errors like permissions etc.
+      // but we could add more specific toasts here if needed for app-level context.
     }
   }, [sttError]);
 
@@ -87,7 +82,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
         setCurrentUserResponse("");
         setBaseTextForSpeech("");
         setCurrentAgentIndex(0);
-        clearSTTError(); // Clear any lingering STT errors from previous sessions/scenarios
+        setIsRecording(false); // Ensure recording state is reset
+        clearSTTError(); 
       } else {
         toast({ title: "Error", description: "Scenario not found.", variant: "destructive" });
         router.push('/');
@@ -110,7 +106,10 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
   const handleEndMeeting = useCallback(() => {
     if (!scenario) return;
-    if (sttIsListening) sttStopListening(); // Use sttIsListening from hook
+    if (isRecording) { // Use local isRecording which should reflect sttIsListening
+      console.log("[MeetingSimulation] handleEndMeeting: Stopping STT recording.");
+      sttStopListening();
+    }
     setMeetingEnded(true);
     const summaryData: MeetingSummaryData = {
       scenarioTitle: scenario.title,
@@ -124,18 +123,21 @@ export function useMeetingSimulation(scenarioId: string | null) {
       console.error("Failed to save summary to localStorage:", error);
       toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
     }
-  }, [scenario, messages, router, toast, sttIsListening, sttStopListening]);
+  }, [scenario, messages, router, toast, isRecording, sttStopListening]);
 
   const submitUserResponse = async () => {
-    if (!currentUserResponse.trim() || !scenario || isAiThinking || isRecording) { // isRecording is local state
+    if (!currentUserResponse.trim() || !scenario || isAiThinking || isRecording) { 
         console.log("[MeetingSimulation] Submit blocked. Response:", currentUserResponse, "AI thinking:", isAiThinking, "Recording:", isRecording);
+        if(isRecording) {
+          toast({ title: "Recording Active", description: "Please stop recording before sending.", variant: "default"});
+        }
         return;
     }
 
     const userMsg = currentUserResponse.trim();
     addMessage("User", userMsg);
     setCurrentUserResponse("");
-    setBaseTextForSpeech(""); // Reset for next text input or STT
+    setBaseTextForSpeech(""); 
     setIsAiThinking(true);
     setCurrentCoaching(null);
 
@@ -148,12 +150,12 @@ export function useMeetingSimulation(scenarioId: string | null) {
       const semanticResult = await evaluateSemanticSkill(semanticInput);
 
       setMessages(prev => prev.map((msg, index) => {
-        if (index === prev.length -1 && msg.participant === 'User' && msg.text === userMsg) {
+        // Ensure we target the correct recently added user message
+        if (index === prev.length -1 && msg.participant === 'User' && msg.text === userMsg && !msg.coachingFeedback) {
             return { ...msg, coachingFeedback: coachingResult, semanticEvaluation: semanticResult };
         }
         return msg;
       }));
-
 
       const activeAgents = scenario.agentsInvolved;
       if (activeAgents && activeAgents.length > 0) {
@@ -171,13 +173,14 @@ export function useMeetingSimulation(scenarioId: string | null) {
             case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
             case 'Product': agentPersona = scenario.personaConfig.productPersona; break;
             case 'HR': agentPersona = scenario.personaConfig.hrPersona; break;
+            // default: console.warn(`[MeetingSimulation] No default persona mapping for agent role: ${agentToRespondRole}`);
           }
         }
 
         if (agentPersona) {
           const singleAgentSimInput: SimulateSingleAgentResponseInput = {
             userResponse: userMsg,
-            agentRole: agentToRespondRole as AgentRole,
+            agentRole: agentToRespondRole as AgentRole, // Cast as AgentRole if certain
             agentPersona: agentPersona,
             scenarioObjective: scenario.objective || "General Discussion",
           };
@@ -188,6 +191,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
           setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
         } else {
            console.warn(`[MeetingSimulation] No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
+           // Maybe add a generic system message if an agent can't respond?
         }
       }
 
@@ -206,28 +210,18 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
   };
 
-  useEffect(() => {
-    // This effect ensures isRecording (local state) is in sync with sttIsListening (from hook)
-    // This is a bit redundant if onListeningChange directly calls setIsRecording, but acts as a safeguard/logger
-    if (isRecording !== sttIsListening) {
-      console.log(`[MeetingSimulation] Syncing isRecording (${isRecording}) with sttIsListening (${sttIsListening})`);
-      setIsRecording(sttIsListening);
-    }
-  }, [sttIsListening, isRecording]);
-
-
   const handleToggleRecording = () => {
-    console.log("[MeetingSimulation] handleToggleRecording called. Current sttIsListening:", sttIsListening, "isRecording (local):", isRecording);
-    if (sttIsListening) { // Use sttIsListening as the source of truth for current recording state
+    console.log("[MeetingSimulation] handleToggleRecording called. Current isRecording (local state):", isRecording, "sttIsListening (hook state):", sttIsListening);
+    if (isRecording) { // Use local isRecording, which should be synced with sttIsListening
       sttStopListening();
     } else {
       if (!isSTTSupported) {
-        // Toast is handled by useSpeechToText if startListening is called when not supported
-        console.warn("[MeetingSimulation] STT not supported, cannot start recording.");
+        toast({ title: "Unsupported Feature", description: "Speech-to-text is not available in your browser.", variant: "destructive"});
         return;
       }
       clearSTTError();
       // Capture the current text field content to prepend to the STT result
+      // This ensures if user types then speaks, text is not lost.
       setBaseTextForSpeech(currentUserResponse);
       sttStartListening();
     }
@@ -243,7 +237,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
-    isRecording: sttIsListening, // Expose sttIsListening directly as isRecording
+    isRecording, // Expose local isRecording state, which is updated by onListeningChange
     handleToggleRecording,
     isSTTSupported,
   };
