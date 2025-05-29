@@ -7,7 +7,6 @@ import { Send, Loader2, Mic, MicOff } from 'lucide-react';
 import type React from 'react';
 import { cn } from '@/lib/utils';
 import { useToast } from "@/hooks/use-toast";
-// import { useEffect } from 'react'; // Removed if no longer needed
 
 interface ResponseInputProps {
   value: string;
@@ -15,11 +14,11 @@ interface ResponseInputProps {
   onSubmit: () => void;
   isSending: boolean;
   disabled?: boolean;
-  startRecording?: () => void;
-  stopRecording?: () => void;
-  isRecording?: boolean;
-  isSTTSupported?: boolean;
-  interimTranscript?: string;
+  startRecording?: () => void; // Kept for type safety, will be undefined if reverted
+  stopRecording?: () => void;  // Kept for type safety
+  isRecording?: boolean;       // Kept for type safety
+  isSTTSupported?: boolean;    // Kept for type safety
+  interimTranscript?: string;  // Kept for type safety
 }
 
 export function ResponseInput({
@@ -36,26 +35,17 @@ export function ResponseInput({
 }: ResponseInputProps) {
   const { toast } = useToast();
 
-  // Removed useEffect for console.log as it's no longer the primary debug focus.
-  // useEffect(() => {
-  //   console.log('[ResponseInput Props Check]', {
-  //     isSTTSupported,
-  //     isRecording,
-  //     startRecordingExists: typeof startRecording === 'function',
-  //     stopRecordingExists: typeof stopRecording === 'function',
-  //   });
-  // }, [isSTTSupported, isRecording, startRecording, stopRecording]);
-
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (!isSending && !disabled && !isRecording) {
+      if (!isSending && !disabled) { // Removed isRecording check for reversion
         onSubmit();
       }
     }
   };
 
   const handleMicClick = () => {
+    // This logic will effectively be dormant if STT is not supported or hooks are reverted
     if (!isSTTSupported) {
       toast({
         title: "Speech-to-Text Not Supported",
@@ -79,9 +69,10 @@ export function ResponseInput({
       startRecording();
     }
   };
-
-  const displayValue = isRecording && interimTranscript ? `${value} ${interimTranscript}`.trim() : value;
-  const canSubmit = !isSending && !disabled && value.trim() && !isRecording;
+  
+  // Reverted displayValue logic
+  const displayValue = value; 
+  const canSubmit = !isSending && !disabled && value.trim(); // Reverted canSubmit logic
 
   return (
     <div className="p-4 border-t bg-background sticky bottom-0" data-testid="response-input-container">
@@ -90,10 +81,10 @@ export function ResponseInput({
           value={displayValue}
           onChange={onChange}
           onKeyDown={handleKeyDown}
-          placeholder={isRecording ? "Listening..." : (isSTTSupported ? "Type or use mic (Shift+Enter for new line)" : "Type your response (Shift+Enter for new line)")}
+          placeholder={"Type your response (Shift+Enter for new line)"} // Reverted placeholder
           className="flex-1 resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none px-3 py-2 min-h-[40px] max-h-[150px] overflow-y-auto leading-tight"
           rows={1}
-          disabled={isSending || disabled || (isRecording && !!interimTranscript)}
+          disabled={isSending || disabled } // Reverted disabled logic
           aria-label="Your response"
           data-testid="response-textarea"
         />
@@ -114,34 +105,25 @@ export function ResponseInput({
             <span className="sr-only">Send response</span>
           </Button>
 
-          <Button
-            data-testid="mic-button" // Changed from mic-button-debug
-            onClick={handleMicClick}
-            // Button is disabled only if sending or general disable, not by !isSTTSupported
-            disabled={isSending || disabled} 
-            size="icon"
-            variant={isRecording ? "destructive" : "outline"}
-            title={
-              !isSTTSupported 
-                ? "Speech-to-text not supported by your browser. Click for details." 
-                : isRecording 
-                  ? "Stop recording" 
-                  : "Start recording"
-            }
-            className="h-9 w-9"
-          >
-            {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-            <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
-          </Button>
+          {/* Mic button section is conditionally rendered based on STT support / reverted logic might hide it if props are undefined */}
+          {/* For full reversion, this button might not have existed or had different logic */}
+          {isSTTSupported && startRecording && stopRecording && (
+             <Button
+              data-testid="mic-button"
+              onClick={handleMicClick}
+              disabled={isSending || disabled} 
+              size="icon"
+              variant={isRecording ? "destructive" : "outline"}
+              title={isRecording ? "Stop recording" : "Start recording"}
+              className="h-9 w-9"
+            >
+              {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+              <span className="sr-only">{isRecording ? "Stop recording" : "Start recording"}</span>
+            </Button>
+          )}
         </div>
       </div>
-       {/* Cleaned up interim transcript display a bit */}
-       {(isRecording && interimTranscript && !value.trim()) && (
-        <p className="text-xs text-muted-foreground mt-1 italic pl-1" data-testid="interim-transcript-display">Listening: {interimTranscript}</p>
-      )}
-       {(isRecording && !interimTranscript && !value.trim()) && (
-         <p className="text-xs text-muted-foreground mt-1 italic pl-1" data-testid="listening-indicator">Listening...</p>
-       )}
+       {/* Reverted interim transcript display */}
     </div>
   );
 }
