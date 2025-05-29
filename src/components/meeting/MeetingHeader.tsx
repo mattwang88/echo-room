@@ -50,7 +50,7 @@ export function MeetingHeader({
                 onClick={toggleTTSEnabled} 
                 className="h-9 w-9" 
                 title={isTTSEnabled ? "Disable Text-to-Speech" : "Enable Text-to-Speech"}
-                disabled={!isTTSSupported}
+                disabled={!isTTSSupported} // Note: isTTSSupported is always true for Google Cloud TTS version
               >
                 {isTTSSpeaking ? <VolumeX className="h-4 w-4 animate-pulse text-primary" /> : (isTTSEnabled ? <Volume2 className="h-4 w-4 text-primary" /> : <VolumeX className="h-4 w-4 text-muted-foreground" />) }
               </Button>
