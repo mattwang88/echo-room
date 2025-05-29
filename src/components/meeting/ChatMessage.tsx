@@ -1,3 +1,4 @@
+
 import type { Message } from '@/lib/types';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { AgentIcon, getAgentName, getAgentColor } from '@/components/icons/AgentIcons';
@@ -8,18 +9,19 @@ import { Badge } from '@/components/ui/badge';
 
 interface ChatMessageProps {
   message: Message;
+  scenarioId?: string; // Added scenarioId
 }
 
-export function ChatMessage({ message }: ChatMessageProps) {
+export function ChatMessage({ message, scenarioId }: ChatMessageProps) {
   const isUser = message.participant === 'User';
-  const agentName = getAgentName(message.participant);
-  const agentColor = getAgentColor(message.participant);
+  const agentName = getAgentName(message.participant, scenarioId);
+  const agentColor = getAgentColor(message.participant, scenarioId);
 
   return (
     <div className={cn("flex items-end gap-2 mb-4", isUser ? "justify-end" : "justify-start")}>
       {!isUser && (
         <Avatar className="h-8 w-8 self-start">
-          <AgentIcon role={message.participant} className="h-8 w-8" />
+          <AgentIcon role={message.participant} scenarioId={scenarioId} className="h-8 w-8" />
           <AvatarFallback>{agentName.substring(0, 2)}</AvatarFallback>
         </Avatar>
       )}
@@ -46,7 +48,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       </Card>
       {isUser && (
          <Avatar className="h-8 w-8 self-start">
-          <AgentIcon role={message.participant} className="h-8 w-8" />
+          <AgentIcon role={message.participant} scenarioId={scenarioId} className="h-8 w-8" />
           <AvatarFallback>{agentName.substring(0, 2)}</AvatarFallback>
         </Avatar>
       )}
