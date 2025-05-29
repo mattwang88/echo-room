@@ -31,13 +31,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     isRecording,
     handleToggleRecording,
     isSTTSupported,
-    sttInterimTranscript,
-    // TTS related props removed
-    // isTTSEnabled,
-    // toggleTTSEnabled,
-    // isTTSSupported,
-    // isTTSSpeaking,
-    // cancelSpeech,
+    // sttInterimTranscript prop is no longer used here as currentUserResponse updates live
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -72,12 +66,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <MeetingHeader 
           scenario={scenario} 
           onEndMeeting={handleEndMeeting} 
-          // TTS related props removed from MeetingHeader call
         />
         
-        <div className="p-2 bg-yellow-100 text-yellow-700 text-xs text-center">
-          STT Supported (from MeetingInterface): {isSTTSupported ? 'Yes' : 'No'}
-        </div>
+        {/* Optional: Keep diagnostic message for a bit longer during testing if needed */}
+        {/* <div className="p-2 bg-yellow-100 text-yellow-700 text-xs text-center">
+          STT Supported (from MeetingInterface): {isSTTSupported ? 'Yes' : 'No'} | Recording: {isRecording ? 'Yes' : 'No'}
+        </div> */}
 
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
@@ -105,7 +99,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           isRecording={isRecording}
           onToggleRecording={handleToggleRecording}
           isSTTSupported={isSTTSupported}
-          interimTranscript={sttInterimTranscript}
+          // interimTranscript prop removed as textarea value updates directly
         />
       </div>
 

@@ -34,29 +34,25 @@ export function ResponseInput({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      if (!isSending && !disabled && value.trim() && !isRecording) { // Also check !isRecording
+      if (!isSending && !disabled && value.trim() && !isRecording) { 
         onSubmit();
       }
     }
   };
 
   const handleMicClick = () => {
-    if (isSending || disabled) return;
-    if (!isSTTSupported && onToggleRecording) {
-      // The toast is now handled in useMeetingSimulation's handleToggleRecording
-      // but we still call onToggleRecording to attempt start, which will show the toast.
-       onToggleRecording();
-      return;
-    }
+    if (isSending || disabled) return; // Don't allow mic toggle if main input is disabled or sending
+    // The onToggleRecording function (handleToggleRecording in useMeetingSimulation)
+    // will handle the toast if !isSTTSupported.
     if (onToggleRecording) {
       onToggleRecording();
     }
   };
   
   const getPlaceholderText = () => {
-    if (isRecording) return "Listening...";
+    if (isRecording) return "Listening... Click mic to stop.";
     if (isSTTSupported) return "Type or click mic to speak...";
-    return "Type your response...";
+    return "Type your response... (Voice input not supported by browser)";
   }
 
   return (
@@ -73,29 +69,9 @@ export function ResponseInput({
           aria-label="Your response"
         />
         <div className="flex flex-col space-y-1 flex-shrink-0">
-          <TooltipProvider delayDuration={200}>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <Button
-                  variant={isRecording ? "destructive" : "outline"}
-                  size="icon"
-                  onClick={handleMicClick}
-                  disabled={isSending || disabled} // Mic button is disabled only if main input is, or sending
-                  className="h-9 w-9"
-                  aria-label={isRecording ? "Stop recording" : "Start recording"}
-                >
-                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
-                </Button>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>{isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported")}</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-
           <Button
             onClick={onSubmit}
-            disabled={isSending || disabled || !value.trim() || isRecording} // Also disable send if recording
+            disabled={isSending || disabled || !value.trim() || isRecording } // Also disable send if recording
             size="icon"
             className="h-9 w-9"
           >
@@ -106,14 +82,30 @@ export function ResponseInput({
             )}
             <span className="sr-only">Send response</span>
           </Button>
+
+          <TooltipProvider delayDuration={200}>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant={isRecording ? "destructive" : "outline"}
+                  size="icon"
+                  onClick={handleMicClick}
+                  // Mic button disabled only if main input is disabled or a message is sending.
+                  // Not disabled if !isSTTSupported, as clicking it will show a toast.
+                  disabled={isSending || disabled} 
+                  className="h-9 w-9"
+                  aria-label={isRecording ? "Stop recording" : "Start recording"}
+                >
+                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>
+                <p>{isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported by browser")}</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
       </div>
-      {/* The separate interim transcript display is removed as Textarea updates live */}
-      {/* {!isSTTSupported && ( // This message might be redundant if tooltip and toast cover it
-         <p className="text-xs text-destructive pt-1 pl-1">
-          Voice input not supported by your browser.
-        </p>
-      )} */}
     </div>
   );
 }

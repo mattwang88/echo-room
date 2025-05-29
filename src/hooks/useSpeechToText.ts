@@ -17,13 +17,13 @@ export function useSpeechToText({
 }: UseSpeechToTextOptions) {
   const { toast } = useToast();
   const [isListening, setIsListening] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [interimTranscript, setInterimTranscriptState] = useState('');
+  const [sttError, setSttError] = useState<string | null>(null); // Renamed from 'error' to avoid conflict if used in consuming component
+  // const [interimTranscriptState, setInterimTranscriptState] = useState(''); // This internal state is not strictly needed if prop callbacks are used directly
   const recognitionRef = useRef<SpeechRecognition | null>(null);
   
   const isSTTSupported = typeof window !== 'undefined' && ('SpeechRecognition' in window || 'webkitSpeechRecognition' in window);
 
-  const handleListeningChange = useCallback((listening: boolean) => {
+  const _handleListeningChange = useCallback((listening: boolean) => {
     setIsListening(listening);
     if (onListeningChange) {
       onListeningChange(listening);
@@ -32,13 +32,12 @@ export function useSpeechToText({
 
   useEffect(() => {
     if (!isSTTSupported) {
-      setError("Speech-to-Text is not supported in this browser.");
-      console.warn("SpeechRecognition API not supported.");
+      console.warn("SpeechRecognition API not supported by this browser.");
       return;
     }
 
-    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
-    recognitionRef.current = new SpeechRecognition();
+    const SpeechRecognitionAPI = window.SpeechRecognition || window.webkitSpeechRecognition;
+    recognitionRef.current = new SpeechRecognitionAPI();
     const recognition = recognitionRef.current;
 
     recognition.continuous = true;
@@ -46,56 +45,65 @@ export function useSpeechToText({
     recognition.lang = 'en-US';
 
     recognition.onstart = () => {
-      handleListeningChange(true);
-      setInterimTranscriptState('');
-      setError(null);
+      _handleListeningChange(true);
+      // setInterimTranscriptState(''); 
+      setSttError(null); 
     };
 
-    recognition.onresult = (event) => {
-      let finalTranscript = '';
+    recognition.onresult = (event: SpeechRecognitionEvent) => {
+      let finalTranscriptSegment = '';
       let currentInterim = '';
       for (let i = event.resultIndex; i < event.results.length; ++i) {
         if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
+          finalTranscriptSegment += event.results[i][0].transcript;
         } else {
           currentInterim += event.results[i][0].transcript;
         }
       }
       
-      setInterimTranscriptState(currentInterim);
+      // setInterimTranscriptState(currentInterim);
       if (onInterimTranscript) {
-        onInterimTranscript(currentInterim);
+        onInterimTranscript(currentInterim); 
       }
 
-      if (finalTranscript) {
-        onTranscript(finalTranscript.trim());
+      if (finalTranscriptSegment.trim()) {
+        onTranscript(finalTranscriptSegment.trim()); 
       }
     };
 
-    recognition.onerror = (event) => {
+    recognition.onerror = (event: SpeechRecognitionErrorEvent) => {
       let errorMessage = "An unknown error occurred with speech recognition.";
       if (event.error === 'no-speech') {
-        errorMessage = "No speech was detected. Microphone might be muted or setup incorrectly.";
+        errorMessage = "No speech was detected. Please try speaking again.";
       } else if (event.error === 'audio-capture') {
         errorMessage = "Microphone problem. Ensure it's connected and enabled.";
       } else if (event.error === 'not-allowed') {
-        errorMessage = "Permission to use microphone was denied. Please enable it in your browser settings.";
+        errorMessage = "Permission to use the microphone was denied. Please enable it in your browser's site settings.";
       } else if (event.error === 'network') {
-        errorMessage = "Network error during speech recognition.";
+        errorMessage = "A network error occurred during speech recognition.";
+      } else if (event.error === 'aborted') {
+        // Usually, 'aborted' is user-initiated (e.g., clicking stop) or by the app calling .stop().
+        // It's often not a "toastable" error unless unexpected.
+        // For now, we'll log it. If it happens unexpectedly, then we might toast.
+        console.log("Speech recognition aborted.", event.message);
+        // errorMessage = "Speech input was aborted."; // Potentially too noisy if user clicks stop.
       }
-      console.error('Speech recognition error', event);
-      setError(errorMessage);
-      toast({ title: "Voice Input Error", description: errorMessage, variant: "destructive" });
-      handleListeningChange(false);
+      
+      console.error('Speech recognition error:', event.error, event.message);
+      if (event.error !== 'aborted') { // Avoid toasting for deliberate stops if they manifest as 'aborted' error
+        setSttError(errorMessage);
+        toast({ title: "Voice Input Error", description: errorMessage, variant: "destructive" });
+      }
+      _handleListeningChange(false);
     };
 
     recognition.onend = () => {
-      handleListeningChange(false);
+      _handleListeningChange(false); 
     };
 
     return () => {
       if (recognitionRef.current) {
-        recognitionRef.current.stop();
+        recognitionRef.current.stop(); 
         recognitionRef.current.onstart = null;
         recognitionRef.current.onresult = null;
         recognitionRef.current.onerror = null;
@@ -103,39 +111,50 @@ export function useSpeechToText({
         recognitionRef.current = null;
       }
     };
-  }, [isSTTSupported, onTranscript, onInterimTranscript, toast, handleListeningChange]);
+  }, [isSTTSupported, onTranscript, onInterimTranscript, toast, _handleListeningChange]);
 
   const startListening = useCallback(() => {
     if (!isSTTSupported) {
       toast({ title: "Unsupported Feature", description: "Speech-to-text is not available in your browser.", variant: "destructive"});
       return;
     }
-    if (recognitionRef.current && !isListening) {
+    if (recognitionRef.current && !isListening) { 
       try {
-        setInterimTranscriptState('');
-        setError(null);
+        setSttError(null); 
+        // setInterimTranscriptState('');
         recognitionRef.current.start();
       } catch (e: any) {
-        console.error("Error starting speech recognition:", e);
-        let userMessage = "Could not start voice input.";
+        console.error("Error trying to start speech recognition:", e);
+        let userMessage = "Could not start voice input. Please try again.";
         if (e.name === 'NotAllowedError') {
           userMessage = "Microphone permission denied. Please enable it in browser settings.";
-        } else if (e.name === 'InvalidStateError' && isListening) {
-          // Already listening, do nothing or stop first
-          return;
+        } else if (e.name === 'InvalidStateError') {
+          userMessage = "Voice input is already active or in an invalid state.";
         }
-        setError(userMessage);
+        setSttError(userMessage);
         toast({ title: "Voice Input Error", description: userMessage, variant: "destructive" });
-        handleListeningChange(false);
+        _handleListeningChange(false); 
       }
     }
-  }, [isSTTSupported, isListening, toast, handleListeningChange]);
+  }, [isSTTSupported, isListening, toast, _handleListeningChange]);
 
   const stopListening = useCallback(() => {
-    if (recognitionRef.current && isListening) {
+    if (recognitionRef.current && isListening) { 
       recognitionRef.current.stop();
     }
   }, [isListening]);
+  
+  const clearSTTError = useCallback(() => {
+    setSttError(null);
+  }, []);
 
-  return { isListening, startListening, stopListening, error, isSTTSupported, interimTranscript };
+  return { 
+    isListening, 
+    startListening, 
+    stopListening, 
+    sttError,
+    isSTTSupported, 
+    // interimTranscript: interimTranscriptState, // No longer exposing this directly, rely on callbacks
+    clearSTTError,
+  };
 }
