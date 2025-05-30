@@ -12,22 +12,22 @@ interface VoiceConfig {
 }
 
 // Using high-quality voices for all roles, ensuring they are distinct
-const voiceMap: Record<Exclude<ParticipantRole, 'User'>, VoiceConfig> = {
-  CTO: { voiceName: 'en-US-Neural2-D', languageCode: 'en-US' },     // Changed to Neural2 Male
-  Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' }, // Stays WaveNet Female
-  Product: { voiceName: 'en-US-Neural2-I', languageCode: 'en-US' }, // Changed to Neural2 Male
-  HR: { voiceName: 'en-US-Wavenet-E', languageCode: 'en-US' },       // Stays WaveNet Female (distinct from Finance)
-  System: { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US' },   // Stays WaveNet Male
+const voiceMap: Record<Exclude<ParticipantRole, 'User' | 'System'>, VoiceConfig> & { System: VoiceConfig } = {
+  CTO: { voiceName: 'en-US-Neural2-D', languageCode: 'en-US' }, 
+  Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' }, 
+  Product: { voiceName: 'en-US-Neural2-I', languageCode: 'en-US' },
+  HR: { voiceName: 'en-US-Wavenet-E', languageCode: 'en-US' },       
+  System: { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US' },  
 };
 
 export function useTextToSpeech() {
   const { toast } = useToast();
-  const [isTTSEnabled, setIsTTSEnabled] = useState(true);
+  const [isTTSEnabled, setIsTTSEnabled] = useState(false); // Changed default to false
   const [isSpeakingState, setIsSpeakingState] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
   const isSpeakingStateRef = useRef(isSpeakingState);
-  const currentSpeechTextRef = useRef<string | null>(null); // To track the text of the current utterance
+  const currentSpeechTextRef = useRef<string | null>(null); 
 
   useEffect(() => {
     isSpeakingStateRef.current = isSpeakingState;
@@ -50,14 +50,15 @@ export function useTextToSpeech() {
     if (audioElement.error) {
         errorDetails = `Code: ${audioElement.error.code}, Message: ${audioElement.error.message || 'No message'}`;
         errorType = audioElement.error.code.toString();
-        // MEDIA_ERR_ABORTED is code 4, MEDIA_ERR_SRC_NOT_SUPPORTED might also imply cancellation
         if (audioElement.error.code === MediaError.MEDIA_ERR_ABORTED) {
           isAborted = true;
+        } else if (audioElement.error.code === MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED) {
+          // This can also happen if src is cleared during an abort/cancel
+          isAborted = true; 
         }
     }
     console.warn(`[useTextToSpeech] HTMLAudioElement 'error' event:`, errorDetails, e);
 
-    // Only show toast if it's not an abort error and we were trying to speak
     if (!isAborted && isSpeakingStateRef.current && currentSpeechTextRef.current) {
         toast({
           title: "Audio Playback Error",
@@ -65,7 +66,7 @@ export function useTextToSpeech() {
           variant: "destructive",
         });
     } else if (isAborted) {
-        console.log("[useTextToSpeech] Audio playback aborted, likely due to cancellation. No toast shown.");
+        console.log("[useTextToSpeech] Audio playback aborted or source cleared, likely due to cancellation. No toast shown.");
     }
     setIsSpeakingState(false);
     currentSpeechTextRef.current = null;
@@ -82,7 +83,7 @@ export function useTextToSpeech() {
       if (audioRef.current) {
         audioRef.current.pause();
         audioRef.current.removeAttribute('src');
-        audioRef.current.load();
+        audioRef.current.load(); // Important to clear previous source
         audioRef.current.onended = null;
         audioRef.current.onerror = null;
         audioRef.current = null;
@@ -100,12 +101,11 @@ export function useTextToSpeech() {
         audioRef.current.pause();
          if (!isSilent) console.log('[useTextToSpeech] Paused current audio playback.');
       }
-      audioRef.current.removeAttribute('src');
-      audioRef.current.load();
+      audioRef.current.removeAttribute('src'); // Remove the source
+      audioRef.current.load(); // Reset the audio element by loading no source
     }
     currentSpeechTextRef.current = null;
     setIsSpeakingState(false);
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
 
@@ -124,18 +124,19 @@ export function useTextToSpeech() {
 
     if (isSpeakingStateRef.current) {
       console.log(`[useTextToSpeech] Cancelling previous speech for new text request: "${text.substring(0,70)}..."`);
-      await memoizedCancel(true);
-      await new Promise(resolve => setTimeout(resolve, 100));
+      await memoizedCancel(true); // Pass true for silent cancellation
+      // Brief pause to allow the browser to process the cancellation fully
+      await new Promise(resolve => setTimeout(resolve, 50)); 
     }
 
-    currentSpeechTextRef.current = text;
+    currentSpeechTextRef.current = text; // Set the ref *before* setIsSpeakingState
     setIsSpeakingState(true);
     console.log(`[useTextToSpeech] Attempting to speak text via Google Cloud TTS flow: "${text.substring(0, 70)}..." for participant: ${participant}`);
 
     const voiceConfig = voiceMap[participant as Exclude<ParticipantRole, 'User'>] || voiceMap.System;
 
     const input: GenerateSpeechAudioInput = {
-      text: text,
+      text: text, // Sending plain text
       languageCode: voiceConfig.languageCode,
       voiceName: voiceConfig.voiceName,
     };
@@ -143,9 +144,10 @@ export function useTextToSpeech() {
     try {
       const result = await generateSpeechAudio(input);
 
+      // Check if this speech request is still the active one and if we are still in speaking state
       if (currentSpeechTextRef.current !== text || !isSpeakingStateRef.current) {
         console.log(`[useTextToSpeech] Speech request for text "${text.substring(0,70)}..." was superseded or cancelled before audio data arrived. Ignoring.`);
-        if (!isSpeakingStateRef.current) currentSpeechTextRef.current = null;
+        if (!isSpeakingStateRef.current) currentSpeechTextRef.current = null; // Clear if we are no longer supposed to be speaking
         return;
       }
 
@@ -193,6 +195,7 @@ export function useTextToSpeech() {
   const toggleTTSEnabled = useCallback(() => {
     setIsTTSEnabled(prev => {
       const newState = !prev;
+      console.log(`[useTextToSpeech] TTS toggled. New state: ${newState ? 'Enabled' : 'Disabled'}`);
       if (!newState) { // If disabling TTS
         memoizedCancel();
       }
@@ -200,9 +203,13 @@ export function useTextToSpeech() {
     });
   }, [memoizedCancel]);
 
+
   useEffect(() => {
+    // Optional: Add a toast when TTS state actually changes, deferred to avoid render-time updates
+    // This effect will run after the state change is committed.
     const timeoutId = setTimeout(() => {
-      // console.log(`[useTextToSpeech] TTS is now ${isTTSEnabled ? 'enabled' : 'disabled'}.`);
+      // This console log helps verify the state after toggle operation
+      // console.log(`[useTextToSpeech] isTTSEnabled state confirmed: ${isTTSEnabled ? 'Enabled' : 'Disabled'}.`);
     }, 0);
     return () => clearTimeout(timeoutId);
   }, [isTTSEnabled]);
