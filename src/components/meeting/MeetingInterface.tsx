@@ -6,7 +6,8 @@ import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
 import { ChatMessage } from './ChatMessage';
 import { ResponseInput } from './ResponseInput';
-import { CoachingPanel } from './CoachingPanel';
+// CoachingPanel is removed from the live meeting interface
+// import { CoachingPanel } from './CoachingPanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
@@ -25,7 +26,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     submitUserResponse,
     meetingEnded,
     handleEndMeeting,
-    currentCoaching,
+    // currentCoaching is no longer needed for the live interface
     // STT related
     isRecording,
     handleToggleRecording,
@@ -43,8 +44,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  // DiagnosticBar removed as TTS is not present
-  // const DiagnosticBar = () => ( ... );
+  const DiagnosticBar = () => (
+    <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
+      STT Supported by Browser: {isSTTSupported ? 'Yes' : 'No'} | 
+      Currently Recording: {isRecording ? 'Yes' : 'No'}
+      {/* TTS Diagnostic part removed as TTS is not currently active */}
+    </div>
+  );
 
 
   if (!scenario && !meetingEnded) {
@@ -68,12 +74,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <MeetingHeader
           scenario={scenario}
           onEndMeeting={handleEndMeeting}
+          // No TTS props needed for the header as TTS is removed
         />
 
-        {/* Optional: A simplified diagnostic bar for STT if needed for debugging */}
-        <div className="p-1 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
-          STT Supported: {isSTTSupported ? 'Yes' : 'No'} | Recording: {isRecording ? 'Yes' : 'No'}
-        </div>
+        <DiagnosticBar />
 
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
@@ -107,10 +111,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         />
       </div>
 
-      {/* Coaching Panel - visible on larger screens */}
+      {/* Coaching Panel Removed */}
+      {/* 
       <aside className="w-full md:w-1/3 lg:w-1/4 border-l bg-card max-h-screen overflow-y-auto hidden md:block">
          <CoachingPanel feedback={currentCoaching} isAiThinking={isAiThinking && messages[messages.length-1]?.participant === 'User'} />
-      </aside>
+      </aside> 
+      */}
     </div>
   );
 }

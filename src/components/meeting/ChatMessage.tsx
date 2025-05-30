@@ -5,7 +5,8 @@ import { AgentIcon, getAgentName, getAgentColor } from '@/components/icons/Agent
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
 import { formatDistanceToNow } from 'date-fns';
-import { Badge } from '@/components/ui/badge';
+// Badge component is no longer needed here
+// import { Badge } from '@/components/ui/badge';
 
 interface ChatMessageProps {
   message: Message;
@@ -38,12 +39,7 @@ export function ChatMessage({ message, scenarioId }: ChatMessageProps) {
           <span className={isUser ? "text-primary-foreground/80" : "text-muted-foreground"}>
             {formatDistanceToNow(new Date(message.timestamp), { addSuffix: true })}
           </span>
-          {message.semanticEvaluation?.score !== undefined && (
-            <Badge variant={message.semanticEvaluation.score > 0.7 ? "default" : (message.semanticEvaluation.score > 0.4 ? "secondary" : "destructive")} 
-                   className="ml-2 bg-accent text-accent-foreground">
-              Score: {(message.semanticEvaluation.score * 100).toFixed(0)}%
-            </Badge>
-          )}
+          {/* Semantic score badge removed from here */}
         </CardFooter>
       </Card>
       {isUser && (
