@@ -10,7 +10,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
-import { AnalyzeResponseOutputSchema } from './real-time-coaching'; // Import the schema
+import { AnalyzeResponseOutputSchema, type AnalyzeResponseOutput } from '@/lib/types'; // Import the schema and type from lib/types
 
 const PodcastSummaryInputSchema = z.object({
   scenarioTitle: z.string().describe('The title of the meeting scenario.'),

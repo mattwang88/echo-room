@@ -1,4 +1,3 @@
-// Implemented real-time coaching flow that analyzes user responses and provides feedback on clarity, persuasiveness, and technical soundness.
 
 'use server';
 
@@ -8,11 +7,12 @@
  * - analyzeResponse - Analyzes the user's response and provides coaching.
  * - AnalyzeResponseInput - The input type for the analyzeResponse function.
  * - AnalyzeResponseOutput - The return type for the analyzeResponse function.
- * - AnalyzeResponseOutputSchema - The Zod schema for the analyzeResponse function's output.
  */
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import type { AnalyzeResponseOutput } from '@/lib/types'; // Import type
+import { AnalyzeResponseOutputSchema } from '@/lib/types'; // Import schema
 
 const AnalyzeResponseInputSchema = z.object({
   response: z.string().describe('The user response to analyze.'),
@@ -20,21 +20,7 @@ const AnalyzeResponseInputSchema = z.object({
 });
 export type AnalyzeResponseInput = z.infer<typeof AnalyzeResponseInputSchema>;
 
-export const AnalyzeResponseOutputSchema = z.object({
-  clarity: z.string().describe('Feedback on the clarity of the response.'),
-  persuasiveness: z.string().describe('Feedback on the persuasiveness of the response.'),
-  technicalSoundness: z
-    .string()
-    .describe('Feedback on the technical soundness of the response.'),
-  domainKnowledgeFeedback: z
-    .string()
-    .describe('Feedback on the accuracy and depth of domain knowledge demonstrated in the response. This should be constructive and point out specific areas related to the topic discussed.'),
-  suggestedLearningMaterials: z
-    .string()
-    .describe('Suggestions for learning materials (e.g., articles, courses, documentation, books) to improve domain knowledge or communication skills relevant to the response and context. Provide 1-3 actionable suggestions.'),
-  overallFeedback: z.string().describe('Overall feedback on the response.'),
-});
-export type AnalyzeResponseOutput = z.infer<typeof AnalyzeResponseOutputSchema>;
+// AnalyzeResponseOutputSchema and AnalyzeResponseOutput are now imported from '@/lib/types'
 
 export async function analyzeResponse(input: AnalyzeResponseInput): Promise<AnalyzeResponseOutput> {
   return analyzeResponseFlow(input);
@@ -43,7 +29,7 @@ export async function analyzeResponse(input: AnalyzeResponseInput): Promise<Anal
 const analyzeResponsePrompt = ai.definePrompt({
   name: 'analyzeResponsePrompt',
   input: {schema: AnalyzeResponseInputSchema},
-  output: {schema: AnalyzeResponseOutputSchema},
+  output: {schema: AnalyzeResponseOutputSchema}, // Uses imported schema
   prompt: `You are a real-time communication and domain expert coach providing feedback to the user during a meeting simulation. Analyze the user's response based on the context provided.
 
 Context: {{{context}}}
@@ -72,7 +58,7 @@ const analyzeResponseFlow = ai.defineFlow(
   {
     name: 'analyzeResponseFlow',
     inputSchema: AnalyzeResponseInputSchema,
-    outputSchema: AnalyzeResponseOutputSchema,
+    outputSchema: AnalyzeResponseOutputSchema, // Uses imported schema
   },
   async input => {
     const {output} = await analyzeResponsePrompt(input);
