@@ -1,11 +1,12 @@
+
 'use client';
 
-import type { MeetingSummaryData, Message } from '@/lib/types';
+import type { MeetingSummaryData, Message, AnalyzeResponseOutput } from '@/lib/types';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { CheckCircle, MessageSquareWarning, Info, ThumbsUp, ThumbsDown, Sparkles } from 'lucide-react';
+import { CheckCircle, MessageSquareWarning, Info, ThumbsUp, ThumbsDown, Sparkles, Lightbulb, Zap, BarChartBig, MessageCircleQuestion, Brain, BookOpen } from 'lucide-react';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
@@ -25,6 +26,16 @@ const calculateAverageSemanticScore = (messages: Message[]): number | null => {
   );
   return totalScore / userMessagesWithScores.length;
 };
+
+const FeedbackItem: React.FC<{ title: string; content: string | undefined; icon: React.ReactNode }> = ({ title, content, icon }) => (
+  <div className="mb-3">
+    <div className="flex items-center text-md font-semibold mb-1 text-primary">
+      {icon}
+      <span className="ml-2">{title}</span>
+    </div>
+    <p className="text-sm text-foreground/80 whitespace-pre-wrap">{content || "N/A"}</p>
+  </div>
+);
 
 
 export function FeedbackReport({ summaryData }: FeedbackReportProps) {
@@ -46,7 +57,7 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
   const { scenarioTitle, objective, messages } = summaryData;
   const averageScore = calculateAverageSemanticScore(messages);
   
-  const userMessages = messages.filter(msg => msg.participant === 'User' && (msg.coachingFeedback || msg.semanticEvaluation));
+  const userMessagesWithFeedback = messages.filter(msg => msg.participant === 'User' && (msg.coachingFeedback || msg.semanticEvaluation));
 
   return (
     <Card className="w-full max-w-3xl mx-auto my-8 shadow-xl">
@@ -66,22 +77,21 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
             <p className="text-lg">
               Average Semantic Score: <Badge variant={averageScore > 0.7 ? "default" : (averageScore > 0.4 ? "secondary" : "destructive")} className="text-lg bg-accent text-accent-foreground">{(averageScore * 100).toFixed(0)}%</Badge>
             </p>
-            {/* Add more overall metrics here if available */}
           </div>
         )}
         
         <Separator className="my-6" />
 
         <h3 className="text-xl font-semibold mb-4 text-primary">Detailed Feedback on Your Responses:</h3>
-        {userMessages.length > 0 ? (
+        {userMessagesWithFeedback.length > 0 ? (
           <ScrollArea className="h-[400px] pr-3">
             <Accordion type="single" collapsible className="w-full">
-              {userMessages.map((msg, index) => (
+              {userMessagesWithFeedback.map((msg, index) => (
                 <AccordionItem value={`item-${index}`} key={msg.id} className="mb-2 border bg-card rounded-md shadow-sm">
                   <AccordionTrigger className="p-4 hover:no-underline">
                     <div className="flex flex-col text-left w-full">
                        <p className="font-medium truncate max-w-md">Your response #{index + 1}: "{msg.text}"</p>
-                       {msg.semanticEvaluation?.score && (
+                       {msg.semanticEvaluation?.score !== undefined && (
                            <Badge variant={msg.semanticEvaluation.score > 0.7 ? "default" : (msg.semanticEvaluation.score > 0.4 ? "secondary" : "destructive")} 
                                   className="w-fit mt-1 bg-accent text-accent-foreground">
                              Score: {(msg.semanticEvaluation.score * 100).toFixed(0)}%
@@ -92,21 +102,32 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
                   <AccordionContent className="p-4 border-t">
                     {msg.coachingFeedback && (
                       <div className="mb-3">
-                        <h4 className="font-semibold text-primary mb-1">Coaching Insights:</h4>
-                        <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1">
-                          <li><strong>Clarity:</strong> {msg.coachingFeedback.clarity}</li>
-                          <li><strong>Persuasiveness:</strong> {msg.coachingFeedback.persuasiveness}</li>
-                          <li><strong>Technical Soundness:</strong> {msg.coachingFeedback.technicalSoundness}</li>
-                          <li><strong>Overall:</strong> {msg.coachingFeedback.overallFeedback}</li>
-                        </ul>
+                        <h4 className="font-semibold text-primary mb-2">Coaching Insights:</h4>
+                        <FeedbackItem title="Clarity" content={msg.coachingFeedback.clarity} icon={<Lightbulb className="h-5 w-5" />} />
+                        <FeedbackItem title="Persuasiveness" content={msg.coachingFeedback.persuasiveness} icon={<Zap className="h-5 w-5" />} />
+                        <FeedbackItem title="Technical Soundness" content={msg.coachingFeedback.technicalSoundness} icon={<BarChartBig className="h-5 w-5" />} />
+                        <FeedbackItem title="Domain Knowledge" content={msg.coachingFeedback.domainKnowledgeFeedback} icon={<Brain className="h-5 w-5" />} />
+                        <FeedbackItem title="Suggested Learning Materials" content={msg.coachingFeedback.suggestedLearningMaterials} icon={<BookOpen className="h-5 w-5" />} />
+            
+                        <div className="mt-4 pt-3 border-t">
+                          <h5 className="text-md font-semibold mb-1 text-primary flex items-center">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-thumbs-up"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a2 2 0 0 1 1.79 1.11L15 5.88Z"/><path d="M12 2v7.12"/></svg>
+                            <span className="ml-2">Overall Feedback</span>
+                          </h5>
+                          <p className="text-sm text-foreground/80 whitespace-pre-wrap">{msg.coachingFeedback.overallFeedback}</p>
+                        </div>
                       </div>
                     )}
+                    {msg.semanticEvaluation && msg.coachingFeedback && <Separator className="my-3"/>}
                     {msg.semanticEvaluation && (
                        <div>
-                        <h4 className="font-semibold text-primary mb-1">Semantic Evaluation:</h4>
+                        <h4 className="font-semibold text-primary mb-2">Semantic Evaluation:</h4>
                          <p className="text-sm text-muted-foreground"><strong>Feedback:</strong> {msg.semanticEvaluation.feedback}</p>
                          <p className="text-sm text-muted-foreground mt-1"><strong>Guidance:</strong> {msg.semanticEvaluation.guidance}</p>
                        </div>
+                    )}
+                    {!msg.coachingFeedback && !msg.semanticEvaluation && (
+                        <p className="text-sm text-muted-foreground">No detailed feedback available for this response.</p>
                     )}
                   </AccordionContent>
                 </AccordionItem>
@@ -127,3 +148,4 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
     </Card>
   );
 }
+
