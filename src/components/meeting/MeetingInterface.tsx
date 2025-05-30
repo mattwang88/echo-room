@@ -2,7 +2,6 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import type { Scenario } from '@/lib/types';
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
 import { ChatMessage } from './ChatMessage';
@@ -27,6 +26,14 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     meetingEnded,
     handleEndMeeting,
     currentCoaching,
+    // STT related
+    isRecording,
+    handleToggleRecording,
+    isSTTSupported,
+    // TTS related
+    isTTSEnabled,
+    toggleTTSEnabled,
+    isTTSSpeaking,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -39,6 +46,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       }
     }
   }, [messages]);
+
+  const DiagnosticBar = () => (
+    <div className="p-1 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
+      STT Supported: {isSTTSupported ? 'Yes' : 'No'} | Recording: {isRecording ? 'Yes' : 'No'} | TTS Enabled: {isTTSEnabled ? 'Yes' : 'No'} | TTS Speaking: {isTTSSpeaking ? 'Yes' : 'No'}
+    </div>
+  );
 
   if (!scenario && !meetingEnded) { 
     return (
@@ -58,8 +71,16 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     <div className="flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background">
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-h-screen">
-        <MeetingHeader scenario={scenario} onEndMeeting={handleEndMeeting} />
+        <MeetingHeader 
+          scenario={scenario} 
+          onEndMeeting={handleEndMeeting} 
+          isTTSEnabled={isTTSEnabled} // Pass TTS state
+          toggleTTSEnabled={toggleTTSEnabled} // Pass TTS toggle
+          isTTSSpeaking={isTTSSpeaking}
+        />
         
+        <DiagnosticBar />
+
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
             {messages.map((msg) => (
@@ -82,6 +103,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           onSubmit={submitUserResponse}
           isSending={isAiThinking}
           disabled={meetingEnded}
+          // STT Props
+          isRecording={isRecording}
+          onToggleRecording={handleToggleRecording}
+          isSTTSupported={isSTTSupported}
         />
       </div>
 

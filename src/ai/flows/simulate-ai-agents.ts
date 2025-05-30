@@ -1,3 +1,4 @@
+
 // This is an auto-generated file from Firebase Studio.
 
 'use server';
@@ -39,27 +40,32 @@ const prompt = ai.definePrompt({
   input: {schema: SimulateAiAgentsInputSchema},
   output: {schema: SimulateAiAgentsOutputSchema},
   prompt: `You are simulating a multi-persona meeting. Your goal is to make the AI agent responses feel human-like, conversational, and constructive.
+Each agent's entire response MUST be very short and to the point.
 
-  The user will present a proposal. Each AI agent, from their specific role's viewpoint, should:
-  1. Express their initial feeling or reaction to the proposal (e.g., "From a tech perspective, I'm intrigued by...", "My initial concern financially is...").
-  2. Provide a brief comment or observation based on their expertise.
-  3. Ask 1-2 targeted follow-up questions to clarify or explore key aspects relevant to their role.
+The user will present a proposal. Each AI agent, from their specific role's viewpoint, should:
+1. Express their initial feeling or reaction to the proposal in a single, brief sentence.
+2. Provide one very concise comment or observation based on their expertise (a single, brief sentence).
+3. Ask 1 (or at most 2) targeted follow-up questions.
 
-  Here is the user's proposal:
-  {{{proposal}}}
+Here is the user's proposal:
+{{{proposal}}}
 
-  Agent Personas and Core Focus:
-  CTO: {{{ctoPersona}}} (Technical feasibility, scalability, integration, resources, risks)
-  Finance: {{{financePersona}}} (Budget, ROI, market size, financial viability, projections)
-  Product: {{{productPersona}}} (Market fit, user value, competition, roadmap, strategy alignment)
-  HR: {{{hrPersona}}} (Team structure, talent, culture, resourcing impact)
+Agent Personas and Core Focus:
+CTO: {{{ctoPersona}}} (Technical feasibility, scalability, integration, resources, risks)
+Finance: {{{financePersona}}} (Budget, ROI, market size, financial viability, projections)
+Product: {{{productPersona}}} (Market fit, user value, competition, roadmap, strategy alignment)
+HR: {{{hrPersona}}} (Team structure, talent, culture, resourcing impact)
 
-  Please provide the feedback for each agent in the following format, embodying the human-like qualities:
+When generating responses for multiple agents:
+- Ensure their speaking order feels natural.
+- If possible, have later agents subtly acknowledge or build upon points ostensibly made by earlier agents in the sequence (e.g., "From a finance perspective, considering the technical points raised..."). This creates an illusion of direct follow-up.
 
-  CTO Feedback: [CTO's feeling, comment, and 1-2 questions]
-  Finance Feedback: [Finance agent's feeling, comment, and 1-2 questions]
-  Product Feedback: [Product agent's feeling, comment, and 1-2 questions]
-  HR Feedback: [HR agent's feeling, comment, and 1-2 questions]`,
+Please provide the feedback for each agent in the following format:
+
+CTO Feedback: [CTO's very brief feeling, very brief comment, and 1-2 questions]
+Finance Feedback: [Finance agent's very brief feeling, very brief comment, and 1-2 questions]
+Product Feedback: [Product agent's very brief feeling, very brief comment, and 1-2 questions]
+HR Feedback: [HR agent's very brief feeling, very brief comment, and 1-2 questions]`,
 });
 
 const simulateAiAgentsFlow = ai.defineFlow(
@@ -73,3 +79,4 @@ const simulateAiAgentsFlow = ai.defineFlow(
     return output!;
   }
 );
+
