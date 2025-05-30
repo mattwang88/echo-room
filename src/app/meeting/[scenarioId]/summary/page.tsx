@@ -2,22 +2,22 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { MeetingSummaryData, Message } from '@/lib/types';
+import type { MeetingSummaryData } from '@/lib/types';
 import { FeedbackReport } from '@/components/summary/FeedbackReport';
 import { Logo } from '@/components/Logo';
-import { Loader2, Podcast } from 'lucide-react';
+import { Loader2, FileText } from 'lucide-react'; // Changed Podcast to FileText
 import { Button } from '@/components/ui/button';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { generatePodcastSummary, type PodcastSummaryInput, type PodcastSummaryOutput } from '@/ai/flows/generate-podcast-summary-flow';
-import type { AnalyzeResponseOutput } from '@/ai/flows/real-time-coaching';
+import { generateNotebookLMDebrief, type NotebookLMDebriefInput, type NotebookLMDebriefOutput } from '@/ai/flows/generate-notebooklm-debrief-flow'; // Updated import
+import type { AnalyzeResponseOutput } from '@/lib/types';
 
 
 export default function SummaryPage() {
   const [summaryData, setSummaryData] = useState<MeetingSummaryData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [podcastScript, setPodcastScript] = useState<string | null>(null);
-  const [isLoadingPodcast, setIsLoadingPodcast] = useState(false);
+  const [notebookLMDebriefContent, setNotebookLMDebriefContent] = useState<string | null>(null); // Renamed state
+  const [isLoadingDebrief, setIsLoadingDebrief] = useState(false); // Renamed state
 
   useEffect(() => {
     try {
@@ -38,29 +38,29 @@ export default function SummaryPage() {
         .filter(msg => msg.participant === 'User' && msg.coachingFeedback)
         .map(msg => ({
           userResponseText: msg.text,
-          coachingFeedback: msg.coachingFeedback as AnalyzeResponseOutput, // Cast as it's filtered
+          coachingFeedback: msg.coachingFeedback as AnalyzeResponseOutput,
         }));
 
       if (userMessagesWithCoaching.length > 0) {
-        setIsLoadingPodcast(true);
-        const podcastInput: PodcastSummaryInput = {
+        setIsLoadingDebrief(true);
+        const debriefInput: NotebookLMDebriefInput = { // Updated type
           scenarioTitle: summaryData.scenarioTitle,
           scenarioObjective: summaryData.objective,
           userResponsesWithCoaching: userMessagesWithCoaching,
         };
-        generatePodcastSummary(podcastInput)
-          .then((response: PodcastSummaryOutput) => {
-            setPodcastScript(response.podcastScript);
+        generateNotebookLMDebrief(debriefInput) // Updated function call
+          .then((response: NotebookLMDebriefOutput) => { // Updated type
+            setNotebookLMDebriefContent(response.notebookLMDebrief); // Updated property
           })
           .catch(error => {
-            console.error("Error generating podcast summary:", error);
-            setPodcastScript("Sorry, we couldn't generate your podcast debrief at this time.");
+            console.error("Error generating learning debrief:", error);
+            setNotebookLMDebriefContent("Sorry, we couldn't generate your learning debrief at this time.");
           })
           .finally(() => {
-            setIsLoadingPodcast(false);
+            setIsLoadingDebrief(false);
           });
       } else {
-        setPodcastScript("No coaching feedback was available to generate a podcast summary.");
+        setNotebookLMDebriefContent("No coaching feedback was available to generate a learning debrief.");
       }
     }
   }, [summaryData]);
@@ -101,25 +101,34 @@ export default function SummaryPage() {
         <Card className="shadow-xl">
           <CardHeader className="bg-secondary rounded-t-lg">
             <CardTitle className="text-2xl flex items-center text-secondary-foreground">
-              <Podcast className="mr-3 h-7 w-7 text-primary" />
-              EchoRoom Debrief
+              <FileText className="mr-3 h-7 w-7 text-primary" /> {/* Changed Icon */}
+              EchoRoom Learning Journal {/* Changed Title */}
             </CardTitle>
             <CardDescription className="text-secondary-foreground/80">
-              Your personalized podcast-style feedback summary.
+              Your personalized learning debrief and reflection prompts. {/* Changed Description */}
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
-            {isLoadingPodcast && (
+            {isLoadingDebrief && (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-                <p className="text-muted-foreground">Generating your debrief...</p>
+                <p className="text-muted-foreground">Generating your learning debrief...</p>
               </div>
             )}
-            {podcastScript && !isLoadingPodcast && (
+            {notebookLMDebriefContent && !isLoadingDebrief && (
               <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed text-foreground">
-                {podcastScript.split('\n').map((paragraph, index) => (
-                  <p key={index} className={paragraph.trim() === '' ? 'my-2' : 'mb-3'}>{paragraph}</p>
-                ))}
+                {notebookLMDebriefContent.split('\n').map((paragraph, index) => {
+                  // Simple heuristic to bold lines that look like headings (ending with ':')
+                  const isHeading = paragraph.trim().endsWith(':') && !paragraph.trim().startsWith('-');
+                  const isListItem = paragraph.trim().startsWith('-') || paragraph.trim().startsWith('•');
+                  
+                  if (isHeading) {
+                    return <h4 key={index} className="text-md font-semibold mt-3 mb-1 text-primary">{paragraph.replace(/\*\*/g, '')}</h4>;
+                  } else if (isListItem) {
+                     return <p key={index} className="mb-1 ml-4">{paragraph}</p>;
+                  }
+                  return <p key={index} className={paragraph.trim() === '' ? 'my-2' : 'mb-3'}>{paragraph}</p>;
+                })}
               </div>
             )}
           </CardContent>
