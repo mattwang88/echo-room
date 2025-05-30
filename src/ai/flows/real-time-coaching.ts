@@ -8,6 +8,7 @@
  * - analyzeResponse - Analyzes the user's response and provides coaching.
  * - AnalyzeResponseInput - The input type for the analyzeResponse function.
  * - AnalyzeResponseOutput - The return type for the analyzeResponse function.
+ * - AnalyzeResponseOutputSchema - The Zod schema for the analyzeResponse function's output.
  */
 
 import {ai} from '@/ai/genkit';
@@ -19,7 +20,7 @@ const AnalyzeResponseInputSchema = z.object({
 });
 export type AnalyzeResponseInput = z.infer<typeof AnalyzeResponseInputSchema>;
 
-const AnalyzeResponseOutputSchema = z.object({
+export const AnalyzeResponseOutputSchema = z.object({
   clarity: z.string().describe('Feedback on the clarity of the response.'),
   persuasiveness: z.string().describe('Feedback on the persuasiveness of the response.'),
   technicalSoundness: z
