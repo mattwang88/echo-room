@@ -30,7 +30,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     isRecording,
     handleToggleRecording,
     isSTTSupported,
-    sttInternalIsListening,
+    // TTS related
+    isTTSEnabled,
+    toggleTTSEnabled,
+    isTTSSpeaking,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -44,12 +47,9 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  const STTSupportMessage = () => (
-    <div className="p-2 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300">
-      Speech-to-Text Supported by Browser: {isSTTSupported ? 'Yes' : 'No'}
-      {isSTTSupported && isRecording !== undefined && (
-        <span className="ml-2">| Currently Recording: {isRecording ? 'Yes' : 'No'}</span>
-      )}
+  const DiagnosticBar = () => (
+    <div className="p-1 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
+      STT Supported: {isSTTSupported ? 'Yes' : 'No'} | Recording: {isRecording ? 'Yes' : 'No'} | TTS Enabled: {isTTSEnabled ? 'Yes' : 'No'} | TTS Speaking: {isTTSSpeaking ? 'Yes' : 'No'}
     </div>
   );
 
@@ -75,9 +75,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <MeetingHeader 
           scenario={scenario} 
           onEndMeeting={handleEndMeeting} 
+          isTTSEnabled={isTTSEnabled} // Pass TTS state
+          toggleTTSEnabled={toggleTTSEnabled} // Pass TTS toggle
+          isTTSSpeaking={isTTSSpeaking}
         />
         
-        <STTSupportMessage />
+        <DiagnosticBar />
 
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
