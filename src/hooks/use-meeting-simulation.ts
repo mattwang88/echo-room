@@ -6,9 +6,9 @@ import { useRouter } from 'next/navigation';
 import type { Scenario, Message, MeetingSummaryData, ParticipantRole, AgentRole, AnalyzeResponseOutput, EvaluateSemanticSkillOutput } from '@/lib/types';
 import { getScenarioById } from '@/lib/scenarios';
 import { simulateSingleAgentResponse, type SimulateSingleAgentResponseInput } from '@/ai/flows/simulate-single-agent-response';
-// analyzeResponse and evaluateSemanticSkill are no longer called here
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from './useSpeechToText';
+import { useTextToSpeech } from './useTextToSpeech';
 
 export function useMeetingSimulation(scenarioId: string | null) {
   const router = useRouter();
@@ -20,33 +20,45 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [meetingEnded, setMeetingEnded] = useState<boolean>(false);
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
-  // currentCoaching is removed as coaching happens on the summary page
+  const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null);
+  const isMountedRef = useRef(true);
 
   const [isRecording, setIsRecording] = useState(false);
   const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
 
-  const isMountedRef = useRef(true);
-  const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null);
+  const { speak: ttsSpeak, cancel: ttsCancel, isSpeaking: isTTSSpeaking } = useTextToSpeech();
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
 
   const handleSttListeningChange = useCallback((listening: boolean) => {
     if (!isMountedRef.current) return;
+    console.log(`[MeetingSimulation] STT Listening state changed via callback: ${listening}. Updating isRecording.`);
     setIsRecording(listening);
-  }, [setIsRecording]); // setIsRecording is stable
+    if (listening) { // If STT starts, cancel any ongoing TTS
+      console.log('[MeetingSimulation] STT started, cancelling any ongoing TTS.');
+      ttsCancel();
+    }
+  }, [setIsRecording, ttsCancel]);
 
   const handleSttTranscript = useCallback((finalTranscriptSegment: string) => {
     if (!isMountedRef.current) return;
+    console.log(`[MeetingSimulation] STT Final Transcript Segment Received: "${finalTranscriptSegment}"`);
     setBaseTextForSpeech(prevBaseText => {
       const newCumulativeText = (prevBaseText ? prevBaseText + " " : "") + finalTranscriptSegment.trim();
       setCurrentUserResponse(newCumulativeText);
       return newCumulativeText;
     });
-  }, [setCurrentUserResponse, setBaseTextForSpeech]); // setCurrentUserResponse is stable
+  }, [setCurrentUserResponse, setBaseTextForSpeech]);
 
   const handleSttInterimTranscript = useCallback((interim: string) => {
     if (!isMountedRef.current) return;
-     // Use a more stable way to construct current response with interim results
-     setCurrentUserResponse(prev => baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim);
-  }, [baseTextForSpeech, setCurrentUserResponse]); // setCurrentUserResponse is stable
+    setCurrentUserResponse(prev => baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim.trim());
+  }, [baseTextForSpeech, setCurrentUserResponse]);
 
   const {
     isListening: sttInternalIsListening,
@@ -62,90 +74,105 @@ export function useMeetingSimulation(scenarioId: string | null) {
   });
 
   useEffect(() => {
-    isMountedRef.current = true;
-    return () => {
-      isMountedRef.current = false;
-      if (sttInternalIsListening) {
-        sttStopListening();
-      }
-    };
-  }, [sttInternalIsListening, sttStopListening]);
-
-  useEffect(() => {
     if (sttError && isMountedRef.current) {
-      // Errors are already toasted within useSpeechToText
       console.warn("[MeetingSimulation] STT Error from hook:", sttError);
+      // Error is already toasted by useSpeechToText
     }
   }, [sttError]);
 
   useEffect(() => {
+    console.log(`[MeetingSimulation] ScenarioID effect. ID: ${scenarioId}, Current scenario: ${scenario?.id}`);
     if (scenarioId) {
       const foundScenario = getScenarioById(scenarioId);
       if (foundScenario) {
         if (!scenario || scenario.id !== scenarioId) {
-          setScenario(foundScenario);
-          const initialMsg: Message = {
-            id: Date.now().toString(),
-            participant: foundScenario.initialMessage.participant,
-            text: foundScenario.initialMessage.text,
-            timestamp: Date.now(),
-          };
-          setMessages([initialMsg]);
-          setCurrentTurn(0);
-          setMeetingEnded(false);
-          setCurrentUserResponse("");
-          setBaseTextForSpeech("");
-          setCurrentAgentIndex(0);
-          if (isRecording) {
-            sttStopListening();
+          console.log(`[MeetingSimulation] Loading scenario for ID: ${scenarioId}`);
+          if(isMountedRef.current) {
+            setScenario(foundScenario);
+            const initialMsg: Message = {
+              id: Date.now().toString(),
+              participant: foundScenario.initialMessage.participant,
+              text: foundScenario.initialMessage.text,
+              timestamp: Date.now(),
+            };
+            setMessages([initialMsg]);
+            setCurrentTurn(0);
+            setMeetingEnded(false);
+            setCurrentUserResponse("");
+            setBaseTextForSpeech("");
+            setCurrentAgentIndex(0);
+            if (isRecording) { // Stop STT if it was active from a previous scenario
+              sttStopListening();
+            }
+            ttsCancel(); // Cancel any TTS from previous scenario
+            clearSTTError();
+            console.log(`[MeetingSimulation] Decision point for initial message: initialMsg text available: ${!!initialMsg.text}`);
+            if (initialMsg.text && initialMessageSpokenForScenarioIdRef.current !== scenarioId) {
+               console.log(`[MeetingSimulation] Initial scenario setup: Attempting to speak initial message: "${initialMsg.text.substring(0,30)}..."`);
+               ttsSpeak(initialMsg.text, initialMsg.participant);
+               initialMessageSpokenForScenarioIdRef.current = scenarioId;
+            } else {
+                console.log(`[MeetingSimulation] Initial message for ${scenarioId} already spoken or TTS disabled, or no text.`);
+            }
           }
-          clearSTTError();
-          initialMessageSpokenForScenarioIdRef.current = null;
         }
       } else {
         toast({ title: "Error", description: "Scenario not found.", variant: "destructive" });
         if (isMountedRef.current) router.push('/');
       }
-    } else {
-      setScenario(null);
-      setMessages([]);
+    } else if (!scenarioId && scenario) { // Navigating away from a meeting page
+      console.log('[MeetingSimulation] scenarioId is null, resetting scenario state.');
+      if(isMountedRef.current) setScenario(null);
+      if(isMountedRef.current) setMessages([]);
+      initialMessageSpokenForScenarioIdRef.current = null;
+      ttsCancel();
+      if (isRecording) sttStopListening();
     }
-  }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario]);
+  // Removed isTTSEnabled from dependencies as it's always true now internally in useTextToSpeech
+  }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario, ttsSpeak, ttsCancel, setCurrentUserResponse, setMessages, setScenario, setMeetingEnded, setCurrentTurn, setCurrentAgentIndex, setBaseTextForSpeech]);
 
-  const addMessage = useCallback((participant: ParticipantRole, text: string) => {
+
+  const addMessage = useCallback((participant: ParticipantRole, text: string, isAgentResponse: boolean = false) => {
     if (!isMountedRef.current) return;
     const newMessage: Message = {
       id: Date.now().toString() + participant + Math.random(),
       participant,
       text,
       timestamp: Date.now(),
-      // coachingFeedback and semanticEvaluation will be added on the summary page
     };
     setMessages(prev => [...prev, newMessage]);
-  }, []);
+
+    if (isAgentResponse && participant !== 'User') {
+        console.log(`[MeetingSimulation] Initiating TTS for ${participant}'s message: "${text.substring(0,30)}..."`);
+        ttsSpeak(text, participant);
+    }
+  }, [setMessages, ttsSpeak]);
 
   const handleEndMeeting = useCallback(() => {
-    if (!isMountedRef.current) return;
-    setMeetingEnded(true); // Set this first
+    setMeetingEnded(true); // Set this first for immediate UI feedback
     if (!scenario) return;
+    console.log('[MeetingSimulation] Ending meeting.');
 
     if (isRecording) {
+      console.log('[MeetingSimulation] Stopping STT due to meeting end.');
       sttStopListening();
     }
+    console.log('[MeetingSimulation] Cancelling any ongoing TTS due to meeting end.');
+    ttsCancel(); // Cancel any ongoing TTS
 
     const summaryData: MeetingSummaryData = {
       scenarioTitle: scenario.title,
       objective: scenario.objective,
-      messages: messages, // Messages will not have feedback yet
+      messages: messages,
     };
     try {
       localStorage.setItem('echoRoomMeetingSummary', JSON.stringify(summaryData));
       router.push(`/meeting/${scenario.id}/summary`);
     } catch (error) {
-      console.error("Failed to save summary to localStorage:", error);
+      console.error("[MeetingSimulation] Failed to save summary to localStorage:", error);
       toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
     }
-  }, [scenario, messages, router, toast, isRecording, sttStopListening, setMeetingEnded]);
+  }, [scenario, messages, router, toast, isRecording, sttStopListening, ttsCancel, setMeetingEnded]);
 
 
   const submitUserResponse = async () => {
@@ -162,16 +189,19 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
 
     const userMsgText = currentUserResponse.trim();
-    // Add user message without feedback
     addMessage('User', userMsgText);
 
-    setCurrentUserResponse("");
-    setBaseTextForSpeech("");
-    setIsAiThinking(true);
+    if(isMountedRef.current) {
+      setCurrentUserResponse("");
+      setBaseTextForSpeech("");
+      setIsAiThinking(true);
+    }
+    
+    // Cancel any ongoing TTS before AI agent responds
+    console.log('[MeetingSimulation] User submitted response. Cancelling any ongoing TTS.');
+    ttsCancel();
 
     try {
-      // Removed calls to analyzeResponse and evaluateSemanticSkill
-
       console.time("simulateSingleAgentResponse");
       const activeAgents = scenario.agentsInvolved;
       if (activeAgents && activeAgents.length > 0) {
@@ -201,25 +231,26 @@ export function useMeetingSimulation(scenarioId: string | null) {
           };
           const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
           if (agentResponse && agentResponse.agentFeedback) {
-            addMessage(agentToRespondRole, agentResponse.agentFeedback);
+            // Add agent message, which will trigger TTS in addMessage
+            addMessage(agentToRespondRole, agentResponse.agentFeedback, true);
           }
-          setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
+          if(isMountedRef.current) setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
         } else {
            console.warn(`[MeetingSimulation] No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
         }
       }
       console.timeEnd("simulateSingleAgentResponse");
 
-      setCurrentTurn(prev => prev + 1);
+      if(isMountedRef.current) setCurrentTurn(prev => prev + 1);
       if (scenario.maxTurns && currentTurn + 1 >= scenario.maxTurns) {
-        addMessage("System", "The meeting time is up. This session has now concluded.");
+        addMessage("System", "The meeting time is up. This session has now concluded.", true);
         handleEndMeeting();
       }
 
     } catch (error) {
       console.error("[MeetingSimulation] AI interaction error:", error);
       toast({ title: "AI Error", description: "An error occurred while processing your request.", variant: "destructive" });
-      addMessage("System", "Sorry, I encountered an error. Please try again.");
+      addMessage("System", "Sorry, I encountered an error. Please try again.", true);
     } finally {
       if(isMountedRef.current) setIsAiThinking(false);
     }
@@ -231,11 +262,17 @@ export function useMeetingSimulation(scenarioId: string | null) {
       return;
     }
     clearSTTError();
+    console.log(`[MeetingSimulation] handleToggleRecording called. Current isRecording state: ${isRecording}, isSTTSupported: ${browserSupportsSTT}`);
 
     if (isRecording) {
+      console.log('[MeetingSimulation] Calling sttStopListening() from useSpeechToText.');
       sttStopListening();
     } else {
-      setBaseTextForSpeech(currentUserResponse);
+      // Before starting STT, cancel any ongoing TTS
+      console.log('[MeetingSimulation] Starting STT, cancelling any ongoing TTS.');
+      ttsCancel();
+      if(isMountedRef.current) setBaseTextForSpeech(currentUserResponse); // Preserve current text
+      console.log('[MeetingSimulation] Calling sttStartListening() from useSpeechToText.');
       sttStartListening();
     }
   };
@@ -249,10 +286,10 @@ export function useMeetingSimulation(scenarioId: string | null) {
     submitUserResponse,
     meetingEnded,
     handleEndMeeting,
-    // currentCoaching removed
     isRecording,
     handleToggleRecording,
     isSTTSupported: browserSupportsSTT,
-    sttInternalIsListening,
+    sttInternalIsListening, // For UI feedback if needed
+    isTTSSpeaking, // Pass TTS speaking state to UI if needed
   };
 }

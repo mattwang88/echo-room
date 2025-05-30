@@ -6,8 +6,6 @@ import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
 import { ChatMessage } from './ChatMessage';
 import { ResponseInput } from './ResponseInput';
-// CoachingPanel is removed from the live meeting interface
-// import { CoachingPanel } from './CoachingPanel';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
@@ -26,11 +24,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     submitUserResponse,
     meetingEnded,
     handleEndMeeting,
-    // currentCoaching is no longer needed for the live interface
-    // STT related
     isRecording,
     handleToggleRecording,
     isSTTSupported,
+    isTTSSpeaking, // Get TTS speaking state
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -47,8 +44,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   const DiagnosticBar = () => (
     <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
       STT Supported by Browser: {isSTTSupported ? 'Yes' : 'No'} | 
-      Currently Recording: {isRecording ? 'Yes' : 'No'}
-      {/* TTS Diagnostic part removed as TTS is not currently active */}
+      Currently Recording: {isRecording ? 'Yes' : 'No'} | 
+      TTS Currently Speaking: {isTTSSpeaking ? 'Yes' : 'No'} (TTS is always on)
     </div>
   );
 
@@ -74,7 +71,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         <MeetingHeader
           scenario={scenario}
           onEndMeeting={handleEndMeeting}
-          // No TTS props needed for the header as TTS is removed
         />
 
         <DiagnosticBar />
@@ -103,20 +99,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           onChange={(e) => setCurrentUserResponse(e.target.value)}
           onSubmit={submitUserResponse}
           isSending={isAiThinking}
-          disabled={meetingEnded}
-          // STT Props
+          disabled={meetingEnded || isTTSSpeaking} // Disable input while TTS is speaking
           isRecording={isRecording}
           onToggleRecording={handleToggleRecording}
           isSTTSupported={isSTTSupported}
         />
       </div>
-
-      {/* Coaching Panel Removed */}
-      {/* 
-      <aside className="w-full md:w-1/3 lg:w-1/4 border-l bg-card max-h-screen overflow-y-auto hidden md:block">
-         <CoachingPanel feedback={currentCoaching} isAiThinking={isAiThinking && messages[messages.length-1]?.participant === 'User'} />
-      </aside> 
-      */}
     </div>
   );
 }
