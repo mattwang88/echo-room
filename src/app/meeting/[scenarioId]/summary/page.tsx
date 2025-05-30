@@ -2,7 +2,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { MeetingSummaryData } from '@/lib/types';
+import type { MeetingSummaryData, Message, AnalyzeResponseOutput, EvaluateSemanticSkillOutput } from '@/lib/types';
 import { FeedbackReport } from '@/components/summary/FeedbackReport';
 import { Logo } from '@/components/Logo';
 import { Loader2, Copy, AlertTriangle } from 'lucide-react';
@@ -12,11 +12,14 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { useToast } from "@/hooks/use-toast";
 import { generateNotebookLMDebrief, type NotebookLMDebriefInput, type NotebookLMDebriefOutput } from '@/ai/flows/generate-notebooklm-debrief-flow';
-import type { AnalyzeResponseOutput } from '@/lib/types';
+import { analyzeResponse, type AnalyzeResponseInput } from '@/ai/flows/real-time-coaching';
+import { evaluateSemanticSkill, type EvaluateSemanticSkillInput } from '@/ai/flows/semantic-skill-evaluation';
 
 export default function SummaryPage() {
-  const [summaryData, setSummaryData] = useState<MeetingSummaryData | null>(null);
-  const [isLoading, setIsLoading] = useState(true);
+  const [rawSummaryData, setRawSummaryData] = useState<MeetingSummaryData | null>(null);
+  const [enrichedSummaryData, setEnrichedSummaryData] = useState<MeetingSummaryData | null>(null);
+  const [isLoadingSummary, setIsLoadingSummary] = useState(true);
+  const [isLoadingFeedback, setIsLoadingFeedback] = useState(false);
   const [notebookLMDebriefContent, setNotebookLMDebriefContent] = useState<string | null>(null);
   const [isLoadingDebrief, setIsLoadingDebrief] = useState(false);
   const { toast } = useToast();
@@ -25,29 +28,69 @@ export default function SummaryPage() {
     try {
       const storedSummary = localStorage.getItem('echoRoomMeetingSummary');
       if (storedSummary) {
-        setSummaryData(JSON.parse(storedSummary));
+        setRawSummaryData(JSON.parse(storedSummary));
       }
     } catch (error) {
       console.error("Error reading summary from localStorage:", error);
     } finally {
-      setIsLoading(false);
+      setIsLoadingSummary(false);
     }
   }, []);
 
   useEffect(() => {
-    if (summaryData) {
-      const userMessagesWithCoaching = summaryData.messages
+    if (rawSummaryData && !enrichedSummaryData && !isLoadingFeedback) {
+      setIsLoadingFeedback(true);
+      const processMessages = async () => {
+        const enrichedMessages: Message[] = [];
+        for (const message of rawSummaryData.messages) {
+          if (message.participant === 'User') {
+            try {
+              const coachingInput: AnalyzeResponseInput = { response: message.text, context: rawSummaryData.objective };
+              const coachingResult = await analyzeResponse(coachingInput);
+
+              const semanticInput: EvaluateSemanticSkillInput = { responseText: message.text, context: rawSummaryData.objective };
+              const semanticResult = await evaluateSemanticSkill(semanticInput);
+              
+              enrichedMessages.push({
+                ...message,
+                coachingFeedback: coachingResult,
+                semanticEvaluation: semanticResult,
+              });
+            } catch (error) {
+              console.error("Error fetching feedback for message:", message.id, error);
+              toast({
+                title: "Feedback Error",
+                description: `Could not fetch all feedback for response: "${message.text.substring(0,30)}..."`,
+                variant: "destructive",
+              });
+              enrichedMessages.push(message); // Add message even if feedback fails
+            }
+          } else {
+            enrichedMessages.push(message);
+          }
+        }
+        setEnrichedSummaryData({ ...rawSummaryData, messages: enrichedMessages });
+        setIsLoadingFeedback(false);
+      };
+      processMessages();
+    }
+  }, [rawSummaryData, enrichedSummaryData, isLoadingFeedback, toast]);
+
+
+  useEffect(() => {
+    if (enrichedSummaryData) { // Generate debrief once enriched data is ready
+      const userMessagesWithCoaching = enrichedSummaryData.messages
         .filter(msg => msg.participant === 'User' && msg.coachingFeedback)
         .map(msg => ({
           userResponseText: msg.text,
-          coachingFeedback: msg.coachingFeedback as AnalyzeResponseOutput, // Ensure this type cast is safe
+          coachingFeedback: msg.coachingFeedback as AnalyzeResponseOutput,
         }));
 
       if (userMessagesWithCoaching.length > 0) {
         setIsLoadingDebrief(true);
         const debriefInput: NotebookLMDebriefInput = {
-          scenarioTitle: summaryData.scenarioTitle,
-          scenarioObjective: summaryData.objective,
+          scenarioTitle: enrichedSummaryData.scenarioTitle,
+          scenarioObjective: enrichedSummaryData.objective,
           userResponsesWithCoaching: userMessagesWithCoaching,
         };
         generateNotebookLMDebrief(debriefInput)
@@ -57,6 +100,11 @@ export default function SummaryPage() {
           .catch(error => {
             console.error("Error generating learning debrief:", error);
             setNotebookLMDebriefContent("Sorry, we couldn't generate your learning debrief at this time.");
+            toast({
+                title: "Debrief Generation Error",
+                description: "Failed to generate the learning debrief.",
+                variant: "destructive",
+            });
           })
           .finally(() => {
             setIsLoadingDebrief(false);
@@ -65,7 +113,7 @@ export default function SummaryPage() {
         setNotebookLMDebriefContent("No coaching feedback was available to generate a learning debrief.");
       }
     }
-  }, [summaryData]);
+  }, [enrichedSummaryData, toast]);
 
   const handleCopyToClipboard = () => {
     if (notebookLMDebriefContent) {
@@ -87,22 +135,39 @@ export default function SummaryPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoadingSummary || (rawSummaryData && isLoadingFeedback)) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-background text-center">
         <Logo className="mb-6" iconSize={10} textSize="text-3xl" />
         <Loader2 className="h-12 w-12 animate-spin text-primary mb-4" />
-        <p className="text-xl text-muted-foreground">Loading your feedback summary...</p>
+        <p className="text-xl text-muted-foreground">
+          {isLoadingSummary ? "Loading your meeting data..." : "Generating feedback and insights..."}
+        </p>
       </div>
     );
   }
 
-  if (!summaryData) {
+  if (!rawSummaryData && !isLoadingSummary) { // If loading is done but no raw data
      return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-background text-center">
         <Logo className="mb-6" iconSize={10} textSize="text-3xl" />
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
         <h1 className="text-2xl font-semibold text-destructive mb-4">No Summary Data Found</h1>
-        <p className="text-muted-foreground mb-6">We couldn't find the summary for your last meeting.</p>
+        <p className="text-muted-foreground mb-6">We couldn't find the summary for your last meeting. Please complete a meeting first.</p>
+        <Link href="/" passHref>
+          <Button>Return to Scenarios</Button>
+        </Link>
+      </div>
+    );
+  }
+  
+  if (!enrichedSummaryData && !isLoadingFeedback && rawSummaryData) { // If raw data is there but feedback failed or isn't loaded yet
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-background text-center">
+        <Logo className="mb-6" iconSize={10} textSize="text-3xl" />
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <h1 className="text-2xl font-semibold text-destructive mb-4">Feedback Generation Incomplete</h1>
+        <p className="text-muted-foreground mb-6">Could not generate all feedback for the report. You can try returning to scenarios.</p>
         <Link href="/" passHref>
           <Button>Return to Scenarios</Button>
         </Link>
@@ -110,13 +175,14 @@ export default function SummaryPage() {
     );
   }
 
+
   return (
     <div className="min-h-screen bg-background p-4 sm:p-8 flex flex-col items-center">
       <header className="my-6 text-center">
         <Logo iconSize={10} textSize="text-3xl"/>
       </header>
       <main className="w-full max-w-3xl space-y-8">
-        <FeedbackReport summaryData={summaryData} />
+        {enrichedSummaryData && <FeedbackReport summaryData={enrichedSummaryData} />}
 
         <Card className="shadow-xl">
           <CardHeader className="bg-secondary rounded-t-lg">
@@ -157,8 +223,8 @@ export default function SummaryPage() {
                 </Button>
               </>
             )}
-            {!isLoadingDebrief && !notebookLMDebriefContent && (
-                <p className="text-muted-foreground">No learning summary content to display.</p>
+            {!isLoadingDebrief && !notebookLMDebriefContent && enrichedSummaryData && ( // Only show this if debrief isn't loading and data was there to process
+                <p className="text-muted-foreground">No learning summary content to display. This might happen if no coaching feedback was available.</p>
             )}
           </CardContent>
         </Card>
@@ -169,3 +235,4 @@ export default function SummaryPage() {
     </div>
   );
 }
+
