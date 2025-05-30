@@ -13,11 +13,11 @@ interface VoiceConfig {
 
 // Using high-quality Neural2 or WaveNet voices for all roles
 const voiceMap: Record<Exclude<ParticipantRole, 'User'>, VoiceConfig> = {
-  CTO: { voiceName: 'en-US-Neural2-J', languageCode: 'en-US' },     // Male, Neural2
-  Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' }, // Female, WaveNet
-  Product: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US' }, // Male, Neural2
-  HR: { voiceName: 'en-US-Neural2-F', languageCode: 'en-US' },       // Female, Neural2
-  System: { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US' },   // Male, WaveNet (Default/System)
+  CTO: { voiceName: 'en-US-Neural2-J', languageCode: 'en-US' },
+  Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' },
+  Product: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US' },
+  HR: { voiceName: 'en-US-Neural2-F', languageCode: 'en-US' },
+  System: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US' },
 };
 
 export function useTextToSpeech() {
@@ -25,9 +25,9 @@ export function useTextToSpeech() {
   const [isTTSEnabled, setIsTTSEnabled] = useState(true);
   const [isSpeakingState, setIsSpeakingState] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
-  
+
   const isSpeakingStateRef = useRef(isSpeakingState);
-  const currentSpeechTextRef = useRef<string | null>(null); // To track what's currently being spoken or fetched (now SSML)
+  const currentSpeechTextRef = useRef<string | null>(null);
 
   useEffect(() => {
     isSpeakingStateRef.current = isSpeakingState;
@@ -35,7 +35,7 @@ export function useTextToSpeech() {
 
   const handleAudioEnd = useCallback(() => {
     if (isSpeakingStateRef.current && currentSpeechTextRef.current) {
-      console.log(`[useTextToSpeech] HTMLAudioElement 'ended' event for SSML: "${currentSpeechTextRef.current.substring(0,70)}..."`);
+      console.log(`[useTextToSpeech] HTMLAudioElement 'ended' event for text: "${currentSpeechTextRef.current.substring(0,70)}..."`);
     } else {
       console.log(`[useTextToSpeech] HTMLAudioElement 'ended' event.`);
     }
@@ -46,12 +46,14 @@ export function useTextToSpeech() {
   const handleAudioError = useCallback((e: Event) => {
     const audioElement = e.target as HTMLAudioElement;
     let errorDetails = "Unknown audio playback error.";
+    let errorType = "Unknown";
     if (audioElement.error) {
-        errorDetails = `Code: ${audioElement.error.code}, Message: ${audioElement.error.message}`;
+        errorDetails = `Code: ${audioElement.error.code}, Message: ${audioElement.error.message || 'No message'}`;
+        errorType = audioElement.error.code.toString();
     }
     console.warn(`[useTextToSpeech] HTMLAudioElement 'error' event:`, errorDetails, e);
-    
-    const isAborted = audioElement.error?.code === MediaError.MEDIA_ERR_ABORTED;
+
+    const isAborted = errorType === String(MediaError.MEDIA_ERR_ABORTED);
 
     if (isSpeakingStateRef.current && currentSpeechTextRef.current && !isAborted) {
         toast({
@@ -76,7 +78,7 @@ export function useTextToSpeech() {
     return () => {
       if (audioRef.current) {
         audioRef.current.pause();
-        audioRef.current.src = ""; 
+        audioRef.current.src = "";
         audioRef.current.onended = null;
         audioRef.current.onerror = null;
         audioRef.current = null;
@@ -93,51 +95,51 @@ export function useTextToSpeech() {
         audioRef.current.pause();
          if (!isSilent) console.log('[useTextToSpeech] Paused current audio playback.');
       }
-      audioRef.current.removeAttribute('src'); 
-      audioRef.current.load(); 
+      audioRef.current.removeAttribute('src');
+      audioRef.current.load();
     }
-    setIsSpeakingState(false); 
-    currentSpeechTextRef.current = null; 
+    currentSpeechTextRef.current = null; // Clear the ref immediately
+    setIsSpeakingState(false); // Ensure state is set to false
   }, []);
 
 
-  const memoizedSpeak = useCallback(async (ssmlText: string, participant: ParticipantRole = 'System') => {
-    if (!isTTSEnabled || !ssmlText.trim() || participant === 'User') {
+  const memoizedSpeak = useCallback(async (text: string, participant: ParticipantRole = 'System') => {
+    if (!isTTSEnabled || !text.trim() || participant === 'User') {
       if (participant === 'User') console.log('[useTextToSpeech] Speak called for User, skipping TTS.');
       else if (!isTTSEnabled) console.log('[useTextToSpeech] Speak called but TTS is disabled.');
-      else console.log('[useTextToSpeech] Speak called with empty SSML, skipping.');
+      else console.log('[useTextToSpeech] Speak called with empty text, skipping.');
       return;
     }
 
-    if (isSpeakingStateRef.current && currentSpeechTextRef.current === ssmlText) {
-      console.log(`[useTextToSpeech] Speak called for the same SSML that is already being processed: "${ssmlText.substring(0,70)}...". Ignoring.`);
+    if (isSpeakingStateRef.current && currentSpeechTextRef.current === text) {
+      console.log(`[useTextToSpeech] Speak called for the same text that is already being processed: "${text.substring(0,70)}...". Ignoring.`);
       return;
     }
-    
+
     if (isSpeakingStateRef.current) {
-      console.log(`[useTextToSpeech] Cancelling previous speech for new SSML request: "${ssmlText.substring(0,70)}..."`);
-      await memoizedCancel(true); 
-      await new Promise(resolve => setTimeout(resolve, 100)); 
+      console.log(`[useTextToSpeech] Cancelling previous speech for new text request: "${text.substring(0,70)}..."`);
+      await memoizedCancel(true); // Pass true for silent cancel
+      await new Promise(resolve => setTimeout(resolve, 100)); // Small delay
     }
-    
-    currentSpeechTextRef.current = ssmlText;
+
+    currentSpeechTextRef.current = text;
     setIsSpeakingState(true);
-    console.log(`[useTextToSpeech] Attempting to speak SSML via Google Cloud TTS flow: "${ssmlText.substring(0, 70)}..." for participant: ${participant}`);
+    console.log(`[useTextToSpeech] Attempting to speak text via Google Cloud TTS flow: "${text.substring(0, 70)}..." for participant: ${participant}`);
 
     const voiceConfig = voiceMap[participant as Exclude<ParticipantRole, 'User'>] || voiceMap.System;
 
     const input: GenerateSpeechAudioInput = {
-      ssmlText,
+      text, // Sending plain text
       languageCode: voiceConfig.languageCode,
       voiceName: voiceConfig.voiceName,
     };
 
     try {
       const result = await generateSpeechAudio(input);
-      
-      if (currentSpeechTextRef.current !== ssmlText || !isSpeakingStateRef.current) {
-        console.log(`[useTextToSpeech] Speech request for SSML "${ssmlText.substring(0,70)}..." was superseded or cancelled before audio data arrived. Ignoring.`);
-        if (!isSpeakingStateRef.current) currentSpeechTextRef.current = null;
+
+      if (currentSpeechTextRef.current !== text || !isSpeakingStateRef.current) {
+        console.log(`[useTextToSpeech] Speech request for text "${text.substring(0,70)}..." was superseded or cancelled before audio data arrived. Ignoring.`);
+        if (!isSpeakingStateRef.current) currentSpeechTextRef.current = null; 
         return;
       }
 
@@ -159,20 +161,20 @@ export function useTextToSpeech() {
             });
         }
       } else {
-        console.error('[useTextToSpeech] Failed to get valid audio content from backend for SSML.', result.errorMessage);
+        console.error('[useTextToSpeech] Failed to get valid audio content from backend for text.', result.errorMessage);
         toast({
           title: "Speech Synthesis Error",
-          description: result.errorMessage || "Could not generate speech audio from backend for SSML.",
+          description: result.errorMessage || "Could not generate speech audio from backend for text.",
           variant: "destructive",
         });
         setIsSpeakingState(false);
         currentSpeechTextRef.current = null;
       }
     } catch (error) {
-      console.error('[useTextToSpeech] Error calling generateSpeechAudio flow with SSML:', error);
+      console.error('[useTextToSpeech] Error calling generateSpeechAudio flow with text:', error);
       toast({
         title: "Speech Flow Error",
-        description: `Failed to process SSML speech request: ${error instanceof Error ? error.message : String(error)}`,
+        description: `Failed to process text speech request: ${error instanceof Error ? error.message : String(error)}`,
         variant: "destructive",
       });
       setIsSpeakingState(false);
@@ -183,7 +185,7 @@ export function useTextToSpeech() {
   const toggleTTSEnabled = useCallback(() => {
     setIsTTSEnabled(prev => {
       const newState = !prev;
-      if (!newState) { 
+      if (!newState) { // If disabling TTS
         memoizedCancel();
       }
       return newState;
@@ -191,18 +193,14 @@ export function useTextToSpeech() {
   }, [memoizedCancel]);
 
   useEffect(() => {
-    // This effect is just for the toast, initial state is already true
-    // We don't want to toast on initial mount
-    const initialRender = currentSpeechTextRef.current === null && !isSpeakingState; // Heuristic for initial render
+    // This effect is for the toast notification for TTS enable/disable
+    // It should not run on initial mount to avoid "update during render" issues.
+    const initialRender = currentSpeechTextRef.current === null && !isSpeakingStateRef.current; // A heuristic for initial render
     if (!initialRender && typeof window !== 'undefined') {
-        // This toast was causing issues with "update during render"
-        // toast({
-        //   title: "Text-to-Speech",
-        //   description: isTTSEnabled ? "Enabled" : "Disabled",
-        // });
+      // Removed the toast call from here as it was causing "update during render" errors.
+      // User will know the state from the button.
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [isTTSEnabled, toast]);
+  }, [isTTSEnabled]);
 
 
   return {
