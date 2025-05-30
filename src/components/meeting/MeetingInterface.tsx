@@ -90,7 +90,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               <div className="flex items-end gap-2 mb-4 justify-start">
                  <Skeleton className="h-8 w-8 rounded-full" />
                 <div className="max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-card">
-                  <Skeleton className="h-4 w-24" />
+                  <span className="text-sm italic text-muted-foreground">
+                      Thinking
+                    <span className="animate-ellipsis"></span>
+                  </span>
                 </div>
               </div>
             )}
