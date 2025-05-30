@@ -30,10 +30,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     isRecording,
     handleToggleRecording,
     isSTTSupported,
-    // TTS related
-    isTTSEnabled,
-    toggleTTSEnabled,
-    isTTSSpeaking,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -47,13 +43,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  const DiagnosticBar = () => (
-    <div className="p-1 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
-      STT Supported: {isSTTSupported ? 'Yes' : 'No'} | Recording: {isRecording ? 'Yes' : 'No'} | TTS Enabled: {isTTSEnabled ? 'Yes' : 'No'} | TTS Speaking: {isTTSSpeaking ? 'Yes' : 'No'}
-    </div>
-  );
+  // DiagnosticBar removed as TTS is not present
+  // const DiagnosticBar = () => ( ... );
 
-  if (!scenario && !meetingEnded) { 
+
+  if (!scenario && !meetingEnded) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
         <Logo className="mb-4" />
@@ -66,20 +60,20 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       </div>
     );
   }
-  
+
   return (
     <div className="flex flex-col md:flex-row h-screen max-h-screen overflow-hidden bg-background">
       {/* Main Chat Area */}
       <div className="flex-1 flex flex-col max-h-screen">
-        <MeetingHeader 
-          scenario={scenario} 
-          onEndMeeting={handleEndMeeting} 
-          isTTSEnabled={isTTSEnabled} // Pass TTS state
-          toggleTTSEnabled={toggleTTSEnabled} // Pass TTS toggle
-          isTTSSpeaking={isTTSSpeaking}
+        <MeetingHeader
+          scenario={scenario}
+          onEndMeeting={handleEndMeeting}
         />
-        
-        <DiagnosticBar />
+
+        {/* Optional: A simplified diagnostic bar for STT if needed for debugging */}
+        <div className="p-1 bg-yellow-100 text-yellow-800 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
+          STT Supported: {isSTTSupported ? 'Yes' : 'No'} | Recording: {isRecording ? 'Yes' : 'No'}
+        </div>
 
         <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
           <div className="space-y-4 pb-4">
@@ -99,7 +93,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             )}
           </div>
         </ScrollArea>
-        
+
         <ResponseInput
           value={currentUserResponse}
           onChange={(e) => setCurrentUserResponse(e.target.value)}

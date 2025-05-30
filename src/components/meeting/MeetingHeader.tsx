@@ -1,22 +1,16 @@
 import type { Scenario } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { LogOut, Volume2, VolumeX, Loader2 } from 'lucide-react'; // Added TTS icons
+import { LogOut } from 'lucide-react';
 
 interface MeetingHeaderProps {
   scenario: Scenario | null;
   onEndMeeting: () => void;
-  isTTSEnabled?: boolean; // Added
-  toggleTTSEnabled?: () => void; // Added
-  isTTSSpeaking?: boolean; // Added
 }
 
-export function MeetingHeader({ 
-  scenario, 
-  onEndMeeting, 
-  isTTSEnabled, 
-  toggleTTSEnabled,
-  isTTSSpeaking,
+export function MeetingHeader({
+  scenario,
+  onEndMeeting,
 }: MeetingHeaderProps) {
   if (!scenario) {
     return (
