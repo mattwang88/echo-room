@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
@@ -245,7 +244,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
                 case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
                 case 'Product': agentPersona = scenario.personaConfig.productPersona; break;
                 case 'HR': agentPersona = scenario.personaConfig.hrPersona; break;
-                default: console.warn(`[MeetingSimulation] Unknown agent role in scenario: ${agentToRespondRole}`);
+                default: agentPersona = `You are the ${agentToRespondRole}. Respond from this perspective.`;
             }
         }
 

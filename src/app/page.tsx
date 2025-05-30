@@ -31,8 +31,6 @@ export default function ScenarioSelectionPage() {
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
   const [selectedAgents, setSelectedAgents] = useState<string[]>([]);
-  const [customAgent, setCustomAgent] = useState('');
-  const [customAgents, setCustomAgents] = useState<string[]>([]);
   const router = useRouter();
 
   const handleAgentChange = (agent: string) => {
@@ -41,15 +39,6 @@ export default function ScenarioSelectionPage() {
         ? prev.filter((a) => a !== agent)
         : [...prev, agent]
     );
-  };
-
-  const handleAddCustomAgent = (e: React.FormEvent) => {
-    e.preventDefault();
-    const trimmed = customAgent.trim();
-    if (trimmed && !customAgents.includes(trimmed) && !DEFAULT_AGENT_ROLES.some(r => r.value === trimmed)) {
-      setCustomAgents((prev) => [...prev, trimmed]);
-      setCustomAgent('');
-    }
   };
 
   const handleCreateScenario = (e: React.FormEvent) => {
@@ -80,8 +69,6 @@ export default function ScenarioSelectionPage() {
     setTitle('');
     setDescription('');
     setSelectedAgents([]);
-    setCustomAgent('');
-    setCustomAgents([]);
     router.push(`/meeting/${id}`);
   };
 
@@ -146,30 +133,7 @@ export default function ScenarioSelectionPage() {
                         {role.label}
                       </label>
                     ))}
-                    {customAgents.map((agent) => (
-                      <label key={agent} className="flex items-center gap-1">
-                        <input
-                          type="checkbox"
-                          value={agent}
-                          checked={selectedAgents.includes(agent)}
-                          onChange={() => handleAgentChange(agent)}
-                        />
-                        {agent}
-                      </label>
-                    ))}
                   </div>
-                  <form className="flex gap-2" onSubmit={handleAddCustomAgent}>
-                    <input
-                      type="text"
-                      className="border rounded px-3 py-2 flex-1"
-                      placeholder="Add custom person..."
-                      value={customAgent}
-                      onChange={e => setCustomAgent(e.target.value)}
-                    />
-                    <Button type="submit" variant="secondary">
-                      Add
-                    </Button>
-                  </form>
                 </div>
                 <DialogFooter>
                   <Button type="submit" disabled={!title.trim() || !description.trim() || selectedAgents.length === 0}>
