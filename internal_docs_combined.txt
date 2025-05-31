@@ -1,0 +1,171 @@
+# Aurora Public API – v1 Reference
+**Base URL:** `https://api.acme.io/v1/`
+
+## Auth
+Header: `Authorization: Bearer <token>` (OAuth2 client‑credentials)
+
+## Endpoints
+### 1  /stock/alerts
+`GET /stock/alerts?sku=<sku>&since=<timestamp>`  
+Returns JSON array of low‑stock alerts.
+
+**200 Response**
+```json
+[
+  {
+    "sku": "SKU‑123",
+    "warehouse": "DE‑HAM",
+    "predicted_oos_at": "2025‑05‑31T22:00:00Z",
+    "probability": 0.94
+  }
+]
+```
+
+### 2  /ingest/events
+`POST /ingest/events`
+Payload: NDJSON, one event per line.
+
+| Field | Type | Notes |
+|-------|------|-------|
+| `tenant_id` | string | GUID |
+| `event_type` | string | e.g. `order.created` |
+| `payload` | object | arbitrary |
+
+**Responses**
+* `202` – accepted  
+* `400` – validation error  
+* `429` – rate‑limited (Retry‑After header)
+
+## Rate Limits
+Default: 15 K RPS / tenant. Burst tokens: request via Support.
+
+---
+
+# Employee Onboarding Guide – 2025 Edition
+**Audience:** New full‑time hires (EMEA & AMER)
+
+## Week 0 – Pre‑Start Checklist
+| Item | Owner | Status |
+|------|-------|--------|
+| Laptop order + accessories | IT Ops | ☐ |
+| Slack & Google Workspace accounts | IT Ops | ☐ |
+| Buddy assignment | People Ops | ☐ |
+| “Aurora 101” e‑learning invite | L&D | ☐ |
+
+## Week 1 – Orientation
+**Day 1:**  
+• Welcome breakfast 09:00 CET (Zoom link in invite)  
+• HR paperwork review (DocuSign)  
+• Security basics – MFA, VPN, password managers
+
+**Day 2‑3:**  
+• Laptop imaging & dev‑env bootstrap (`setup.sh`)  
+• Intro sessions: Product, GTM, Engineering
+
+**Day 4‑5:**  
+• First‑issue walkthrough (pair‑programming)  
+• Meet your mentor – set 30‑60‑90 goals
+
+## Week 4 – Checkpoint
+Complete self‑assessment and schedule feedback chat with manager.
+
+## Resources
+* Company Handbook (Confluence)  
+* PTO system – BambooHR  
+* Support: onboarding‑support@acme.corp
+
+---
+
+# Engineering Handbook – Style & Best Practices
+
+## 1  Git & Branching
+* Use `main` as default. Feature branches: `feat/<ticket‑id>‑short‑desc`.
+* Squash‑merge with conventional commit messages:
+  ```
+  feat(api): add retry middleware
+  fix(frontend): handle null price
+  ```
+
+## 2  Code Style
+* **Python** – black 24.3, isort, mypy strict.  
+* **Typescript** – eslint airbnb+prettier.  
+* **Go** – gofumpt + staticcheck.
+
+## 3  Testing Pyramid
+| Layer | Target | Ratio |
+|-------|--------|-------|
+| Unit | Pure functions, utils | 70 % |
+| Service | Business logic | 25 % |
+| E2E | Critical flows | 5 % |
+
+## 4  CI/CD Requirements
+✅ Tests pass  
+✅ Coverage > 80 %  
+✅ Static analysis green (SonarCloud)  
+✅ Security scan (Snyk) no critical vulns
+
+## 5  Docs as Code
+Write ADRs in `/docs/adr` Markdown, numbered chronologically (`adr‑008.md`).
+
+-- Keep shipping, stay humble --
+
+---
+
+# Release Notes – Aurora 1.0.0 (2025‑09‑15)
+
+🎉 **First GA release of Aurora real‑time analytics add‑on**
+
+## Highlights
+* Real‑time low‑stock predictions (stockout probability > 90 %).
+* Web‑based Insights dashboard with filterable widgets.
+* Stream Ingest API supports 30 K events/s sustained.
+
+## Improvements
+* Added configurable retention policy (7–30 days).  
+* Optimised Flink checkpoint interval – reduced S3 cost ‑12 %.
+
+## Bug Fixes
+* Fixed race condition in Kafka offset manager.  
+* Dashboard: resolved CSV export encoding issue (UTF‑8 BOM).
+
+## Breaking Changes
+* `/v1/ingest` renamed to `/v1/ingest/events`.  
+* Deprecated field `sku_id` → use `sku`.
+
+## Upgrade Notes
+1. Update client SDK to ≥ 1.0.0.  
+2. Switch endpoint in config.  
+3. Verify ingestion metrics after deploy.
+
+-- End --
+
+---
+
+# Standard Operating Procedure – Code Deployment
+
+**Applies to:** Aurora platform & micro‑services  
+**Last updated:** 2025‑05‑29
+
+## 1  Pre‑Deployment
+1. Merge PR to `main`; ensure semantic version bump.  
+2. Verify CI pipeline green and “Ready to Deploy” tag set by Release Mgr.  
+3. Announce planned deploy in #deploy‑coord (template `/deploy‑announce`).
+
+## 2  Deployment Steps
+1. Trigger GitHub Action “deploy‑prod” with commit SHA & version.  
+2. Observe ArgoCD sync status; wait until all pods healthy.  
+3. Run smoke tests (`smoke/<service>.sh`).  
+4. Update status‑page component to “Degraded” if smoke fails.
+
+## 3  Rollback
+If p95 latency > 1 s or error‑rate > 2 % after 5 m:  
+* Click “Rollback” in ArgoCD UI → previous healthy SHA.  
+* Post rollback summary in #deploy‑coord.
+
+## 4  Post‑Deployment
+• Close announcement thread with ✅.  
+• Tag release in Jira.  
+• Create follow‑up ticket for residual tasks (DB migrations, etc.).
+
+## 5  Versioning
+Use SemVer X.Y.Z where X = breaking, Y = feature, Z = patch.

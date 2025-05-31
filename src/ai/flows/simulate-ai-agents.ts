@@ -14,12 +14,15 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 
+import { promises as fs } from 'fs';
+
 const SimulateAiAgentsInputSchema = z.object({
   proposal: z.string().describe('The user proposal to be evaluated by the AI agents.'),
   ctoPersona: z.string().describe('Instructions for the CTO persona.'),
   financePersona: z.string().describe('Instructions for the Finance persona.'),
   productPersona: z.string().describe('Instructions for the Product persona.'),
-  hrPersona: z.string().describe('Instructions for the HR persona.'),
+  hrPersona: z.string().describe('Instructions for the HR persona.'), 
+  internalDocs: z.string().describe('Combined internal documentation to provide context'),
 });
 export type SimulateAiAgentsInput = z.infer<typeof SimulateAiAgentsInputSchema>;
 
@@ -32,7 +35,10 @@ const SimulateAiAgentsOutputSchema = z.object({
 export type SimulateAiAgentsOutput = z.infer<typeof SimulateAiAgentsOutputSchema>;
 
 export async function simulateAiAgents(input: SimulateAiAgentsInput): Promise<SimulateAiAgentsOutput> {
-  return simulateAiAgentsFlow(input);
+  const internalDocs = await fs.readFile('./internal_docs_combined.txt', 'utf-8');
+  const inputWithDocs = { ...input, internalDocs };
+
+  return simulateAiAgentsFlow(inputWithDocs);
 }
 
 const prompt = ai.definePrompt({
@@ -49,6 +55,13 @@ The user will present a proposal. Each AI agent, from their specific role's view
 
 Here is the user's proposal:
 {{{proposal}}}
+
+Use the internal documentation provided **only if** the user’s input is relevant to the content in these documents.  
+If the user’s input is not related to the documents, respond appropriately without forcing information from them.  
+If you cannot find relevant information in the documents, politely say so or answer based on your general knowledge.
+
+Context for all agents (relevant internal documentation):
+{{{internalDocs}}}
 
 Agent Personas and Core Focus:
 CTO: {{{ctoPersona}}} (Technical feasibility, scalability, integration, resources, risks)
