@@ -9,9 +9,9 @@ import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { AgentIcon, getAgentName } from '@/components/icons/AgentIcons'; // Import AgentIcon and getAgentName
-import { MessageSquareText } from 'lucide-react'; // Import for placeholder
+import { Card } from '@/components/ui/card';
+import { AgentIcon, getAgentName } from '@/components/icons/AgentIcons';
+import { UserCircle2 } from 'lucide-react'; // Import UserCircle2
 import { cn } from '@/lib/utils';
 
 
@@ -33,7 +33,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
-    currentSpeakingParticipant, // Get this from the hook
+    currentSpeakingParticipant,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -57,7 +57,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
 
   if (!scenario && !meetingEnded) {
-    // Full page skeleton for initial loading
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
         <Logo className="mb-4" />
@@ -83,20 +82,19 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       />
       <DiagnosticBar />
 
-      <div className="flex flex-1 overflow-hidden"> {/* Main container for two-column layout */}
-        {/* Left Panel: Giant Avatar */}
+      <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
           {showSpeakerAvatar ? (
             <AgentIcon
-              role={displayRoleForAvatar!} 
+              role={displayRoleForAvatar!}
               scenarioId={scenarioId}
               className={cn(
                 'h-64 w-64 transition-all duration-100 ease-in-out',
-                isTTSSpeaking && 'animate-subtle-shake scale-105' 
+                isTTSSpeaking && 'animate-subtle-shake scale-105'
               )}
             />
           ) : (
-            <MessageSquareText className="h-64 w-64 text-muted-foreground/20" strokeWidth={1.5} /> 
+            <UserCircle2 className="h-64 w-64 text-muted-foreground/20" strokeWidth={1.5} />
           )}
           {isTTSSpeaking && showSpeakerAvatar && (
             <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
@@ -106,9 +104,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           )}
         </div>
 
-        {/* Right Chat Panel */}
         <Card className="w-[350px] md:w-[400px] flex flex-col border-l bg-card text-card-foreground rounded-none shadow-none">
-          {/* Removed CardHeader for "In-Session Messages" */}
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-4 pb-4">
               {messages.map((msg) => (
@@ -116,13 +112,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                   key={msg.id}
                   message={msg}
                   scenarioId={scenarioId}
-                  isTTSSpeaking={isTTSSpeaking} // Pass this down
-                  currentSpeakingParticipant={currentSpeakingParticipant} // Pass this down
+                  isTTSSpeaking={isTTSSpeaking}
+                  currentSpeakingParticipant={currentSpeakingParticipant}
+                  isCurrentlySpeaking={isTTSSpeaking && currentSpeakingParticipant === msg.participant && msg.participant !== 'User'}
                 />
               ))}
               {isAiThinking && messages[messages.length-1]?.participant === 'User' && (
                 <div className="flex items-end gap-2 mb-4 justify-start">
-                   {/* Find the agent who would respond next if we had that info, or use a generic one */}
                   <Skeleton className="h-8 w-8 rounded-full" />
                   <div className="max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-muted">
                     <span className="text-sm italic text-muted-foreground">
