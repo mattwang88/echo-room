@@ -29,7 +29,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
-    currentSpeakingParticipant, 
+    currentSpeakingParticipant,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -45,8 +45,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   const DiagnosticBar = () => (
     <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
-      STT Supported: {isSTTSupported ? 'Yes' : 'No'} | 
-      Recording: {isRecording ? 'Yes' : 'No'} | 
+      STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
+      Recording: {isRecording ? 'Yes' : 'No'} |
       TTS Speaking: {isTTSSpeaking ? `Yes (${currentSpeakingParticipant || 'Agent'})` : 'No'}
     </div>
   );
@@ -76,44 +76,21 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <DiagnosticBar />
 
       <div className="flex flex-1 overflow-hidden"> {/* Main container for two-column layout */}
-        {/* Left Panel (Main Content Area - Placeholder) */}
+        {/* Left Panel (Main Content Area - Now Blank) */}
         <div className="flex-1 p-4 overflow-y-auto">
-          <h2 className="text-xl font-semibold mb-2 text-foreground">Scenario Context</h2>
-          {scenario ? (
-            <Card className="shadow">
-              <CardHeader>
-                <CardTitle>{scenario.title}</CardTitle>
-                <CardDescription><strong>Objective:</strong> {scenario.objective}</CardDescription>
-              </CardHeader>
-              <CardContent>
-                <p className="text-sm text-muted-foreground">
-                  This area can be used to display shared documents, presentation slides, or participant video feeds in a full application.
-                  The chat panel is now on the right.
-                </p>
-              </CardContent>
-            </Card>
-          ) : (
-            <p className="text-muted-foreground">Loading scenario details...</p>
-          )}
-           <div className="mt-6 p-4 border rounded-lg bg-muted/30">
-            <h3 className="font-semibold text-md mb-2 text-muted-foreground">About this View</h3>
-            <p className="text-sm text-muted-foreground">
-              The panel on the right contains the interactive chat with AI agents.
-              Use the input field at the bottom of the chat panel to send your messages.
-            </p>
-          </div>
+          {/* Content for the left panel has been removed as per request. */}
+          {/* You can add new components or content here. */}
         </div>
 
         {/* Right Chat Panel */}
         <div className="w-[350px] md:w-[400px] flex flex-col border-l bg-card text-card-foreground">
-          {/* CardHeader for "In-Session Messages" has been removed */}
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-4 pb-4">
               {messages.map((msg) => (
-                <ChatMessage 
-                  key={msg.id} 
-                  message={msg} 
-                  scenarioId={scenarioId} 
+                <ChatMessage
+                  key={msg.id}
+                  message={msg}
+                  scenarioId={scenarioId}
                   isTTSSpeaking={isTTSSpeaking}
                   currentSpeakingParticipant={currentSpeakingParticipant}
                 />
