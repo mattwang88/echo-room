@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react'; // Added useState
+import { useEffect, useRef, useState } from 'react'; 
 import Image from 'next/image';
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
@@ -10,9 +10,8 @@ import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Removed CardContent as it's not used here
-import { AgentIcon, getAgentName } from '@/components/icons/AgentIcons';
-// import { UserCircle2 } from 'lucide-react'; // Replaced by default_user.jpg
+import { Card } from '@/components/ui/card'; 
+import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
 import type { ParticipantRole } from '@/lib/types';
 
@@ -54,37 +53,9 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  const DiagnosticBar = () => {
-    const speakerName = currentSpeakingParticipant ? getAgentName(currentSpeakingParticipant, scenarioId) : null;
-    const showSpeakerInfo = speakerName && speakerName.toLowerCase() !== 'none';
-
-    return (
-      <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
-        STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
-        Recording: {isRecording ? 'Yes' : 'No'} |
-        TTS Speaking: {isTTSSpeaking ? `Yes (${speakerName || '...'})` : 'No'}
-        {showSpeakerInfo && ` | Current Speaker: ${speakerName}`}
-      </div>
-    );
-  };
-
-
-  if (!scenario && !meetingEnded) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
-        <Logo className="mb-4" />
-        <Skeleton className="h-12 w-1/2 mb-4" />
-        <Skeleton className="h-8 w-3/4 mb-8" />
-        <div className="w-full max-w-2xl space-y-4">
-          <Skeleton className="h-20 w-full" />
-          <Skeleton className="h-20 w-full" />
-        </div>
-      </div>
-    );
-  }
-
+  // Helper function to determine avatar properties
   const getAvatarProps = (participant: ParticipantRole | null, currentScenarioId: string) => {
-    let src = "/images/avatars/default_user.jpg"; // Default user image
+    let src = "/images/avatars/default_user.jpg"; // Default for user or when no AI is speaking
     let alt = "User avatar";
     let aiHint = "person speaking";
 
@@ -119,9 +90,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           aiHint = "system icon";
           break;
         default:
-          // Fallback for any other agent role if not explicitly handled,
-          // though ParticipantRole should cover them.
-          // This will use default_avatar.jpg if an unknown agent role is passed.
           src = "/images/avatars/default_avatar.jpg"; 
           alt = "Agent avatar";
           aiHint = "professional person";
@@ -130,6 +98,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     return { src, alt, aiHint };
   };
   
+  // useEffect to update speaker image based on TTS state - MOVED EARLIER
   useEffect(() => {
     if (isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User') {
       const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
@@ -138,7 +107,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       setCurrentSpeakerImageAiHint(aiHint);
     } else {
       // Default to user avatar when no AI is speaking or if it's the user
-      const { src, alt, aiHint } = getAvatarProps(null, scenarioId); // Pass null to get default_user
+      const { src, alt, aiHint } = getAvatarProps(null, scenarioId); // Pass null to get default_user props
       setCurrentSpeakerImageSrc(src);
       setCurrentSpeakerImageAlt(alt);
       setCurrentSpeakerImageAiHint(aiHint);
@@ -148,19 +117,53 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
 
   const handleImageError = () => {
-    // Fallback for agent-specific images
-    if (currentSpeakingParticipant && currentSpeakingParticipant !== 'User') {
+    const currentSrcIsAgentSpecific = currentSpeakingParticipant && 
+                                   currentSpeakingParticipant !== 'User' && 
+                                   currentSpeakerImageSrc !== "/images/avatars/default_avatar.jpg" &&
+                                   currentSpeakerImageSrc !== "/images/avatars/default_user.jpg";
+
+    if (currentSrcIsAgentSpecific) {
+      // Fallback for agent-specific images to default_avatar.jpg
       setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
       setCurrentSpeakerImageAlt("Default agent avatar");
       setCurrentSpeakerImageAiHint("professional person");
     } else {
-      // Fallback for the default_user.jpg itself
+      // Fallback for default_user.jpg or default_avatar.jpg itself to placehold.co
       setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=Avatar");
       setCurrentSpeakerImageAlt("Fallback placeholder avatar");
       setCurrentSpeakerImageAiHint("placeholder avatar");
     }
-    setImageError(true); // Prevent infinite loop if fallback also fails
+    setImageError(true);
   };
+
+  const DiagnosticBar = () => {
+    const speakerName = currentSpeakingParticipant ? getAgentName(currentSpeakingParticipant, scenarioId) : null;
+    const showSpeakerInfo = speakerName && speakerName.toLowerCase() !== 'none';
+
+    return (
+      <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
+        STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
+        Recording: {isRecording ? 'Yes' : 'No'} |
+        TTS Speaking: {isTTSSpeaking ? `Yes ${showSpeakerInfo ? `(${speakerName})` : ''}`.trim() : 'No'}
+        {showSpeakerInfo && !isTTSSpeaking && ` | Current Speaker: ${speakerName}` /* Shows speaker if set but not actively speaking TTS */}
+      </div>
+    );
+  };
+
+
+  if (!scenario && !meetingEnded) {
+    return (
+      <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
+        <Logo className="mb-4" />
+        <Skeleton className="h-12 w-1/2 mb-4" />
+        <Skeleton className="h-8 w-3/4 mb-8" />
+        <div className="w-full max-w-2xl space-y-4">
+          <Skeleton className="h-20 w-full" />
+          <Skeleton className="h-20 w-full" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
@@ -174,7 +177,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         {/* Left Panel - Avatar Display */}
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
             <Image
-              key={currentSpeakerImageSrc} // Add key to force re-render on src change for error handling
+              key={currentSpeakerImageSrc} 
               src={imageError ? "https://placehold.co/256x256.png?text=Error" : currentSpeakerImageSrc}
               alt={currentSpeakerImageAlt}
               width={256}
@@ -185,7 +188,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               )}
               data-ai-hint={currentSpeakerImageAiHint}
               priority
-              onError={!imageError ? handleImageError : undefined} // Only attach error handler if not already in error state for this src
+              onError={!imageError ? handleImageError : undefined} 
             />
           {isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
             <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
@@ -235,3 +238,4 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
+
