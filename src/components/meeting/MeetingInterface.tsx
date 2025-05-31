@@ -9,9 +9,9 @@ import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
-import { Card } from '@/components/ui/card';
-import { AgentIcon, getAgentName } from '@/components/icons/AgentIcons';
-import { UserCircle2 } from 'lucide-react'; // Import UserCircle2
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { AgentIcon, getAgentName, getAgentColor } from '@/components/icons/AgentIcons';
+import { UserCircle2, MessageCircleQuestion } from 'lucide-react'; // Changed from MessageSquareText to UserCircle2
 import { cn } from '@/lib/utils';
 
 
@@ -33,7 +33,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
-    currentSpeakingParticipant,
+    currentSpeakingParticipant, // Get current speaker
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -70,8 +70,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     );
   }
 
+  // Determine if a specific agent/system avatar should be shown
   const showSpeakerAvatar = currentSpeakingParticipant && currentSpeakingParticipant !== 'User';
-  const displayRoleForAvatar = showSpeakerAvatar ? currentSpeakingParticipant : 'System';
 
 
   return (
@@ -83,10 +83,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <DiagnosticBar />
 
       <div className="flex flex-1 overflow-hidden">
+        {/* Left Panel - Main Content Area */}
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
           {showSpeakerAvatar ? (
             <AgentIcon
-              role={displayRoleForAvatar!}
+              role={currentSpeakingParticipant!}
               scenarioId={scenarioId}
               className={cn(
                 'h-64 w-64 transition-all duration-100 ease-in-out',
@@ -94,17 +95,26 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               )}
             />
           ) : (
-            <UserCircle2 className="h-64 w-64 text-muted-foreground/20" strokeWidth={1.5} />
+            <UserCircle2
+              className={cn(
+                'h-64 w-64 text-muted-foreground/20 transition-all duration-100 ease-in-out',
+                // Animate if TTS is playing, even for the default avatar
+                isTTSSpeaking && 'animate-subtle-shake scale-105'
+              )}
+              strokeWidth={1.5}
+            />
           )}
-          {isTTSSpeaking && showSpeakerAvatar && (
+          {isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
             <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
-              {getAgentName(currentSpeakingParticipant!, scenarioId)} speaking
+              {getAgentName(currentSpeakingParticipant, scenarioId)} speaking
               <span className="animate-ellipsis"></span>
             </p>
           )}
         </div>
 
-        <Card className="w-[350px] md:w-[400px] flex flex-col border-l bg-card text-card-foreground rounded-none shadow-none">
+        {/* Right Panel - Chat Area */}
+        <Card className="w-[350px] md:w-[450px] lg:w-[500px] flex flex-col border-l bg-card text-card-foreground rounded-none shadow-none">
+          {/* Removed CardHeader for "In-Session Messages" */}
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-4 pb-4">
               {messages.map((msg) => (
@@ -119,7 +129,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               ))}
               {isAiThinking && messages[messages.length-1]?.participant === 'User' && (
                 <div className="flex items-end gap-2 mb-4 justify-start">
-                  <Skeleton className="h-8 w-8 rounded-full" />
+                  <Skeleton className="h-8 w-8 rounded-full self-start" />
                   <div className="max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-muted">
                     <span className="text-sm italic text-muted-foreground">
                         Thinking
