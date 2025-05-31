@@ -9,7 +9,7 @@ import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'; // Added CardContent here
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
 
 interface MeetingInterfaceProps {
   scenarioId: string;
@@ -29,7 +29,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
-    currentSpeakingParticipant, // Get current speaking participant
+    currentSpeakingParticipant, 
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -106,11 +106,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
         {/* Right Chat Panel */}
         <div className="w-[350px] md:w-[400px] flex flex-col border-l bg-card text-card-foreground">
-          <CardHeader className="p-4 border-b">
-            <CardTitle className="text-lg">In-Session Messages</CardTitle>
-            <CardDescription className="text-xs">Messages with AI agents will appear here.</CardDescription>
-          </CardHeader>
-
+          {/* CardHeader for "In-Session Messages" has been removed */}
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-4 pb-4">
               {messages.map((msg) => (
