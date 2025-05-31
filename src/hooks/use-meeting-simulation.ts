@@ -2,14 +2,15 @@
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Scenario, Message, MeetingSummaryData, ParticipantRole, AgentRole } from '@/lib/types';
+import type { Scenario, Message, MeetingSummaryData, ParticipantRole, AgentRole, Persona, AnalyzeResponseOutput } from '@/lib/types';
 import { getScenarioById } from '@/lib/scenarios';
 import { simulateSingleAgentResponse, type SimulateSingleAgentResponseInput } from '@/ai/flows/simulate-single-agent-response';
-import { analyzeResponse, type AnalyzeResponseInput, type AnalyzeResponseOutput } from '@/ai/flows/real-time-coaching';
+import { analyzeResponse, type AnalyzeResponseInput } from '@/ai/flows/real-time-coaching';
 import { evaluateSemanticSkill, type EvaluateSemanticSkillInput, type EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from './useSpeechToText';
 import { useTextToSpeech } from './useTextToSpeech'; // Re-added
+import { getAllUserPersonas } from '@/lib/userPersonas';
 
 export function useMeetingSimulation(scenarioId: string | null) {
   const router = useRouter();
@@ -22,6 +23,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentCoaching, setCurrentCoaching] = useState<AnalyzeResponseOutput | null>(null);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
+  const [personas, setPersonas] = useState<Persona[]>([]);
 
   // STT states
   const [isRecording, setIsRecording] = useState(false);
@@ -147,11 +149,12 @@ export function useMeetingSimulation(scenarioId: string | null) {
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [scenarioId, router, toast, isTTSEnabled, ttsSpeak]); // Added isTTSEnabled, ttsSpeak
 
-  const addMessage = useCallback((participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
+  const addMessage = useCallback((participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput, participantName?: string) => {
     if (!isMountedRef.current) return;
     const newMessage: Message = {
       id: Date.now().toString() + participant + Math.random(),
       participant,
+      participantName,
       text,
       timestamp: Date.now(),
       coachingFeedback,
@@ -159,11 +162,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
     };
     setMessages(prev => [...prev, newMessage]);
 
-    if (participant !== 'User' && isTTSEnabled && text) { // Re-added TTS for non-user messages
-      console.log(`[MeetingSimulation] Speaking message from ${participant}: "${text.substring(0,30)}..."`);
+    if (participant !== 'User' && isTTSEnabled && text) {
+      console.log(`[MeetingSimulation] Speaking message from ${participantName || participant}: "${text.substring(0,30)}..."`);
       ttsSpeak(text, participant);
     }
-  }, [isTTSEnabled, ttsSpeak]); // Added isTTSEnabled, ttsSpeak
+  }, [isTTSEnabled, ttsSpeak]);
 
   const handleEndMeeting = useCallback(() => {
     if (!isMountedRef.current || !scenario) return;
@@ -202,7 +205,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
     const userMsgText = currentUserResponse.trim();
     const userMessageId = Date.now().toString() + 'User' + Math.random(); 
-     setMessages(prev => [...prev, {
+    setMessages(prev => [...prev, {
       id: userMessageId,
       participant: 'User',
       text: userMsgText,
@@ -233,19 +236,16 @@ export function useMeetingSimulation(scenarioId: string | null) {
       if (activeAgents && activeAgents.length > 0) {
         const agentToRespondRole = activeAgents[currentAgentIndex];
         let agentPersona = "";
+        let agentName = "";
         
-        if (scenario.id === 'manager-1on1' && agentToRespondRole === 'Product') {
-            agentPersona = scenario.personaConfig.productPersona;
-        } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
-             agentPersona = scenario.personaConfig.hrPersona;
-        } else {
-            switch (agentToRespondRole) {
-                case 'CTO': agentPersona = scenario.personaConfig.ctoPersona; break;
-                case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
-                case 'Product': agentPersona = scenario.personaConfig.productPersona; break;
-                case 'HR': agentPersona = scenario.personaConfig.hrPersona; break;
-                default: agentPersona = `You are the ${agentToRespondRole}. Respond from this perspective.`;
-            }
+        // Find the persona details from the scenario's personaConfig
+        const personaKey = `${agentToRespondRole.toLowerCase()}Persona`;
+        agentPersona = scenario.personaConfig[personaKey] || `You are the ${agentToRespondRole}. Respond from this perspective.`;
+        
+        // Get the persona name from the personas list
+        const matchingPersona = personas.find(p => p.role === agentToRespondRole);
+        if (matchingPersona) {
+          agentName = matchingPersona.name;
         }
 
         if (agentPersona) {
@@ -257,7 +257,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
           };
           const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
           if (agentResponse && agentResponse.agentFeedback) {
-            addMessage(agentToRespondRole, agentResponse.agentFeedback); // addMessage will handle TTS
+            addMessage(agentToRespondRole, agentResponse.agentFeedback, undefined, undefined, agentName);
           }
           setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length); 
         } else {
@@ -301,6 +301,12 @@ export function useMeetingSimulation(scenarioId: string | null) {
       sttStartListening();
     }
   };
+
+  // Load personas on mount
+  useEffect(() => {
+    const userPersonas = getAllUserPersonas();
+    setPersonas(userPersonas);
+  }, []);
 
   return {
     scenario,
