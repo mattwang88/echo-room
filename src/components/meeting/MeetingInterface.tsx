@@ -9,7 +9,7 @@ import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Card components for panel header
+import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card'; // Added CardContent here
 
 interface MeetingInterfaceProps {
   scenarioId: string;
@@ -118,7 +118,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                   key={msg.id} 
                   message={msg} 
                   scenarioId={scenarioId} 
-                  isTTSSpeaking={isTTSSpeaking && currentSpeakingParticipant === msg.participant}
+                  isTTSSpeaking={isTTSSpeaking}
                   currentSpeakingParticipant={currentSpeakingParticipant}
                 />
               ))}
