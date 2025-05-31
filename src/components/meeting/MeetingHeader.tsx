@@ -1,17 +1,16 @@
 
 import type { Scenario } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { LogOut } from 'lucide-react';
+// Button and LogOut icon are no longer needed here
 
 interface MeetingHeaderProps {
   scenario: Scenario | null;
-  onEndMeeting: () => void;
+  onEndMeeting: () => void; // Keep onEndMeeting prop for potential future use, but button is moved
 }
 
 export function MeetingHeader({
   scenario,
-  onEndMeeting,
+  onEndMeeting, // This prop is kept but button is moved out
 }: MeetingHeaderProps) {
   if (!scenario) {
     return (
@@ -33,11 +32,7 @@ export function MeetingHeader({
               <strong>Objective:</strong> {scenario.objective}
             </CardDescription>
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={onEndMeeting} className="ml-auto">
-              <LogOut className="mr-2 h-4 w-4" /> End Meeting
-            </Button>
-          </div>
+          {/* End Meeting button removed from here */}
         </div>
       </CardHeader>
     </Card>
