@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useRef, useState } from 'react'; // Added useState
 import Image from 'next/image';
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
@@ -12,7 +12,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card'; // Removed CardContent as it's not used here
 import { AgentIcon, getAgentName } from '@/components/icons/AgentIcons';
-import { UserCircle2 } from 'lucide-react';
+// import { UserCircle2 } from 'lucide-react'; // Replaced by default_user.jpg
 import { cn } from '@/lib/utils';
 import type { ParticipantRole } from '@/lib/types';
 
@@ -39,6 +39,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [currentSpeakerImageSrc, setCurrentSpeakerImageSrc] = useState("/images/avatars/default_user.jpg");
+  const [currentSpeakerImageAlt, setCurrentSpeakerImageAlt] = useState("Default user avatar");
+  const [currentSpeakerImageAiHint, setCurrentSpeakerImageAiHint] = useState("person avatar");
+  const [imageError, setImageError] = useState(false);
+
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -49,14 +54,19 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
   }, [messages]);
 
-  const DiagnosticBar = () => (
-    <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
-      STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
-      Recording: {isRecording ? 'Yes' : 'No'} |
-      TTS Speaking: {isTTSSpeaking ? `Yes (${getAgentName(currentSpeakingParticipant || 'System', scenarioId)})` : 'No'} |
-      Current Speaker: {currentSpeakingParticipant || 'None'}
-    </div>
-  );
+  const DiagnosticBar = () => {
+    const speakerName = currentSpeakingParticipant ? getAgentName(currentSpeakingParticipant, scenarioId) : null;
+    const showSpeakerInfo = speakerName && speakerName.toLowerCase() !== 'none';
+
+    return (
+      <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
+        STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
+        Recording: {isRecording ? 'Yes' : 'No'} |
+        TTS Speaking: {isTTSSpeaking ? `Yes (${speakerName || '...'})` : 'No'}
+        {showSpeakerInfo && ` | Current Speaker: ${speakerName}`}
+      </div>
+    );
+  };
 
 
   if (!scenario && !meetingEnded) {
@@ -73,54 +83,84 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     );
   }
 
-  const showSpeakerImage = currentSpeakingParticipant && currentSpeakingParticipant !== 'User';
-
   const getAvatarProps = (participant: ParticipantRole | null, currentScenarioId: string) => {
-    // TODO: Replace placeholder URLs below with paths to your actual avatar images.
-    // Suggested structure: public/images/avatars/agent-name.png
-    // Example: '/images/avatars/cto.png'
-    let src = "https://placehold.co/256x256.png?text=Default"; // Fallback default image
-    let alt = "Speaking avatar";
-    let aiHint = "person";
+    let src = "/images/avatars/default_user.jpg"; // Default user image
+    let alt = "User avatar";
+    let aiHint = "person speaking";
 
-    if (participant) {
+    if (participant && participant !== 'User') {
       const agentName = getAgentName(participant, currentScenarioId);
       alt = `${agentName} avatar`;
 
       switch (participant) {
         case 'CTO':
-          src = "https://placehold.co/256x256.png?text=CTO"; // Replace with e.g., /images/avatars/cto.png
+          src = "/images/avatars/cto.jpg";
           aiHint = "tech executive";
           break;
         case 'Finance':
-          src = "https://placehold.co/256x256.png?text=Finance"; // Replace with e.g., /images/avatars/finance.png
+          src = "/images/avatars/finance.jpg";
           aiHint = "finance professional";
           break;
         case 'Product':
           if (currentScenarioId === 'manager-1on1') {
-            src = "https://placehold.co/256x256.png?text=Manager"; // Replace with e.g., /images/avatars/manager.png
+            src = "/images/avatars/manager.jpg";
             aiHint = "manager";
           } else {
-            src = "https://placehold.co/256x256.png?text=Product"; // Replace with e.g., /images/avatars/product.png
+            src = "/images/avatars/product.jpg";
             aiHint = "product manager";
           }
           break;
         case 'HR':
-          src = "https://placehold.co/256x256.png?text=HR"; // Replace with e.g., /images/avatars/hr.png
+          src = "/images/avatars/hr.jpg";
           aiHint = "hr representative";
           break;
         case 'System':
-          src = "https://placehold.co/256x256.png?text=System"; // Replace with e.g., /images/avatars/system.png or use an icon
+          src = "/images/avatars/system.jpg";
           aiHint = "system icon";
           break;
-        // 'User' will use UserCircle2, so no specific image path here.
+        default:
+          // Fallback for any other agent role if not explicitly handled,
+          // though ParticipantRole should cover them.
+          // This will use default_avatar.jpg if an unknown agent role is passed.
+          src = "/images/avatars/default_avatar.jpg"; 
+          alt = "Agent avatar";
+          aiHint = "professional person";
       }
     }
     return { src, alt, aiHint };
   };
   
-  const { src: speakerImageSrc, alt: speakerImageAlt, aiHint: speakerImageAiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
+  useEffect(() => {
+    if (isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User') {
+      const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
+      setCurrentSpeakerImageSrc(src);
+      setCurrentSpeakerImageAlt(alt);
+      setCurrentSpeakerImageAiHint(aiHint);
+    } else {
+      // Default to user avatar when no AI is speaking or if it's the user
+      const { src, alt, aiHint } = getAvatarProps(null, scenarioId); // Pass null to get default_user
+      setCurrentSpeakerImageSrc(src);
+      setCurrentSpeakerImageAlt(alt);
+      setCurrentSpeakerImageAiHint(aiHint);
+    }
+    setImageError(false); // Reset error state when speaker changes
+  }, [isTTSSpeaking, currentSpeakingParticipant, scenarioId]);
 
+
+  const handleImageError = () => {
+    // Fallback for agent-specific images
+    if (currentSpeakingParticipant && currentSpeakingParticipant !== 'User') {
+      setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
+      setCurrentSpeakerImageAlt("Default agent avatar");
+      setCurrentSpeakerImageAiHint("professional person");
+    } else {
+      // Fallback for the default_user.jpg itself
+      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=Avatar");
+      setCurrentSpeakerImageAlt("Fallback placeholder avatar");
+      setCurrentSpeakerImageAiHint("placeholder avatar");
+    }
+    setImageError(true); // Prevent infinite loop if fallback also fails
+  };
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
@@ -133,28 +173,20 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <div className="flex flex-1 overflow-hidden">
         {/* Left Panel - Avatar Display */}
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
-          {showSpeakerImage ? (
-             <Image
-                src={speakerImageSrc}
-                alt={speakerImageAlt}
-                width={256}
-                height={256}
-                className={cn(
-                  'rounded-full object-cover transition-transform duration-200 ease-in-out',
-                  isTTSSpeaking && 'animate-breathing'
-                )}
-                data-ai-hint={speakerImageAiHint}
-                priority
-              />
-          ) : (
-            <UserCircle2
+            <Image
+              key={currentSpeakerImageSrc} // Add key to force re-render on src change for error handling
+              src={imageError ? "https://placehold.co/256x256.png?text=Error" : currentSpeakerImageSrc}
+              alt={currentSpeakerImageAlt}
+              width={256}
+              height={256}
               className={cn(
-                'h-64 w-64 text-muted-foreground/20 transition-transform duration-200 ease-in-out',
-                isTTSSpeaking && 'animate-breathing' 
+                'rounded-full object-cover transition-transform duration-200 ease-in-out',
+                isTTSSpeaking && 'animate-breathing'
               )}
-              strokeWidth={1.5}
+              data-ai-hint={currentSpeakerImageAiHint}
+              priority
+              onError={!imageError ? handleImageError : undefined} // Only attach error handler if not already in error state for this src
             />
-          )}
           {isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
             <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
               {getAgentName(currentSpeakingParticipant, scenarioId)} speaking
