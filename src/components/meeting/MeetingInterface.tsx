@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useEffect, useRef, useState } from 'react'; 
+import { useEffect, useRef, useState } from 'react';
 import Image from 'next/image';
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
 import { MeetingHeader } from './MeetingHeader';
@@ -10,11 +10,10 @@ import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
-import { Card } from '@/components/ui/card'; 
+import { Card } from '@/components/ui/card';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
 import type { ParticipantRole } from '@/lib/types';
-
 
 interface MeetingInterfaceProps {
   scenarioId: string;
@@ -34,26 +33,17 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
-    currentSpeakingParticipant,
+    currentSpeakingParticipant, // This comes from useMeetingSimulation, which gets it from useTextToSpeech
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+
+  // State for the main speaker image in the left panel
   const [currentSpeakerImageSrc, setCurrentSpeakerImageSrc] = useState("/images/avatars/default_user.jpg");
-  const [currentSpeakerImageAlt, setCurrentSpeakerImageAlt] = useState("Default user avatar");
-  const [currentSpeakerImageAiHint, setCurrentSpeakerImageAiHint] = useState("person avatar");
-  const [imageError, setImageError] = useState(false);
+  const [currentSpeakerImageAlt, setCurrentSpeakerImageAlt] = useState("User avatar");
+  const [currentSpeakerImageAiHint, setCurrentSpeakerImageAiHint] = useState("person speaking");
 
-
-  useEffect(() => {
-    if (scrollAreaRef.current) {
-      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
-      if (scrollViewport) {
-        scrollViewport.scrollTop = scrollViewport.scrollHeight;
-      }
-    }
-  }, [messages]);
-
-  // Helper function to determine avatar properties
+  // Helper function to determine avatar properties based on participant
   const getAvatarProps = (participant: ParticipantRole | null, currentScenarioId: string) => {
     let src = "/images/avatars/default_user.jpg"; // Default for user or when no AI is speaking
     let alt = "User avatar";
@@ -90,15 +80,16 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           aiHint = "system icon";
           break;
         default:
-          src = "/images/avatars/default_avatar.jpg"; 
+          // Fallback for any other agent role not explicitly listed
+          src = "/images/avatars/default_avatar.jpg";
           alt = "Agent avatar";
           aiHint = "professional person";
       }
     }
     return { src, alt, aiHint };
   };
-  
-  // useEffect to update speaker image based on TTS state - MOVED EARLIER
+
+  // useEffect to update speaker image based on TTS state and current speaker
   useEffect(() => {
     if (isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User') {
       const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
@@ -112,29 +103,46 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       setCurrentSpeakerImageAlt(alt);
       setCurrentSpeakerImageAiHint(aiHint);
     }
-    setImageError(false); // Reset error state when speaker changes
   }, [isTTSSpeaking, currentSpeakingParticipant, scenarioId]);
 
 
   const handleImageError = () => {
-    const currentSrcIsAgentSpecific = currentSpeakingParticipant && 
-                                   currentSpeakingParticipant !== 'User' && 
-                                   currentSpeakerImageSrc !== "/images/avatars/default_avatar.jpg" &&
-                                   currentSpeakerImageSrc !== "/images/avatars/default_user.jpg";
+    console.warn(`[MeetingInterface] Image error for src: ${currentSpeakerImageSrc}`);
+    
+    if (currentSpeakerImageSrc.startsWith("https://placehold.co/")) {
+        // If the placeholder itself fails, do nothing more to prevent loops.
+        console.error("[MeetingInterface] Fallback placeholder image also failed to load.");
+        return;
+    }
 
-    if (currentSrcIsAgentSpecific) {
-      // Fallback for agent-specific images to default_avatar.jpg
+    if (currentSpeakerImageSrc === "/images/avatars/default_user.jpg") {
+      // If default_user.jpg fails, go straight to placeholder
+      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=User");
+      setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
+      setCurrentSpeakerImageAiHint("placeholder avatar");
+    } else if (currentSpeakerImageSrc.startsWith("/images/avatars/") && currentSpeakerImageSrc !== "/images/avatars/default_avatar.jpg") {
+      // If a specific agent image (e.g., cto.jpg) fails, try default_avatar.jpg
       setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
       setCurrentSpeakerImageAlt("Default agent avatar");
       setCurrentSpeakerImageAiHint("professional person");
-    } else {
-      // Fallback for default_user.jpg or default_avatar.jpg itself to placehold.co
-      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=Avatar");
-      setCurrentSpeakerImageAlt("Fallback placeholder avatar");
+    } else if (currentSpeakerImageSrc === "/images/avatars/default_avatar.jpg") {
+      // If default_avatar.jpg also fails, go to placeholder
+      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=Agent");
+      setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
       setCurrentSpeakerImageAiHint("placeholder avatar");
     }
-    setImageError(true);
   };
+
+
+  useEffect(() => {
+    if (scrollAreaRef.current) {
+      const scrollViewport = scrollAreaRef.current.querySelector('div[data-radix-scroll-area-viewport]');
+      if (scrollViewport) {
+        scrollViewport.scrollTop = scrollViewport.scrollHeight;
+      }
+    }
+  }, [messages]);
+
 
   const DiagnosticBar = () => {
     const speakerName = currentSpeakingParticipant ? getAgentName(currentSpeakingParticipant, scenarioId) : null;
@@ -144,8 +152,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
         STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
         Recording: {isRecording ? 'Yes' : 'No'} |
-        TTS Speaking: {isTTSSpeaking ? `Yes ${showSpeakerInfo ? `(${speakerName})` : ''}`.trim() : 'No'}
-        {showSpeakerInfo && !isTTSSpeaking && ` | Current Speaker: ${speakerName}` /* Shows speaker if set but not actively speaking TTS */}
+        TTS Speaking: {isTTSSpeaking ? 'Yes' : 'No'}
+        {showSpeakerInfo && ` | Current Speaker: ${speakerName}`}
       </div>
     );
   };
@@ -177,8 +185,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         {/* Left Panel - Avatar Display */}
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
             <Image
-              key={currentSpeakerImageSrc} 
-              src={imageError ? "https://placehold.co/256x256.png?text=Error" : currentSpeakerImageSrc}
+              key={currentSpeakerImageSrc}
+              src={currentSpeakerImageSrc}
               alt={currentSpeakerImageAlt}
               width={256}
               height={256}
@@ -188,7 +196,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               )}
               data-ai-hint={currentSpeakerImageAiHint}
               priority
-              onError={!imageError ? handleImageError : undefined} 
+              onError={handleImageError}
             />
           {isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
             <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
@@ -238,4 +246,3 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
-
