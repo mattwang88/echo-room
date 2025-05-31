@@ -33,7 +33,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
-    currentSpeakingParticipant,
+    currentSpeakingParticipant, // This comes from useTextToSpeech via useMeetingSimulation
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -43,16 +43,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   const [currentSpeakerImageAiHint, setCurrentSpeakerImageAiHint] = useState("person speaking");
 
   const getAvatarProps = (participant: ParticipantRole | null, currentScenarioId: string) => {
-    let src = "/images/avatars/default_user.jpg"; // Default for user or when no AI is speaking
+    let src = "/images/avatars/default_user.jpg";
     let alt = "User avatar";
-    let aiHint = "person speaking"; // Default AI hint
+    let aiHint = "person speaking";
 
     if (participant && participant !== 'User') {
       const agentName = getAgentName(participant, currentScenarioId);
       alt = `${agentName} avatar`;
-
-      // Ensure you have these .jpg files in public/images/avatars/
-      // e.g., cto.jpg, finance.jpg, product.jpg, hr.jpg, manager.jpg, system.jpg
       switch (participant) {
         case 'CTO':
           src = "/images/avatars/cto.jpg";
@@ -80,9 +77,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           aiHint = "system icon";
           break;
         default:
-          // Fallback for any other agent role not explicitly listed in switch,
-          // but still passes `participant && participant !== 'User'`
-          src = "/images/avatars/default_avatar.jpg"; // Fallback for unknown agents
+          src = "/images/avatars/default_avatar.jpg";
           alt = "Agent avatar";
           aiHint = "professional person";
       }
@@ -91,58 +86,47 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   };
 
   const handleImageError = () => {
-    const currentSrc = currentSpeakerImageSrc; // Capture current value to avoid issues with state updates
+    const currentSrc = currentSpeakerImageSrc;
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
-    if (currentSrc.startsWith("https://placehold.co/")) {
-      console.error("[MeetingInterface] Fallback placeholder image also failed to load.");
-      return; // Already a placeholder, do nothing more
-    }
-
-    // If default_user.jpg failed, go to a user-specific placeholder
-    if (currentSrc === "/images/avatars/default_user.jpg") {
-      console.log("[MeetingInterface] Fallback for default_user.jpg to placeholder.");
-      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=User");
-      setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
-      setCurrentSpeakerImageAiHint("placeholder avatar");
-    } 
-    // If a specific agent image (e.g., cto.jpg, but NOT default_avatar.jpg) failed, try default_avatar.jpg
-    else if (currentSrc.startsWith("/images/avatars/") && currentSrc !== "/images/avatars/default_avatar.jpg") {
+    if (currentSrc.startsWith("/images/avatars/") &&
+        currentSrc !== "/images/avatars/default_user.jpg" &&
+        currentSrc !== "/images/avatars/default_avatar.jpg" &&
+        !currentSrc.startsWith("https://placehold.co/")) {
       console.log(`[MeetingInterface] Falling back from ${currentSrc} to /images/avatars/default_avatar.jpg`);
       setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
       setCurrentSpeakerImageAlt("Default agent avatar");
       setCurrentSpeakerImageAiHint("professional person");
+    }
+    else if (currentSrc === "/images/avatars/default_user.jpg") {
+      console.log("[MeetingInterface] Fallback for default_user.jpg to placeholder.");
+      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+      setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
+      setCurrentSpeakerImageAiHint("placeholder avatar");
     } 
-    // If default_avatar.jpg itself failed, go to an agent-specific placeholder
     else if (currentSrc === "/images/avatars/default_avatar.jpg") {
       console.log("[MeetingInterface] Fallback for default_avatar.jpg to placeholder.");
-      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=Agent");
+      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
       setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
       setCurrentSpeakerImageAiHint("placeholder avatar");
+    } 
+    else if (currentSrc.startsWith("https://placehold.co/")) {
+        console.error("[MeetingInterface] Placeholder image also failed or attempting to re-fallback. Stopping.");
     } else {
-      // Catch-all for any other unhandled local image error, go to a generic placeholder
-      // This case should ideally not be hit if paths are well-defined.
-      console.log(`[MeetingInterface] Generic fallback for unrecognized local src ${currentSrc} to placeholder.`);
-      setCurrentSpeakerImageSrc("https://placehold.co/256x256.png?text=Avatar");
-      setCurrentSpeakerImageAlt("Fallback placeholder avatar");
-      setCurrentSpeakerImageAiHint("placeholder avatar");
+        console.log(`[MeetingInterface] Generic fallback for unrecognized local src ${currentSrc} to placeholder.`);
+        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+        setCurrentSpeakerImageAlt("Fallback placeholder avatar");
+        setCurrentSpeakerImageAiHint("placeholder avatar");
     }
   };
-
+  
   useEffect(() => {
-    if (isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User') {
-      const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
-      setCurrentSpeakerImageSrc(src);
-      setCurrentSpeakerImageAlt(alt);
-      setCurrentSpeakerImageAiHint(aiHint);
-    } else {
-      // Default to user avatar when no AI is speaking or if it's the user
-      const { src, alt, aiHint } = getAvatarProps(null, scenarioId); // Pass null to get default_user props
-      setCurrentSpeakerImageSrc(src);
-      setCurrentSpeakerImageAlt(alt);
-      setCurrentSpeakerImageAiHint(aiHint);
-    }
-  }, [isTTSSpeaking, currentSpeakingParticipant, scenarioId]);
+    // Update avatar whenever the current speaking participant changes OR scenario changes
+    const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
+    setCurrentSpeakerImageSrc(src);
+    setCurrentSpeakerImageAlt(alt);
+    setCurrentSpeakerImageAiHint(aiHint);
+  }, [currentSpeakingParticipant, scenarioId]);
 
 
   useEffect(() => {
@@ -169,7 +153,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     );
   };
 
-
   if (!scenario && !meetingEnded) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
@@ -195,7 +178,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
             <Image
-              key={currentSpeakerImageSrc}
+              key={currentSpeakerImageSrc} // Key to force re-render on src change
               src={currentSpeakerImageSrc}
               alt={currentSpeakerImageAlt}
               width={256}

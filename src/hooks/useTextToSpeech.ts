@@ -12,17 +12,18 @@ interface VoiceConfig {
 }
 
 const voiceMap: Record<ParticipantRole, VoiceConfig> = {
-  CTO: { voiceName: 'en-US-Neural2-D', languageCode: 'en-US' }, // Male, Neural2
-  Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' }, // Female, WaveNet
-  Product: { voiceName: 'en-US-Neural2-I', languageCode: 'en-US' }, // Male, Neural2
-  HR: { voiceName: 'en-US-Wavenet-E', languageCode: 'en-US' },     // Female, WaveNet
-  System: { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US' },  // Male, WaveNet (for system messages)
-  User: { voiceName: '', languageCode: '' }, // User messages are not spoken
+  CTO: { voiceName: 'en-US-Neural2-D', languageCode: 'en-US' },
+  Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' },
+  Product: { voiceName: 'en-US-Neural2-I', languageCode: 'en-US' },
+  HR: { voiceName: 'en-US-Wavenet-E', languageCode: 'en-US' },
+  System: { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US' },
+  User: { voiceName: '', languageCode: '' },
 };
 
 export function useTextToSpeech() {
   const { toast } = useToast();
   const [isSpeakingState, setIsSpeakingState] = useState(false);
+  const [displayedSpeaker, setDisplayedSpeaker] = useState<ParticipantRole | null>(null);
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMountedRef = useRef(true);
   const isSpeakingStateRef = useRef(isSpeakingState);
@@ -33,59 +34,69 @@ export function useTextToSpeech() {
     isSpeakingStateRef.current = isSpeakingState;
   }, [isSpeakingState]);
 
-  useEffect(() => {
-    isMountedRef.current = true;
-    audioRef.current = new Audio();
-    const currentAudioElement = audioRef.current;
+  const handleAudioEnd = useCallback(() => {
+    if (!isMountedRef.current) return;
+    console.log(`[useTextToSpeech] HTMLAudioElement 'ended' event for text: "${currentSpeechTextRef.current ? currentSpeechTextRef.current.substring(0,30) : 'N/A'}..."`);
+    if (isSpeakingStateRef.current && currentSpeechTextRef.current) {
+       setIsSpeakingState(false);
+       currentSpeechTextRef.current = null;
+       currentParticipantRef.current = null;
+       setDisplayedSpeaker(null);
+    }
+  }, [setIsSpeakingState, setDisplayedSpeaker]);
 
-    const handleAudioEnd = () => {
-      if (!isMountedRef.current) return;
-      console.log(`[useTextToSpeech] HTMLAudioElement 'ended' event for text: "${currentSpeechTextRef.current ? currentSpeechTextRef.current.substring(0,30) : 'N/A'}..."`);
-      if (isSpeakingStateRef.current && currentSpeechTextRef.current) {
-         setIsSpeakingState(false);
-         currentSpeechTextRef.current = null;
-         currentParticipantRef.current = null;
-      }
-    };
+  const handleAudioError = useCallback((e: Event | string) => {
+    if (!isMountedRef.current) return;
+    let errorMessage = "Audio playback error.";
+    let logFullError = true;
 
-    const handleAudioError = (e: Event | string) => {
-      if (!isMountedRef.current) return;
-      console.error(`[useTextToSpeech] HTMLAudioElement 'error' event:`, e);
-      const target = e.target as HTMLAudioElement;
-      let errorMessage = "Audio playback error.";
-      if (target && target.error) {
-        switch (target.error.code) {
-          case MediaError.MEDIA_ERR_ABORTED:
-            errorMessage = "Audio playback aborted.";
-            // Don't toast for aborts, as these can be intentional (e.g., user cancels)
-            console.warn('[useTextToSpeech] Playback aborted.');
-            break;
-          case MediaError.MEDIA_ERR_NETWORK:
-            errorMessage = "A network error caused audio download to fail.";
-            break;
-          case MediaError.MEDIA_ERR_DECODE:
-            errorMessage = "Audio playback failed due to a media decoding error.";
-            break;
-          case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
-            errorMessage = "The audio format is not supported.";
-            break;
-          default:
-            errorMessage = "An unknown error occurred during audio playback.";
+    if (e instanceof Event && e.target instanceof HTMLAudioElement && e.target.error) {
+        const mediaError = e.target.error;
+        console.error(`[useTextToSpeech] HTMLAudioElement 'error' event. Code: ${mediaError.code}, Message: ${mediaError.message}`, mediaError);
+        switch (mediaError.code) {
+            case MediaError.MEDIA_ERR_ABORTED:
+                errorMessage = "Audio playback aborted.";
+                logFullError = false; // Don't toast for aborts
+                console.warn('[useTextToSpeech] Playback aborted.');
+                break;
+            case MediaError.MEDIA_ERR_NETWORK:
+                errorMessage = "A network error caused audio download to fail.";
+                break;
+            case MediaError.MEDIA_ERR_DECODE:
+                errorMessage = "Audio playback failed due to a media decoding error.";
+                break;
+            case MediaError.MEDIA_ERR_SRC_NOT_SUPPORTED:
+                errorMessage = "The audio format is not supported.";
+                break;
+            default:
+                errorMessage = `An unknown error occurred during audio playback. Code: ${mediaError.code}`;
         }
-      }
-      if (isSpeakingStateRef.current && currentSpeechTextRef.current) {
-        if(errorMessage !== "Audio playback aborted.") { // Only toast for non-abort errors
-          toast({
-            title: "Audio Playback Error",
-            description: errorMessage,
-            variant: "destructive",
-          });
+    } else if (typeof e === 'string') {
+        console.error(`[useTextToSpeech] HTMLAudioElement 'error' event (string):`, e);
+        errorMessage = e;
+    } else {
+        console.error(`[useTextToSpeech] HTMLAudioElement 'error' event (unknown type):`, e);
+    }
+
+    if (isSpeakingStateRef.current && currentSpeechTextRef.current) {
+        if (logFullError) {
+            toast({
+                title: "Audio Playback Error",
+                description: errorMessage,
+                variant: "destructive",
+            });
         }
         setIsSpeakingState(false);
         currentSpeechTextRef.current = null;
         currentParticipantRef.current = null;
-      }
-    };
+        setDisplayedSpeaker(null);
+    }
+  }, [toast, setIsSpeakingState, setDisplayedSpeaker]);
+
+  useEffect(() => {
+    isMountedRef.current = true;
+    audioRef.current = new Audio();
+    const currentAudioElement = audioRef.current;
 
     if (currentAudioElement) {
       currentAudioElement.addEventListener('ended', handleAudioEnd);
@@ -100,13 +111,14 @@ export function useTextToSpeech() {
         if (!currentAudioElement.paused) {
           currentAudioElement.pause();
         }
-        currentAudioElement.src = ''; // Release the audio source
+        currentAudioElement.src = '';
         console.log('[useTextToSpeech] Cleaned up audio element and listeners.');
       }
       currentSpeechTextRef.current = null;
       currentParticipantRef.current = null;
+      // No need to call setDisplayedSpeaker(null) here as it's handled by cancel or on component unmount naturally
     };
-  }, [toast]);
+  }, [handleAudioEnd, handleAudioError]);
 
 
   const memoizedCancel = useCallback(() => {
@@ -114,13 +126,15 @@ export function useTextToSpeech() {
     if (isSpeakingStateRef.current && audioRef.current) {
       console.log('[useTextToSpeech] Cancelling speech: Pausing audio and resetting src.');
       audioRef.current.pause();
-      audioRef.current.src = ''; // This should effectively stop playback and release resources
+      audioRef.current.src = '';
     }
-    // Ensure state is reset even if audio wasn't actively playing but was about to
-    if(isMountedRef.current) setIsSpeakingState(false);
+    if(isMountedRef.current) {
+      setIsSpeakingState(false);
+      setDisplayedSpeaker(null);
+    }
     currentSpeechTextRef.current = null;
     currentParticipantRef.current = null;
-  }, []);
+  }, [setIsSpeakingState, setDisplayedSpeaker]);
 
 
   const memoizedSpeak = useCallback(async (text: string, participant: ParticipantRole = 'System') => {
@@ -129,17 +143,14 @@ export function useTextToSpeech() {
       return;
     }
     
-    // Check if already trying to speak the exact same thing for the same participant
     if (isSpeakingStateRef.current && currentSpeechTextRef.current === text && currentParticipantRef.current === participant) {
       console.log(`[useTextToSpeech] Speak called for the same text ("${text.substring(0,30)}...") and participant (${participant}) that is already being processed/spoken. IGNORING DUPLICATE ATTEMPT.`);
       return;
     }
 
-    // If currently speaking something else, cancel it first.
     if (isSpeakingStateRef.current) {
       console.log(`[useTextToSpeech] Currently speaking ("${currentSpeechTextRef.current ? currentSpeechTextRef.current.substring(0,30) : 'N/A'}..."). Cancelling before speaking new text.`);
       memoizedCancel();
-      // Add a small delay to ensure the cancel operation completes
       await new Promise(resolve => setTimeout(resolve, 100));
     }
     
@@ -150,7 +161,10 @@ export function useTextToSpeech() {
 
     currentSpeechTextRef.current = text;
     currentParticipantRef.current = participant;
-    if(isMountedRef.current) setIsSpeakingState(true);
+    if(isMountedRef.current) {
+      setIsSpeakingState(true);
+      setDisplayedSpeaker(participant);
+    }
 
     console.log(`[useTextToSpeech] Attempting to speak text via Google Cloud TTS flow: "${text.substring(0,50)}..." for participant: ${participant}`);
     const voiceConfig = voiceMap[participant] || voiceMap.System;
@@ -166,20 +180,24 @@ export function useTextToSpeech() {
 
       if (!isMountedRef.current) {
         console.log('[useTextToSpeech] TTS audio received but component unmounted. Aborting playback.');
-        if(isMountedRef.current) setIsSpeakingState(false);
+        if(isMountedRef.current) {
+          setIsSpeakingState(false);
+          setDisplayedSpeaker(null);
+        }
         currentSpeechTextRef.current = null;
         currentParticipantRef.current = null;
         return;
       }
       
-      // Double check if this is still the intended speech text and if we should still be speaking
       if (currentSpeechTextRef.current !== text || currentParticipantRef.current !== participant || !isSpeakingStateRef.current) {
           console.log(`[useTextToSpeech] TTS audio received for "${text.substring(0,30)}..." but current speech target has changed or speaking state is false. Discarding audio.`);
-          // State might have already been set to false by a rapid cancel call.
-          if (isSpeakingStateRef.current) { // Only reset if it thinks it's still speaking
-            if(isMountedRef.current) setIsSpeakingState(false);
+          if (isSpeakingStateRef.current) {
+            if(isMountedRef.current) {
+               setIsSpeakingState(false);
+               setDisplayedSpeaker(null);
+            }
           }
-          currentSpeechTextRef.current = null; // Clear refs if this audio is not to be played
+          currentSpeechTextRef.current = null;
           currentParticipantRef.current = null;
           return;
       }
@@ -191,7 +209,10 @@ export function useTextToSpeech() {
         await audioRef.current.play();
       } else {
           console.error('[useTextToSpeech] audioRef.current is null. Cannot play audio.');
-          if(isMountedRef.current) setIsSpeakingState(false);
+          if(isMountedRef.current) {
+            setIsSpeakingState(false);
+            setDisplayedSpeaker(null);
+          }
           currentSpeechTextRef.current = null;
           currentParticipantRef.current = null;
       }
@@ -200,23 +221,25 @@ export function useTextToSpeech() {
       console.error('[useTextToSpeech] Error calling generateSpeechAudio flow:', errorMsg);
       toast({
         title: "Speech Generation Error",
-        description: `Failed to get audio: ${errorMsg.substring(0, 100)}...`, // Truncate long backend errors
+        description: `Failed to get audio: ${errorMsg.substring(0, 100)}...`,
         variant: "destructive",
       });
-      if(isMountedRef.current) setIsSpeakingState(false);
+      if(isMountedRef.current) {
+        setIsSpeakingState(false);
+        setDisplayedSpeaker(null);
+      }
       currentSpeechTextRef.current = null;
       currentParticipantRef.current = null;
     }
-  }, [toast, memoizedCancel]);
+  }, [toast, memoizedCancel, setIsSpeakingState, setDisplayedSpeaker]);
 
-  // Since TTS is always on, isTTSEnabled is effectively true.
-  // isTTSSupported indicates if the mechanism (browser can play audio, backend reachable) is usable.
   const isTTSSupported = typeof Audio !== 'undefined'; 
 
   return {
     speak: memoizedSpeak,
     cancel: memoizedCancel,
     isSpeaking: isSpeakingState,
-    isTTSSupported, // Indicates if the TTS mechanism can work (browser can play audio)
+    isTTSSupported,
+    currentSpeakingParticipant: displayedSpeaker,
   };
 }
