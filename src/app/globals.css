@@ -131,3 +131,16 @@ body {
 .animate-subtle-shake {
   animation: subtle-shake 0.4s ease-in-out infinite;
 }
+
+@keyframes breathing {
+  0%, 100% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.animate-breathing {
+  animation: breathing 2s ease-in-out infinite;
+}
