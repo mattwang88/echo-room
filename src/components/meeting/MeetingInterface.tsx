@@ -9,7 +9,11 @@ import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { AgentIcon, getAgentName } from '@/components/icons/AgentIcons'; // Import AgentIcon and getAgentName
+import { MessageSquareText } from 'lucide-react'; // Import for placeholder
+import { cn } from '@/lib/utils';
+
 
 interface MeetingInterfaceProps {
   scenarioId: string;
@@ -29,7 +33,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
-    currentSpeakingParticipant,
+    currentSpeakingParticipant, // Get this from the hook
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -47,7 +51,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
       STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
       Recording: {isRecording ? 'Yes' : 'No'} |
-      TTS Speaking: {isTTSSpeaking ? `Yes (${currentSpeakingParticipant || 'Agent'})` : 'No'}
+      TTS Speaking: {isTTSSpeaking ? `Yes (${getAgentName(currentSpeakingParticipant || 'System', scenarioId)})` : 'No'}
     </div>
   );
 
@@ -67,6 +71,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     );
   }
 
+  const showSpeakerAvatar = currentSpeakingParticipant && currentSpeakingParticipant !== 'User';
+  const displayRoleForAvatar = showSpeakerAvatar ? currentSpeakingParticipant : 'System';
+
+
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
       <MeetingHeader
@@ -76,14 +84,31 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <DiagnosticBar />
 
       <div className="flex flex-1 overflow-hidden"> {/* Main container for two-column layout */}
-        {/* Left Panel (Main Content Area - Now Blank) */}
-        <div className="flex-1 p-4 overflow-y-auto">
-          {/* Content for the left panel has been removed as per request. */}
-          {/* You can add new components or content here. */}
+        {/* Left Panel: Giant Avatar */}
+        <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
+          {showSpeakerAvatar ? (
+            <AgentIcon
+              role={displayRoleForAvatar!} 
+              scenarioId={scenarioId}
+              className={cn(
+                'h-64 w-64 transition-all duration-100 ease-in-out',
+                isTTSSpeaking && 'animate-subtle-shake scale-105' 
+              )}
+            />
+          ) : (
+            <MessageSquareText className="h-64 w-64 text-muted-foreground/20" strokeWidth={1.5} /> 
+          )}
+          {isTTSSpeaking && showSpeakerAvatar && (
+            <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
+              {getAgentName(currentSpeakingParticipant!, scenarioId)} speaking
+              <span className="animate-ellipsis"></span>
+            </p>
+          )}
         </div>
 
         {/* Right Chat Panel */}
-        <div className="w-[350px] md:w-[400px] flex flex-col border-l bg-card text-card-foreground">
+        <Card className="w-[350px] md:w-[400px] flex flex-col border-l bg-card text-card-foreground rounded-none shadow-none">
+          {/* Removed CardHeader for "In-Session Messages" */}
           <ScrollArea className="flex-1 p-4" ref={scrollAreaRef}>
             <div className="space-y-4 pb-4">
               {messages.map((msg) => (
@@ -91,12 +116,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                   key={msg.id}
                   message={msg}
                   scenarioId={scenarioId}
-                  isTTSSpeaking={isTTSSpeaking}
-                  currentSpeakingParticipant={currentSpeakingParticipant}
+                  isTTSSpeaking={isTTSSpeaking} // Pass this down
+                  currentSpeakingParticipant={currentSpeakingParticipant} // Pass this down
                 />
               ))}
               {isAiThinking && messages[messages.length-1]?.participant === 'User' && (
                 <div className="flex items-end gap-2 mb-4 justify-start">
+                   {/* Find the agent who would respond next if we had that info, or use a generic one */}
                   <Skeleton className="h-8 w-8 rounded-full" />
                   <div className="max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-muted">
                     <span className="text-sm italic text-muted-foreground">
@@ -119,7 +145,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             onToggleRecording={handleToggleRecording}
             isSTTSupported={isSTTSupported}
           />
-        </div>
+        </Card>
       </div>
     </div>
   );

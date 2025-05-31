@@ -119,3 +119,15 @@ body {
   /* optional for spacing */
   margin-left: 4px;
 }
+
+@keyframes subtle-shake {
+  0%, 100% { transform: translateX(0) rotate(0); }
+  20% { transform: translateX(-1px) rotate(-0.5deg); }
+  40% { transform: translateX(1px) rotate(0.5deg); }
+  60% { transform: translateX(-1px) rotate(-0.5deg); }
+  80% { transform: translateX(1px) rotate(0.5deg); }
+}
+
+.animate-subtle-shake {
+  animation: subtle-shake 0.4s ease-in-out infinite;
+}
