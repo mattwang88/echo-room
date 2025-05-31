@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -122,17 +121,17 @@ export default function SummaryPage() {
           <CardHeader className="bg-secondary rounded-t-lg">
             <CardTitle className="text-2xl flex items-center text-secondary-foreground">
               <Copy className="mr-3 h-7 w-7 text-primary" />
-              Learning Summary for NotebookLM
+              Mini Lecture: Key Lessons from Your Meeting
             </CardTitle>
             <CardDescription className="text-secondary-foreground/80">
-              Review your personalized learning debrief below. You can copy it to your preferred note-taking tool like NotebookLM.
+              Listen to or copy your personalized lecture below. This short lecture summarizes the most important lessons from your meeting.
             </CardDescription>
           </CardHeader>
           <CardContent className="p-6">
             {isLoadingDebrief && (
               <div className="flex items-center justify-center py-8">
                 <Loader2 className="h-8 w-8 animate-spin text-primary mr-2" />
-                <p className="text-muted-foreground">Generating your learning summary...</p>
+                <p className="text-muted-foreground">Generating your lecture...</p>
               </div>
             )}
             {!isLoadingDebrief && notebookLMDebriefContent && (
@@ -153,12 +152,12 @@ export default function SummaryPage() {
                   </div>
                 </ScrollArea>
                 <Button onClick={handleCopyToClipboard} className="w-full" disabled={!notebookLMDebriefContent}>
-                  <Copy className="mr-2 h-4 w-4" /> Copy Summary to Clipboard
+                  <Copy className="mr-2 h-4 w-4" /> Copy Lecture to Clipboard
                 </Button>
               </>
             )}
             {!isLoadingDebrief && !notebookLMDebriefContent && (
-                <p className="text-muted-foreground">No learning summary content to display.</p>
+                <p className="text-muted-foreground">No lecture content to display.</p>
             )}
           </CardContent>
         </Card>

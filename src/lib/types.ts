@@ -1,8 +1,7 @@
-
 import type { EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import {z} from 'genkit';
 
-export type AgentRole = "CTO" | "Finance" | "Product" | "HR";
+export type AgentRole = string;
 export type ParticipantRole = AgentRole | "User" | "System";
 
 // Definition for AnalyzeResponseOutputSchema and AnalyzeResponseOutput moved here
@@ -41,7 +40,7 @@ export interface Scenario {
     participant: AgentRole | "System"; // Usually an Agent or System message
     text: string;
   };
-  agentsInvolved: AgentRole[]; // Which agents are part of this scenario
+  agentsInvolved: string[]; // Allow any role name
   personaConfig: {
     ctoPersona: string;
     financePersona: string;
