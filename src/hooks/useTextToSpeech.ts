@@ -116,7 +116,6 @@ export function useTextToSpeech() {
       }
       currentSpeechTextRef.current = null;
       currentParticipantRef.current = null;
-      // No need to call setDisplayedSpeaker(null) here as it's handled by cancel or on component unmount naturally
     };
   }, [handleAudioEnd, handleAudioError]);
 
@@ -138,6 +137,8 @@ export function useTextToSpeech() {
 
 
   const memoizedSpeak = useCallback(async (text: string, participant: ParticipantRole = 'System') => {
+    console.log(`[useTextToSpeech DEBUG] memoizedSpeak called. Participant: ${participant}, Text: "${text.substring(0,30)}...", isSpeakingStateRef: ${isSpeakingStateRef.current}`);
+
     if (!text.trim() || participant === 'User') {
       console.log(`[useTextToSpeech] Speak called but condition not met: text="${text.substring(0,30)}...", participant=${participant}. Skipping.`);
       return;
@@ -166,9 +167,11 @@ export function useTextToSpeech() {
       setDisplayedSpeaker(participant);
     }
 
-    console.log(`[useTextToSpeech] Attempting to speak text via Google Cloud TTS flow: "${text.substring(0,50)}..." for participant: ${participant}`);
     const voiceConfig = voiceMap[participant] || voiceMap.System;
+    console.log(`[useTextToSpeech DEBUG] For participant: ${participant}, chosen voiceConfig: ${JSON.stringify(voiceConfig)}`);
 
+    console.log(`[useTextToSpeech] Attempting to speak text via Google Cloud TTS flow: "${text.substring(0,50)}..." for participant: ${participant}`);
+    
     const input: GenerateSpeechAudioInput = {
       text,
       voiceName: voiceConfig.voiceName,
@@ -243,3 +246,4 @@ export function useTextToSpeech() {
     currentSpeakingParticipant: displayedSpeaker,
   };
 }
+

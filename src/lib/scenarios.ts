@@ -1,5 +1,5 @@
-
 import type { Scenario } from './types';
+import { getUserCreatedScenarioById } from './userScenarios';
 
 export const scenarios: Scenario[] = [
   {
@@ -85,5 +85,8 @@ Example: "Are you serious? Now? This is incredibly disruptive. Fine. What's your
 ];
 
 export const getScenarioById = (id: string): Scenario | undefined => {
-  return scenarios.find(s => s.id === id);
+  const found = scenarios.find(s => s.id === id);
+  if (found) return found;
+  // Fallback to user-created scenarios
+  return getUserCreatedScenarioById ? getUserCreatedScenarioById(id) : undefined;
 };

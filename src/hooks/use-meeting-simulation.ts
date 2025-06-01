@@ -117,7 +117,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
                 case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
                 case 'Product': agentPersona = scenario.personaConfig.productPersona; break;
                 case 'HR': agentPersona = scenario.personaConfig.hrPersona; break;
-                default: console.warn(`[MeetingSimulation] Unknown agent role in scenario: ${agentToRespondRole}`);
+                default: agentPersona = `You are the ${agentToRespondRole}. Respond from this perspective.`;
             }
         }
 
@@ -240,12 +240,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
                console.log(`[MeetingSimulation] Initial scenario setup: Scheduling initial message speak for scenario ${scenarioId}: "${textToSpeak.substring(0,30)}..."`);
                
                initialMessageTimeoutIdRef.current = setTimeout(() => {
-                // Use foundScenario here as `scenario` state might not be updated yet
                 if (isMountedRef.current && 
                     foundScenario && foundScenario.id === scenarioId && 
                     initialMessageSpokenForScenarioIdRef.current !== scenarioId) { 
                   
-                  console.log(`[MeetingSimulation] Timeout fired: Speaking initial message for scenario ${scenarioId}.`);
+                  console.log(`[MeetingSimulation DEBUG] Preparing to speak initial message. Scenario ID: ${scenarioId}, Participant: ${participantToSpeak}, Text: "${textToSpeak.substring(0, 30)}..."`);
                   ttsSpeak(textToSpeak, participantToSpeak);
                   initialMessageSpokenForScenarioIdRef.current = scenarioId; 
                 } else {
