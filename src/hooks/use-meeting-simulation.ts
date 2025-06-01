@@ -26,6 +26,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
   const [personas, setPersonas] = useState<Persona[]>([]);
+  const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(true);
   const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null); 
   const isMountedRef = useRef(true);
 
@@ -137,20 +138,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
     };
     setMessages(prev => [...prev, newMessage]);
 
-    // This TTS logic is for subsequent messages AFTER the initial scenario message has been handled.
-    // The initial scenario message's TTS is triggered explicitly in handleMeetingAction.
-    if (meetingActive && messageData.participant !== 'User' && !messageData.action) {
-      // Check if this specific message is the one that was just spoken by handleMeetingAction
-      // This check might be overly cautious if `initialMessageSpokenForScenarioIdRef` is managed well,
-      // but aims to prevent double-speaking if addMessage itself were to trigger it too.
-      // The primary guard is that `handleMeetingAction` explicitly speaks the first one.
+    // Only speak if TTS is enabled
+    if (isTTSEnabled && meetingActive && messageData.participant !== 'User' && !messageData.action) {
       if (scenario && initialMessageSpokenForScenarioIdRef.current === scenario.id && 
           !(messageData.text === scenario.initialMessage.text && messageData.participant === scenario.initialMessage.participant)) {
             console.log(`[MeetingSimulation] AddMessage (subsequent): Attempting TTS. Participant: ${messageData.participant}, Text: "${messageData.text.substring(0,30)}..."`);
             ttsSpeak(messageData.text, messageData.participant);
       } else if (scenario && initialMessageSpokenForScenarioIdRef.current !== scenario.id) {
-        // This case implies meeting is active but the initial message REF hasn'T been set, meaning it's likely the initial message.
-        // Explicit call in handleMeetingAction should cover this.
         console.log(`[MeetingSimulation] AddMessage: TTS for initial message likely handled by handleMeetingAction. Participant: ${messageData.participant}, Text: "${messageData.text.substring(0,30)}..."`);
       } else {
         console.log(`[MeetingSimulation] AddMessage: TTS condition not fully met or already handled for initial message. Participant: ${messageData.participant}, Active: ${meetingActive}, InitialMsgRef: ${initialMessageSpokenForScenarioIdRef.current}, Text: "${messageData.text.substring(0,30)}..."`);
@@ -158,7 +152,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     } else if (messageData.participant !== 'User') {
       console.log(`[MeetingSimulation] AddMessage: SKIPPING TTS (standard). Participant: ${messageData.participant}, Active: ${meetingActive}, Has Action: ${!!messageData.action}, Text: "${messageData.text.substring(0,30)}..."`);
     }
-  }, [setMessages, ttsSpeak, meetingActive, scenario]); // Added scenario to deps for safety
+  }, [setMessages, ttsSpeak, meetingActive, scenario, isTTSEnabled]);
 
 
   const handleMeetingAction = useCallback((messageId: string, actionKey: string) => {
@@ -184,14 +178,16 @@ export function useMeetingSimulation(scenarioId: string | null) {
           text: actualInitialMessage.text,
         });
         
-        // Explicitly speak the initial message
-        console.log(`[MeetingSimulation] handleMeetingAction: Explicitly attempting TTS for initial message. Participant: ${actualInitialMessage.participant}, Text: "${actualInitialMessage.text.substring(0,30)}..."`);
-        ttsSpeak(actualInitialMessage.text, actualInitialMessage.participant);
+        // Only speak if TTS is enabled
+        if (isTTSEnabled) {
+          console.log(`[MeetingSimulation] handleMeetingAction: Explicitly attempting TTS for initial message. Participant: ${actualInitialMessage.participant}, Text: "${actualInitialMessage.text.substring(0,30)}..."`);
+          ttsSpeak(actualInitialMessage.text, actualInitialMessage.participant);
+        }
         
         initialMessageSpokenForScenarioIdRef.current = scenario.id; 
       }
     }
-  }, [scenario, addMessage, setMeetingActive, ttsSpeak]);
+  }, [scenario, addMessage, setMeetingActive, ttsSpeak, isTTSEnabled]);
 
 
   const handleEndMeeting = useCallback(() => {
@@ -206,15 +202,19 @@ export function useMeetingSimulation(scenarioId: string | null) {
     // Cancel any ongoing TTS and ensure cleanup
     console.log('[MeetingSimulation] Cancelling any ongoing TTS due to meeting end.');
     ttsCancel();
-    // Add a small delay to ensure TTS cleanup is complete
+    
+    // Add a small delay to ensure TTS cleanup is complete before state changes
     setTimeout(() => {
+      if (!isMountedRef.current) return;
+      
       setMeetingEnded(true);
-      setMeetingActive(false); 
+      setMeetingActive(false);
+      setIsTTSEnabled(false); // Disable TTS when meeting ends
 
       const summaryData: MeetingSummaryData = {
         scenarioTitle: scenario.title,
         objective: scenario.objective,
-        messages: messages.filter(msg => msg.id !== START_MEETING_PROMPT_ID), 
+        messages: messages.filter(msg => msg.id !== START_MEETING_PROMPT_ID),
       };
       try {
         localStorage.setItem('echoRoomMeetingSummary', JSON.stringify(summaryData));
@@ -223,7 +223,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
         console.error("[MeetingSimulation] Failed to save summary to localStorage:", error);
         toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
       }
-    }, 100); // Small delay to ensure TTS cleanup
+    }, 200); // Increased delay to ensure cleanup
   }, [scenario, messages, router, toast, isRecording, ttsCancel, setMeetingEnded, setMeetingActive, sttStopListening]);
 
 
@@ -415,6 +415,31 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
   }, [isRecording, intentToSubmitAfterStop, currentUserResponse, submitUserResponse, meetingActive]);
 
+  const toggleTTS = useCallback(() => {
+    // Cancel any ongoing TTS before changing the state
+    if (isTTSSpeaking) {
+      console.log('[MeetingSimulation] Cancelling ongoing TTS due to toggle');
+      ttsCancel();
+      // Add a small delay to ensure TTS cleanup is complete
+      setTimeout(() => {
+        if (isMountedRef.current) {
+          setIsTTSEnabled(prev => !prev);
+        }
+      }, 200); // Increased delay to ensure cleanup
+    } else {
+      setIsTTSEnabled(prev => !prev);
+    }
+  }, [isTTSSpeaking, ttsCancel]);
+
+  // Add cleanup effect
+  useEffect(() => {
+    return () => {
+      if (isTTSSpeaking) {
+        console.log('[MeetingSimulation] Cleaning up TTS on unmount');
+        ttsCancel();
+      }
+    };
+  }, [isTTSSpeaking, ttsCancel]);
 
   return {
     scenario,
@@ -434,6 +459,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isTTSSpeaking, 
     currentSpeakingParticipant: ttsCurrentSpeaker,
     personas,
+    isTTSEnabled,
+    toggleTTS,
   };
 }
 

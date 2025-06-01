@@ -10,7 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PhoneOff, Mic, MicOff, PlayCircle, AlertTriangle } from 'lucide-react';
+import { PhoneOff, Mic, MicOff, PlayCircle, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
 import type { ParticipantRole, AgentRole } from '@/lib/types';
@@ -50,10 +50,12 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleEndMeeting,
     isRecording,
     handleToggleRecording,
-    isSTTSupported,
+    isSTTSupported: browserSupportsSTT,
     isTTSSpeaking,
     currentSpeakingParticipant,
     personas,
+    isTTSEnabled,
+    toggleTTS,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -94,7 +96,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   const speakingAgentAvatar = getSpeakingAgentAvatar();
 
-  const isMicButtonDisabled = !meetingActive || !isSTTSupported || meetingEnded || isTTSSpeaking || isAiThinking;
+  const isMicButtonDisabled = !meetingActive || !browserSupportsSTT || meetingEnded || isTTSSpeaking || isAiThinking;
   const isEndMeetingButtonDisabled = meetingEnded; // Can always end meeting, unless already ended.
 
   return (
@@ -173,6 +175,15 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             </Button>
             <Button
               type="button"
+              variant={isTTSEnabled ? "default" : "secondary"}
+              onClick={toggleTTS}
+              className="rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
+              aria-label={isTTSEnabled ? "Disable text-to-speech" : "Enable text-to-speech"}
+            >
+              {isTTSEnabled ? <Volume2 className="h-8 w-8" /> : <VolumeX className="h-8 w-8" />}
+            </Button>
+            <Button
+              type="button"
               variant="destructive"
               onClick={handleEndMeeting}
               disabled={isEndMeetingButtonDisabled}
@@ -223,7 +234,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             disabled={meetingEnded || isTTSSpeaking || !meetingActive} // Disable if meeting not active
             isRecording={isRecording}
             onToggleRecording={handleToggleRecording}
-            isSTTSupported={isSTTSupported}
+            isSTTSupported={browserSupportsSTT}
           />
         </Card>
       </div>

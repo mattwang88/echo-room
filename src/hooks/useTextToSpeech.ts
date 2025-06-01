@@ -1,4 +1,3 @@
-
 "use client";
 
 import { useState, useCallback, useEffect, useRef } from 'react';
@@ -108,10 +107,16 @@ export function useTextToSpeech() {
       if (currentAudioElement) {
         currentAudioElement.removeEventListener('ended', handleAudioEnd);
         currentAudioElement.removeEventListener('error', handleAudioError);
-        if (!currentAudioElement.paused) {
-          currentAudioElement.pause();
+        try {
+          if (!currentAudioElement.paused) {
+            currentAudioElement.pause();
+          }
+          currentAudioElement.currentTime = 0;
+          currentAudioElement.src = '';
+          currentAudioElement.load(); // Force the audio element to reset
+        } catch (error) {
+          console.warn('[useTextToSpeech] Error during cleanup:', error);
         }
-        currentAudioElement.src = '';
         console.log('[useTextToSpeech] Cleaned up audio element and listeners.');
       }
       currentSpeechTextRef.current = null;
@@ -124,8 +129,14 @@ export function useTextToSpeech() {
     console.log(`[useTextToSpeech] memoizedCancel called. isSpeakingStateRef: ${isSpeakingStateRef.current}`);
     if (isSpeakingStateRef.current && audioRef.current) {
       console.log('[useTextToSpeech] Cancelling speech: Pausing audio and resetting src.');
-      audioRef.current.pause();
-      audioRef.current.src = '';
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        audioRef.current.src = '';
+        audioRef.current.load(); // Force the audio element to reset
+      } catch (error) {
+        console.warn('[useTextToSpeech] Error during audio cleanup:', error);
+      }
     }
     if(isMountedRef.current) {
       setIsSpeakingState(false);
