@@ -26,16 +26,16 @@ export function SoundWaveAnimation({ width = 512, height = 256, className, isAni
       aria-label="Sound wave animation"
       data-ai-hint="soundwave animation"
     >
-      {/* One Peak, One Valley Shape */}
-      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '0ms'}}></div>
-      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '100ms'}}></div>
-      <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '200ms'}}></div> {/* Peak */}
-      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '300ms'}}></div>
-      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '400ms'}}></div> {/* Valley */}
-      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '500ms'}}></div>
-      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '600ms'}}></div>
-      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '700ms'}}></div>
-      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '800ms'}}></div>
+      {/* One Peak, One Valley - Right part upside down of left */}
+      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '0ms'}}></div>    {/* Bar 1 */}
+      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '100ms'}}></div>   {/* Bar 2 */}
+      <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '200ms'}}></div>   {/* Bar 3 - Peak 1 */}
+      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '300ms'}}></div>   {/* Bar 4 */}
+      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '400ms'}}></div>   {/* Bar 5 - Valley 1 / Pivot */}
+      <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '500ms'}}></div>   {/* Bar 6 - Peak 2 */}
+      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '600ms'}}></div>   {/* Bar 7 */}
+      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '700ms'}}></div>   {/* Bar 8 - Valley 2 */}
+      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '800ms'}}></div>   {/* Bar 9 */}
     </div>
   );
 }
