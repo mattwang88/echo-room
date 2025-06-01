@@ -97,7 +97,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
           {isRecording ? (
-            <SoundWaveAnimation width={256} height={256} isAnimating={true} />
+            <SoundWaveAnimation width={512} height={256} isAnimating={true} />
           ) : speakingAgentAvatar ? (
             <Image
               key={speakingAgentAvatar.src}
@@ -110,14 +110,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               priority
               onError={(e) => {
                 console.warn(`Error loading avatar for ${currentSpeakingParticipant}: ${speakingAgentAvatar.src}`);
-                // Fallback to a placeholder if the specific agent avatar fails
                 (e.target as HTMLImageElement).src = "https://placehold.co/256x256.png";
                 (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar');
               }}
             />
           ) : (
             // Idle state - show SoundWaveAnimation but not animating
-            <SoundWaveAnimation width={256} height={256} isAnimating={false} />
+            <SoundWaveAnimation width={512} height={256} isAnimating={false} />
           )}
 
           {isRecording && !isTTSSpeaking && (
@@ -201,3 +200,4 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
+
