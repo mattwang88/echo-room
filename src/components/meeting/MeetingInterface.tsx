@@ -4,7 +4,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
-// MeetingHeader import removed
 import { ChatMessage } from './ChatMessage';
 import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -92,27 +91,27 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
     if (currentSrc.startsWith("/images/avatars/")) {
-      if (currentSrc.includes("default_user.jpg")) {
-        console.log(`[MeetingInterface] Fallback from ${currentSrc} to placeholder.`);
-        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
-        setCurrentSpeakerImageAlt("Fallback placeholder avatar");
-        setCurrentSpeakerImageAiHint("placeholder avatar");
-      } else if (currentSrc !== "/images/avatars/default_avatar.jpg") {
-        console.log(`[MeetingInterface] Fallback from ${currentSrc} to /images/avatars/default_avatar.jpg`);
-        setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
-        setCurrentSpeakerImageAlt("Default agent avatar");
-        setCurrentSpeakerImageAiHint("professional person");
-      } else if (currentSrc === "/images/avatars/default_avatar.jpg") {
-        console.log(`[MeetingInterface] Fallback for ${currentSrc} to placeholder.`);
-        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
-        setCurrentSpeakerImageAlt("Fallback placeholder avatar");
-        setCurrentSpeakerImageAiHint("placeholder avatar");
-      }
+        if (currentSrc.endsWith("default_user.jpg")) {
+            console.log(`[MeetingInterface] Fallback for ${currentSrc} (default user) to placeholder.`);
+            setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+            setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
+            setCurrentSpeakerImageAiHint("placeholder avatar");
+        } else if (currentSrc.endsWith("default_avatar.jpg")) {
+            console.log(`[MeetingInterface] Fallback for ${currentSrc} (default agent) to placeholder.`);
+            setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+            setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
+            setCurrentSpeakerImageAiHint("placeholder avatar");
+        } else if (!currentSrc.endsWith("default_avatar.jpg")) { // Any other specific agent image failed
+            console.log(`[MeetingInterface] Fallback for specific agent image ${currentSrc} to /images/avatars/default_avatar.jpg`);
+            setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
+            setCurrentSpeakerImageAlt("Default agent avatar");
+            setCurrentSpeakerImageAiHint("professional person");
+        }
     } else if (currentSrc.startsWith("https://placehold.co/")) {
       console.error("[MeetingInterface] Placeholder image also failed. This shouldn't happen frequently.");
     }
   }, [currentSpeakerImageSrc]);
-
+  
   useEffect(() => {
     const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
     setCurrentSpeakerImageSrc(src);
@@ -133,6 +132,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   const DiagnosticBar = () => {
     const speakerName = currentSpeakingParticipant ? getAgentName(currentSpeakingParticipant, scenarioId) : null;
+    // Explicitly check if speakerName is "None" (case-insensitive)
     const showSpeakerInfo = speakerName && speakerName.toLowerCase() !== 'none';
 
     return (
@@ -161,7 +161,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
-      {/* MeetingHeader component removed from here */}
       <DiagnosticBar />
 
       <div className="flex flex-1 overflow-hidden">
@@ -191,7 +190,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             variant="destructive"
             size="icon"
             onClick={handleEndMeeting}
-            className="mt-20 rounded-full shadow-lg hover:scale-105 transition-transform h-20 w-20"
+            className="mt-20 rounded-full shadow-lg hover:scale-105 transition-transform h-15 w-30"
             aria-label="End Meeting"
           >
             <PhoneOff className="h-10 w-10" />
