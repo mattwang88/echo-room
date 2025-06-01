@@ -68,6 +68,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
     onListeningChange: handleSttListeningChange,
   });
 
+  // Load personas on mount
+  useEffect(() => {
+    const userPersonas = getAllUserPersonas();
+    setPersonas(userPersonas);
+  }, []);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -103,7 +108,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
           // Reset other states
           setCurrentTurn(0);
           setMeetingEnded(false);
-          setCurrentCoaching(null);
           setCurrentUserResponse("");
           setBaseTextForSpeech("");
           setCurrentAgentIndex(0);
@@ -198,24 +202,28 @@ export function useMeetingSimulation(scenarioId: string | null) {
       console.log('[MeetingSimulation] Stopping STT due to meeting end.');
       sttStopListening();
     }
+
+    // Cancel any ongoing TTS and ensure cleanup
     console.log('[MeetingSimulation] Cancelling any ongoing TTS due to meeting end.');
     ttsCancel();
+    // Add a small delay to ensure TTS cleanup is complete
+    setTimeout(() => {
+      setMeetingEnded(true);
+      setMeetingActive(false); 
 
-    setMeetingEnded(true);
-    setMeetingActive(false); 
-
-    const summaryData: MeetingSummaryData = {
-      scenarioTitle: scenario.title,
-      objective: scenario.objective,
-      messages: messages.filter(msg => msg.id !== START_MEETING_PROMPT_ID), 
-    };
-    try {
-      localStorage.setItem('echoRoomMeetingSummary', JSON.stringify(summaryData));
-      router.push(`/meeting/${scenario.id}/summary`);
-    } catch (error) {
-      console.error("[MeetingSimulation] Failed to save summary to localStorage:", error);
-      toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
-    }
+      const summaryData: MeetingSummaryData = {
+        scenarioTitle: scenario.title,
+        objective: scenario.objective,
+        messages: messages.filter(msg => msg.id !== START_MEETING_PROMPT_ID), 
+      };
+      try {
+        localStorage.setItem('echoRoomMeetingSummary', JSON.stringify(summaryData));
+        router.push(`/meeting/${scenario.id}/summary`);
+      } catch (error) {
+        console.error("[MeetingSimulation] Failed to save summary to localStorage:", error);
+        toast({ title: "Error", description: "Could not save meeting summary.", variant: "destructive" });
+      }
+    }, 100); // Small delay to ensure TTS cleanup
   }, [scenario, messages, router, toast, isRecording, ttsCancel, setMeetingEnded, setMeetingActive, sttStopListening]);
 
 
@@ -425,6 +433,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     sttInternalIsListening, 
     isTTSSpeaking, 
     currentSpeakingParticipant: ttsCurrentSpeaker,
+    personas,
   };
 }
 

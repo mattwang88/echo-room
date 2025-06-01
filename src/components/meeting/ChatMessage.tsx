@@ -1,7 +1,6 @@
-
-import type { Message, MessageAction } from '@/lib/types';
+import type { Message, MessageAction, Persona } from '@/lib/types';
 import { Avatar } from '@/components/ui/avatar';
-import { AgentIcon, getAgentName, getAgentColor } from '@/components/icons/AgentIcons';
+import { AgentIcon, getAgentColor } from '@/components/icons/AgentIcons';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
@@ -12,13 +11,18 @@ interface ChatMessageProps {
   message: Message;
   scenarioId?: string;
   onMessageAction?: (messageId: string, actionKey: string) => void;
+  personas?: Persona[];
 }
 
-export function ChatMessage({ message, scenarioId, onMessageAction }: ChatMessageProps) {
+export function ChatMessage({ message, scenarioId, onMessageAction, personas = [] }: ChatMessageProps) {
   const isUser = message.participant === 'User';
   const isSystem = message.participant === 'System';
-  const displayName = message.participantName || message.participant;
+  
+  // Find the matching persona for this message's participant
+  const matchingPersona = personas.find(p => p.role === message.participant);
+  const displayName = message.participantName || matchingPersona?.name || message.participant;
   const displayRole = isUser ? 'You' : isSystem ? 'System' : message.participant;
+  const agentColor = getAgentColor(message.participant);
 
   const handleActionClick = () => {
     if (message.action && onMessageAction && !message.action.disabled) {
@@ -34,8 +38,16 @@ export function ChatMessage({ message, scenarioId, onMessageAction }: ChatMessag
         isUser ? "rounded-br-none" : "rounded-bl-none"
       )}>
         <CardContent className="p-3">
-          {!isUser && message.participant !== 'System' && <p className={`text-xs font-semibold mb-1 ${agentColor}`}>{agentName}</p>}
-          {message.participant === 'System' && <p className={`text-xs font-semibold mb-1 ${agentColor}`}>{agentName}</p>}
+          {!isUser && message.participant !== 'System' && (
+            <p className={`text-xs font-semibold mb-1 ${agentColor}`}>
+              {displayName} ({displayRole})
+            </p>
+          )}
+          {message.participant === 'System' && (
+            <p className="text-xs font-semibold mb-1 text-muted-foreground">
+              {displayName}
+            </p>
+          )}
           
           <p className="text-sm whitespace-pre-wrap">{message.text}</p>
           

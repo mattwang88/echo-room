@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -46,14 +45,15 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     isAiThinking,
     submitUserResponse,
     meetingEnded,
-    meetingActive, // new state
-    handleMeetingAction, // new handler
+    meetingActive,
+    handleMeetingAction,
     handleEndMeeting,
     isRecording,
     handleToggleRecording,
     isSTTSupported,
     isTTSSpeaking,
     currentSpeakingParticipant,
+    personas,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
@@ -196,7 +196,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                   key={msg.id}
                   message={msg}
                   scenarioId={scenarioId}
-                  onMessageAction={handleMeetingAction} // Pass action handler
+                  onMessageAction={handleMeetingAction}
+                  personas={personas}
                 />
               ))}
               {meetingActive && isAiThinking && messages[messages.length-1]?.participant === 'User' && (
