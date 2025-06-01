@@ -9,7 +9,7 @@ body {
 
 @layer base {
   :root {
-    --background: 0 0% 100%; /* #ffffff */
+    --background: 220 67% 97%; /* #f4f6fa */
     --foreground: 0 0% 3.9%; /* #0a0a0a */
 
     --muted: 0 0% 85%;
