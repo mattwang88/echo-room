@@ -6,22 +6,22 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { 
+import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Bell, 
-  Settings, 
-  UserCircle2, 
-  Sparkles, 
-  Mic, 
-  Users, 
-  Plus, 
-  Upload, 
-  Package, 
+import {
+  Bell,
+  Settings,
+  UserCircle2,
+  Sparkles,
+  Mic,
+  Users,
+  Plus,
+  Upload,
+  Package,
   Layers,
   MessageCircle
 } from 'lucide-react';
@@ -61,11 +61,6 @@ export default function HomePage() {
               height={40}
               data-ai-hint="company logo"
             />
-            <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
-              <MessageCircle className="h-5 w-5 mr-2" />
-              Messages
-              <span className="ml-2 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">1</span>
-            </Button>
           </div>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" className="text-gray-600 hover:text-gray-900">
@@ -89,11 +84,11 @@ export default function HomePage() {
         <div className="w-full max-w-2xl">
           {/* Animated Sphere Placeholder */}
           <div className="mb-8">
-            <Image 
-              src="/images/front-page.gif" 
-              alt="Front page animation" 
-              width={300} 
-              height={200} 
+            <Image
+              src="/images/front-page.gif"
+              alt="Front page animation"
+              width={300}
+              height={200}
               className="mx-auto rounded-lg"
               data-ai-hint="front page animation"
               unoptimized // Add this prop for GIFs to prevent optimization issues
@@ -118,14 +113,14 @@ export default function HomePage() {
               Generate
             </Button>
           </div>
-          
+
           {/* Action Icons Bar */}
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button 
-                  variant="outline" 
-                  size="icon" 
+                <Button
+                  variant="outline"
+                  size="icon"
                   className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
                   aria-label="Select Participants"
                 >
@@ -138,7 +133,7 @@ export default function HomePage() {
                     key={role}
                     checked={selectedRoles.includes(role)}
                     onSelect={(event) => {
-                      event.preventDefault(); 
+                      event.preventDefault();
                       handleRoleSelect(role);
                     }}
                   >
@@ -148,11 +143,11 @@ export default function HomePage() {
               </DropdownMenuContent>
             </DropdownMenu>
             {[Plus, Upload, Package, Layers].map((IconComponent, index) => (
-              <Button 
-                key={index} 
-                variant="outline" 
-                size="icon" 
-                className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10" 
+              <Button
+                key={index}
+                variant="outline"
+                size="icon"
+                className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
                 aria-label={IconComponent.displayName ? IconComponent.displayName.replace('Icon', '').trim() : `Action ${index + 2}`}
               >
                 <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -171,8 +166,8 @@ export default function HomePage() {
           <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
             {scenariosForButtons.map((challenge) => (
               <Link key={challenge.id} href={`/meeting/${challenge.id}`} passHref legacyBehavior>
-                <Button 
-                  variant="outline" 
+                <Button
+                  variant="outline"
                   className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto"
                 >
                   {challenge.title}
@@ -182,7 +177,15 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* Messages Button (Fixed Position) */}
+      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+        <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
+          <MessageCircle className="h-5 w-5 mr-2" />
+          Messages
+          <span className="ml-2 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">1</span>
+        </Button>
+      </div>
     </div>
   );
 }
-
