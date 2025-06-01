@@ -41,6 +41,112 @@ Default: 15 K RPS / tenant. Burst tokens: request via Support.
 
 ---
 
+# Data Warehouse Schema – Aurora Analytics
+**Owner:** Data Engineering Guild  
+**Revision:** 1.3 (2025‑05‑29)
+
+## 1  Conventions
+* Naming: `fact_<subject>` for fact tables, `dim_<subject>` for dimensions.  
+* All timestamps are `TIMESTAMP WITH TIME ZONE` (UTC).
+
+## 2  Entity‑Relationship Overview (simplified)
+```mermaid
+erDiagram
+    dim_tenant ||--o{ fact_order : has
+    fact_order }|--|| dim_sku : references
+    fact_order }|--|| dim_date : on
+    fact_order ||--o{ fact_prediction : enriches
+```
+
+## 3  Tables
+### 3.1 dim_tenant
+| Column | Type | Description |
+|--------|------|-------------|
+| tenant_id | UUID | PK |
+| name | TEXT | Display name |
+| region | TEXT | eu‑central‑1 / us‑east‑1 |
+| tier | TEXT | standard / premium |
+| created_at | TIMESTAMPTZ | |
+
+### 3.2 dim_sku
+| Column | Type | Notes |
+|--------|------|-------|
+| sku_id | TEXT | PK |
+| tenant_id | UUID | FK dim_tenant |
+| category | TEXT | |
+| brand | TEXT | |
+| initial_stock | INT | initial load value |
+
+### 3.3 fact_order
+Partitioned by `order_date`, clustered by `tenant_id`.
+| Column | Type | |
+|--------|------|---|
+| order_id | BIGINT | PK |
+| tenant_id | UUID | |
+| sku_id | TEXT | |
+| qty | INT | |
+| price | NUMERIC(10,2) | |
+| currency | CHAR(3) | ISO‑4217 |
+| order_ts | TIMESTAMPTZ | raw event |
+| order_date | DATE | derived |
+
+### 3.4 fact_prediction
+| Column | Type | |
+|--------|------|---|
+| prediction_id | BIGINT | PK |
+| tenant_id | UUID | |
+| sku_id | TEXT | |
+| predicted_oos_at | TIMESTAMPTZ | |
+| probability | NUMERIC(4,3) | |
+| model_version | TEXT | |
+| feature_vector | VARBINARY | |
+
+## 4  Partition & Storage Strategy
+* fact tables partitioned by day, stored in Parquet (Snappy), S3 bucket
+  `s3://acme‑warehouse‑eu‑central‑1/`.  
+* Retention: raw = 90 days, modeled = 2 years.  
+* Metadata catalogue: AWS Glue.
+
+## 5  Sample Queries
+```sql
+-- Daily OOS probability > 0.9
+SELECT sku_id, DATE_TRUNC('day', predicted_oos_at) d,
+       AVG(probability) p
+  FROM fact_prediction
+ WHERE probability > 0.9
+   AND d BETWEEN '2025‑05‑01' AND '2025‑05‑31'
+ GROUP BY sku_id, d
+ ORDER BY p DESC
+ LIMIT 100;
+```
+
+```sql
+-- Gross merchandise value per tenant
+SELECT t.name,
+       SUM(o.qty * o.price) AS gmv
+  FROM fact_order o
+  JOIN dim_tenant t USING (tenant_id)
+ WHERE order_date BETWEEN '2025‑01‑01' AND '2025‑03‑31'
+ GROUP BY 1
+ ORDER BY gmv DESC;
+```
+
+## 6  Data Quality SLAs
+| Check | Threshold | Action |
+|-------|-----------|--------|
+| Null probability | < 0.1 % rows | quarantine partition |
+| Price <= 0 | 0 rows | fail pipeline |
+| Delayed ingestion | Δ > 30 min | alert SRE |
+
+## 7  Monitoring
+• Great Expectations suite runs nightly.  
+• DataDog monitors Glue & Athena latency.  
+• Redshift‑based Looker tiles refresh hourly.
+
+-- End --
+
+---
+
 # Employee Onboarding Guide – 2025 Edition
 **Audience:** New full‑time hires (EMEA & AMER)
 
@@ -111,6 +217,162 @@ Write ADRs in `/docs/adr` Markdown, numbered chronologically (`adr‑008.md`).
 
 ---
 
+# Incident Postmortem – Service Outage on 2025‑05‑20
+**Severity:** SEV‑1  
+**Duration:** 08:41–09:54 UTC (1 h 13 m)  
+**Affected services:** Public API v3, Dashboard
+
+## 1  Summary
+A mis‑configured feature flag rollout caused a surge of 502 errors
+(up to 96 %) across the EU region. Customer impact: delayed order
+processing and failed webhook callbacks.
+
+## 2  Timeline (UTC)
+| Time | Event |
+|------|-------|
+| 08:41 | Alertmanager page: “API 5xx > 20 %” |
+| 08:46 | Eng on‑call confirms global API failout |
+| 08:49 | Rollback initiated, but stuck in canary loop |
+| 09:02 | Flag percentage set to 0 % – errors drop |
+| 09:18 | All regions stable, start RCA |
+| 09:54 | Incident resolved, status page green |
+
+## 3  Root Cause
+Flag `orders.newProcessor.enabled` was pushed to 50 % traffic
+without enabling the prerequisite Kafka topic creation. The new
+processor hard‑failed on missing topic, returning 502 upstream.
+
+## 4  What Went Well
+* Alerting fired within 2 m of error spike.
+* Slack #/incident channel auto‑created, SREs joined quickly.
+
+## 5  What Went Wrong
+* Pre‑flight dependency checks missing in rollout script.
+* Rollback playbook lacked “force‑skip canary” step.
+* Status page update delayed (published 23 m after start).
+
+## 6  Actions Items
+| # | Owner | Priority | Due |
+|---|-------|----------|-----|
+| 1 | SRE | Add automatic dependency validator to flag‑push (PRD) | 2025‑06‑05 |
+| 2 | Platform Eng | Implement canary force‑abort CLI | 2025‑06‑12 |
+| 3 | Comms | Automate status page update via API | 2025‑06‑01 |
+
+## 7  Follow‑Up
+Schedule “blameless postmortem” meeting by 2025‑05‑27.
+
+---
+
+# Product Requirements Document – Project Aurora v2
+**Document version:** 2.0  
+**Author:** Sofia Nilsson (Principal PM)  
+**Last updated:** 2025‑05‑29  
+**Stakeholders:** Engineering, Design, Sales, Customer Success, Legal, Security
+
+---
+## 1  Purpose
+Project Aurora expands Acme’s analytics ecosystem into real‑time, SKU‑level inventory prediction.
+This PRD captures functional and non‑functional requirements for the 1.0 General Availability release
+targeted for **2025‑09‑15**.
+
+## 2  Background & Problem Statement
+• 47 % of our mid‑market retail customers cite "stock‑out blindness" as their top operational pain.  
+• Competitive gap: Competitors X & Y offer bulk nightly forecasting; none provide live stream‑based
+  probabilities tied directly to a unified ingest pipeline.  
+• Current Acme platform lacks short‑term prediction and proactive alerting.
+
+## 3  Goals & Success Metrics
+| Goal | Metric | Target |
+|------|--------|--------|
+| Reduce stock‑out incidents | Avg. weekly OOS events / tenant | ‑35 % within 90 days of enablement |
+| Increase platform stickiness | Net Dollar Retention | > 126 % YoY |
+| Drive upsell ACV | Incremental ARR per tenant | €4 k average |
+
+## 4  Assumptions
+1. Customers stream at most 30 K events/s; burst tolerance up to 45 K for < 5 min.  
+2. 85 % of events originate from EU and NA regions, aligning with existing Kafka clusters.  
+3. Existing Prediction Service can be refactored; no greenfield micro‑service.
+
+## 5  User Personas
+| Persona | Role | Needs |
+|---------|------|-------|
+| **Olivia Ops** | Inventory Planner | Wants predictive alerts at least 24 h pre‑stock‑out. |
+| **Marco Dev** | E‑commerce Engineer | Seeks low‑latency API hooks (< 150 ms) to trigger UI banners. |
+| **Diana Director** | VP Supply Chain | Requires board‑level KPIs and ROI dashboard. |
+
+## 6  User Stories & Use Cases
+1. *As Olivia*, I receive an email at 06:00 local showing any SKU with > 90 % OOS risk next day.  
+2. *As Marco*, I embed the `/stock/alerts` API in checkout flow; banner appears if risk > 70 %.  
+3. *As Diana*, I export quarterly reduction metrics as CSV for the board deck.
+
+## 7  Functional Requirements
+| # | Requirement | Priority | Acceptance Criteria |
+|---|-------------|----------|---------------------|
+| FR‑01 | Provide REST endpoint `/stock/alerts` | P0 | Returns ≤ 500 ms for 95 th percentile |
+| FR‑02 | Support webhook push mode | P1 | Retry with exponential back‑off 5× |
+| FR‑03 | Alert thresholds configurable per SKU | P0 | Persisted in `tenant_settings` table |
+| FR‑04 | Dashboard widget “Live Risk Heatmap” | P1 | Renders < 2 s, auto‑refresh 60 s |
+| FR‑05 | CSV export in UTC | P2 | Generates under 30 s for 100 K rows |
+| FR‑06 | Role‑based access in dashboard | P0 | Only `analyst` & up see predictions |
+| FR‑07 | Public GraphQL endpoint (read‑only) | P3 | Follows Relay spec |
+| FR‑08 | Webhooks signed with HMAC‐SHA256 | P1 | Pass external verifier |
+| FR‑09 | Alert deduping window | P2 | ≤ 1 duplicate / 10 K alerts |
+| FR‑10 | Batch backfill API | P2 | Accepts up to 5 M events |
+| FR‑11 | Self‑serve provisioning UI | P3 | Create tenant in < 30 s |
+| FR‑12 | Multi‑language SDKs (JS, Python, Go) | P2 | Coverage parity |
+| FR‑13 | System health endpoint `/status` | P0 | Returns 200, includes version |
+| FR‑14 | SLA dash export (PDF) | P3 | Passes accessibility check |
+| FR‑15 | Predictive model versioning | P1 | Metadata stored in feature store |
+| FR‑16 | Soft‑delete predictions | P2 | GDPR compliant |
+| FR‑17 | Bulk suppression list upload | P3 | Accept CSV up to 20 MB |
+| FR‑18 | Live sandbox tenant | P2 | Resets nightly |
+| FR‑19 | OAuth2 scopes granular | P1 | Minimum privileges |
+| FR‑20 | Post‑incident email templates | P3 | Autopopulate with incident data |
+
+## 8  Non‑Functional Requirements
+1. **Scalability** – horizontal Kubernetes scaling; target 10 × event growth.  
+2. **Availability** – 99.95 % monthly uptime (SLA).  
+3. **Security** – SOC 2 Type II, ISO 27001 controls mapped.  
+4. **Privacy** – GDPR compliant, data resides in tenant’s selected region.  
+5. **Observability** – metrics: `prediction_latency_ms`, `alerts_generated_total`.
+
+## 9  Data Flow
+```mermaid
+graph TD
+  A[POS/E‑comm] -->|events| B[Ingest Gateway]
+  B --> C[Kafka Topic <tenant>‑orders]
+  C --> D[Flink Jobs]
+  D --> E[Prediction Engine]
+  E --> F[Feature Store]
+  E --> G[Alerts API]
+```
+
+## 10  Release Plan
+| Phase | Date | Scope |
+|-------|------|-------|
+| Alpha | 2025‑06‑30 | 3 design partners, EU cluster only |
+| Beta | 2025‑08‑15 | 20 tenants, global |
+| GA | 2025‑09‑15 | Public |
+
+## 11  Dependencies
+* Feature Store (v4.2) with online store patch.  
+* Billing Service endpoint `/usage/events` (2025‑07‑01 GA).  
+
+## 12  Risks & Mitigations
+| Risk | Likelihood | Impact | Mitigation |
+|------|------------|--------|------------|
+| Event burst overload | Medium | High | Auto‑scale ingestion, rate‑limit |
+| Model drift | High | Medium | Weekly re‑train, drift monitor |
+
+## 13  Out of Scope
+• Store‑level replenishment automation (will be in v1.5).  
+• Predictive pricing.
+
+### Appendix B – Glossary
+**SKU:** Stock Keeping Unit; **OOS:** Out Of Stock; **SLA:** Service‑Level Agreement.
+
+---
+
 # Release Notes – Aurora 1.0.0 (2025‑09‑15)
 
 🎉 **First GA release of Aurora real‑time analytics add‑on**
@@ -169,3 +431,117 @@ If p95 latency > 1 s or error‑rate > 2 % after 5 m:
 
 ## 5  Versioning
 Use SemVer X.Y.Z where X = breaking, Y = feature, Z = patch.
+
+---
+
+# Security & Compliance Whitepaper – Aurora Platform (May 2025)
+
+> Detailed exposition of Aurora's security controls, compliance certifications,
+> and shared responsibility model.
+
+## Table of Contents
+1. Executive Summary  
+2. Architectural Overview  
+3. Data Protection  
+4. Identity & Access Management  
+5. Network Security  
+6. Development Lifecycle & DevSecOps  
+7. Compliance Framework Mapping  
+8. Incident Response  
+9. Penetration Test Results (2025 Q1)  
+10. Physical Security  
+11. Business Continuity & DR  
+12. Audit & Monitoring  
+13. Customer Responsibilities  
+14. Appendix: Encryption Inventory
+
+## 1  Executive Summary
+Aurora inherits Acme’s multi‑tenant zero‑trust architecture. Data is
+encrypted in transit and at rest (TLS 1.3, AES‑256‑GCM). Aurora is certified
+under **SOC 2 Type II** and included in our **ISO 27001** statement of
+applicability. PCI DSS scope: **out‑of‑scope** (no cardholder data stored).
+
+## 2  Architectural Overview
+```
+[Client] --TLS13--> [CloudFront + WAF] --mTLS--> [Ingest Gateway]
+[Gateway] --TLS--> [Kafka] --IAM--> [Flink Cluster] --> [Feature Store]
+```
+Tenants share control plane but have dedicated Kafka topics partitioned by
+tenant‑id. Feature Store uses row‑level policies enforced via
+Lake Formation.
+
+## 3  Data Protection
+### 3.1 Encryption at Rest & In Transit
+| Storage Layer | Algorithm | KMS Key Rotation |
+|---------------|-----------|------------------|
+| S3 Raw Events | AES‑256‑GCM | 365 days |
+| RDS Aurora | AES‑256 TDE | Automatic |
+| Flink Checkpoints | AES‑256‑CTR | 90 days |
+| Backups | AES‑256‑GCM | 30 days |
+
+### 3.2 Data Masking
+PII fields (`customer_email`, `phone`) are hashed or tokenised before export.
+
+### 3.3 Key Management
+Customer Managed Keys (CMKs) are supported; otherwise keys managed by AWS KMS
+in separate account.
+
+## 4  Identity & Access Management
+• SSO via SAML 2.0/OIDC with SCIM provisioning.  
+• Role Based Access Control with attribute constraints (`tenant_id`).  
+• Admin actions require WebAuthn FIDO2 MFA.
+
+## 5  Network Security
+* Layer‑7 WAF rules block OWASP Top‑10, CVE feeds auto‑updated.  
+* Private subnets using S3 VPC endpoint – no direct Internet egress.  
+* Bastion hosts replaced by AWS SSM Session Manager.
+
+## 6  Development Lifecycle & DevSecOps
+| Phase | Control | Tool |
+|-------|---------|------|
+| Planning | Threat modelling | OWASP Threat Dragon |
+| Code | SAST | Semgrep, SonarQube |
+| Build | SBOM generation | Syft |
+| Test | DAST | OWASP ZAP |
+| Release | Provenance attestation | Sigstore Cosign |
+| Runtime | Container scanning | Trivy (cron) |
+
+## 7  Compliance Framework Mapping
+| Control | SOC 2 | ISO 27001 | GDPR | HIPAA |
+|---------|-------|-----------|-------|-------|
+| Encryption | CC6.1 | A.10 | Art.32 | §164.312 |
+| Access Reviews | CC6.3 | A.9.2 | Art.5‑1(f) | §164.308 |
+| DR | CC7.2 | A.17 | Art.32 | §164.308 |
+
+## 8  Incident Response
+* 24 × 7 PagerDuty, SEV‑1 RTO ≤ 30 min.  
+* Post‑mortems follow “blameless” template, published internally.
+
+## 9  Penetration Test Results (Q1 2025)
+* Vendor: NCC Group.  
+* Findings: Critical 0, High 1, Medium 3, Low 12 (resolved).  
+* CVE‑2025‑12789 (Grafana) patched within 24 h.
+
+## 10  Physical Security
+Aurora is hosted entirely in AWS; see AWS SOC reports.
+
+## 11  Business Continuity & DR
+• Daily multi‑AZ snapshots; RPO < 4 h.  
+• Region failover test Feb 2025 – 134 min to full customer traffic.
+
+## 12  Audit & Monitoring
+* CloudTrail events aggregated to Security Lake (7 year retention).  
+* Anomaly detection via GuardDuty, alerts in Slack #security‑alerts.
+
+## 13  Customer Responsibilities
+• Configure IAM principals, rotate credentials.  
+• Review audit logs; respond to GuardDuty delegated findings.
+
+## 14  Appendix: Encryption Inventory
+| Component | Data | Encryption | Rotation |
+|-----------|------|------------|----------|
+| Kafka | messages | AES‑256 SSE‑KMS | 1 year |
+| Redshift | tables | AES‑256 | 3 years |
+| Logs | S3 Glacier | AES‑256 | 7 years |
+
+-- End --
