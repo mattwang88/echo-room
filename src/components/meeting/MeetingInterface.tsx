@@ -92,15 +92,17 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
     if (currentSrc.startsWith("/images/avatars/")) {
-      // If specific agent avatar (e.g., cto.jpg, product.jpg) failed
-      if (currentSrc !== "/images/avatars/default_user.jpg" && currentSrc !== "/images/avatars/default_avatar.jpg") {
+      if (currentSrc.includes("default_user.jpg")) { // If default_user.jpg failed
+        console.log(`[MeetingInterface] Fallback from ${currentSrc} to placeholder.`);
+        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+        setCurrentSpeakerImageAlt("Fallback placeholder avatar");
+        setCurrentSpeakerImageAiHint("placeholder avatar");
+      } else if (currentSrc !== "/images/avatars/default_avatar.jpg") { // If a specific agent image (not default_avatar.jpg) failed
         console.log(`[MeetingInterface] Fallback from ${currentSrc} to /images/avatars/default_avatar.jpg`);
         setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
         setCurrentSpeakerImageAlt("Default agent avatar");
         setCurrentSpeakerImageAiHint("professional person");
-      } 
-      // If default_user.jpg failed, or default_avatar.jpg (as a fallback) failed
-      else if (currentSrc === "/images/avatars/default_user.jpg" || currentSrc === "/images/avatars/default_avatar.jpg") {
+      } else if (currentSrc === "/images/avatars/default_avatar.jpg") { // If default_avatar.jpg (as a fallback) failed
         console.log(`[MeetingInterface] Fallback for ${currentSrc} to placeholder.`);
         setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
         setCurrentSpeakerImageAlt("Fallback placeholder avatar");
@@ -108,9 +110,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       }
     } else if (currentSrc.startsWith("https://placehold.co/")) {
       console.error("[MeetingInterface] Placeholder image also failed. This shouldn't happen frequently.");
-      // Could implement a tertiary fallback here if needed, e.g., to a very basic inline SVG or hiding the image.
     }
-    // No explicit 'else' for other local paths, as they shouldn't occur with current logic.
   }, [currentSpeakerImageSrc]);
 
 
@@ -171,7 +171,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
             <Image
-              key={currentSpeakerImageSrc} // Add key to force re-render on src change, helps with error/fallback
+              key={currentSpeakerImageSrc} 
               src={currentSpeakerImageSrc}
               alt={currentSpeakerImageAlt}
               width={256}
@@ -195,10 +195,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             variant="destructive"
             size="icon"
             onClick={handleEndMeeting}
-            className="mt-12 rounded-full shadow-lg hover:scale-105 transition-transform h-14 w-14"
+            className="mt-20 rounded-full shadow-lg hover:scale-105 transition-transform h-20 w-20"
             aria-label="End Meeting"
           >
-            <PhoneOff className="h-7 w-7" />
+            <PhoneOff className="h-10 w-10" />
           </Button>
 
            {meetingEnded && !isTTSSpeaking && (
