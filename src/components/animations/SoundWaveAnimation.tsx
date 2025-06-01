@@ -26,18 +26,20 @@ export function SoundWaveAnimation({ width = 512, height = 256, className, isAni
       aria-label="Sound wave animation"
       data-ai-hint="soundwave animation"
     >
-      {/* Symmetrical "W" pattern with 11 bars, adjusted heights */}
+      {/* Symmetrical "W" pattern with 13 bars, adjusted heights */}
       <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '0ms'}}></div>    {/* Bar 1 (Outer Left) */}
       <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '100ms'}}></div>   {/* Bar 2 */}
       <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '200ms'}}></div>   {/* Bar 3 (Rising) */}
       <div className={cn(barClasses, "h-4/5")} style={{animationDelay: '300ms'}}></div>   {/* Bar 4 (Peak 1) */}
       <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '400ms'}}></div>   {/* Bar 5 (Falling) */}
-      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '500ms'}}></div>   {/* Bar 6 (Central Valley) */}
-      <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '600ms'}}></div>   {/* Bar 7 (Rising) */}
-      <div className={cn(barClasses, "h-4/5")} style={{animationDelay: '700ms'}}></div>   {/* Bar 8 (Peak 2) */}
-      <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '800ms'}}></div>   {/* Bar 9 (Falling) */}
-      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '900ms'}}></div>   {/* Bar 10 */}
-      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '1000ms'}}></div>  {/* Bar 11 (Outer Right) */}
+      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '500ms'}}></div>   {/* Bar 6 (New bar next to valley) */}
+      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '600ms'}}></div>   {/* Bar 7 (Central Valley - modified height) */}
+      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '700ms'}}></div>   {/* Bar 8 (New bar next to valley) */}
+      <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '800ms'}}></div>   {/* Bar 9 (Rising) */}
+      <div className={cn(barClasses, "h-4/5")} style={{animationDelay: '900ms'}}></div>   {/* Bar 10 (Peak 2) */}
+      <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '1000ms'}}></div>  {/* Bar 11 (Falling) */}
+      <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '1100ms'}}></div>  {/* Bar 12 */}
+      <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '1200ms'}}></div>  {/* Bar 13 (Outer Right) */}
     </div>
   );
 }
