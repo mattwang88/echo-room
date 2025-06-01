@@ -23,14 +23,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [meetingActive, setMeetingActive] = useState<boolean>(false);
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
-  const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null); // Used to ensure initial scenario message logic runs once per scenario load
+  const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null); 
   const isMountedRef = useRef(true);
 
   const [isRecording, setIsRecording] = useState(false);
   const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
   const [intentToSubmitAfterStop, setIntentToSubmitAfterStop] = useState(false);
 
-  // Initialize hooks that provide functions used by callbacks earlier
   const { speak: ttsSpeak, cancel: ttsCancel, isSpeaking: isTTSSpeaking, currentSpeakingParticipant: ttsCurrentSpeaker } = useTextToSpeech();
 
   const handleSttListeningChange = useCallback((listening: boolean) => {
@@ -83,16 +82,28 @@ export function useMeetingSimulation(scenarioId: string | null) {
     };
     setMessages(prev => [...prev, newMessage]);
 
+    // This TTS logic is for subsequent messages AFTER the initial scenario message has been handled.
+    // The initial scenario message's TTS is triggered explicitly in handleMeetingAction.
     if (meetingActive && messageData.participant !== 'User' && !messageData.action) {
-      // Voice over any message that is not from the user and doesn't have an action,
-      // once the meeting is active. This includes System and Agent messages.
-      console.log(`[MeetingSimulation] AddMessage: Attempting TTS. Participant: ${messageData.participant}, Text: "${messageData.text.substring(0,30)}..."`);
-      ttsSpeak(messageData.text, messageData.participant);
+      // Check if this specific message is the one that was just spoken by handleMeetingAction
+      // This check might be overly cautious if `initialMessageSpokenForScenarioIdRef` is managed well,
+      // but aims to prevent double-speaking if addMessage itself were to trigger it too.
+      // The primary guard is that `handleMeetingAction` explicitly speaks the first one.
+      if (scenario && initialMessageSpokenForScenarioIdRef.current === scenario.id && 
+          !(messageData.text === scenario.initialMessage.text && messageData.participant === scenario.initialMessage.participant)) {
+            console.log(`[MeetingSimulation] AddMessage (subsequent): Attempting TTS. Participant: ${messageData.participant}, Text: "${messageData.text.substring(0,30)}..."`);
+            ttsSpeak(messageData.text, messageData.participant);
+      } else if (scenario && initialMessageSpokenForScenarioIdRef.current !== scenario.id) {
+        // This case implies meeting is active but the initial message REF hasn'T been set, meaning it's likely the initial message.
+        // Explicit call in handleMeetingAction should cover this.
+        console.log(`[MeetingSimulation] AddMessage: TTS for initial message likely handled by handleMeetingAction. Participant: ${messageData.participant}, Text: "${messageData.text.substring(0,30)}..."`);
+      } else {
+        console.log(`[MeetingSimulation] AddMessage: TTS condition not fully met or already handled for initial message. Participant: ${messageData.participant}, Active: ${meetingActive}, InitialMsgRef: ${initialMessageSpokenForScenarioIdRef.current}, Text: "${messageData.text.substring(0,30)}..."`);
+      }
     } else if (messageData.participant !== 'User') {
-      // Log for non-user messages even if not active or has action, for debugging.
-      console.log(`[MeetingSimulation] AddMessage: SKIPPING TTS. Participant: ${messageData.participant}, Active: ${meetingActive}, Has Action: ${!!messageData.action}, Text: "${messageData.text.substring(0,30)}..."`);
+      console.log(`[MeetingSimulation] AddMessage: SKIPPING TTS (standard). Participant: ${messageData.participant}, Active: ${meetingActive}, Has Action: ${!!messageData.action}, Text: "${messageData.text.substring(0,30)}..."`);
     }
-  }, [setMessages, ttsSpeak, meetingActive]);
+  }, [setMessages, ttsSpeak, meetingActive, scenario]); // Added scenario to deps for safety
 
 
   const handleMeetingAction = useCallback((messageId: string, actionKey: string) => {
@@ -112,14 +123,20 @@ export function useMeetingSimulation(scenarioId: string | null) {
       
       const actualInitialMessage = scenario.initialMessage;
       if (actualInitialMessage) {
-         addMessage({ // This call to addMessage will trigger TTS if conditions are met by the new logic
+         // Add the message to the display
+         addMessage({ 
           participant: actualInitialMessage.participant,
           text: actualInitialMessage.text,
         });
-        initialMessageSpokenForScenarioIdRef.current = scenario.id; // Mark that initial message sequence has been handled for this scenario instance
+        
+        // Explicitly speak the initial message
+        console.log(`[MeetingSimulation] handleMeetingAction: Explicitly attempting TTS for initial message. Participant: ${actualInitialMessage.participant}, Text: "${actualInitialMessage.text.substring(0,30)}..."`);
+        ttsSpeak(actualInitialMessage.text, actualInitialMessage.participant);
+        
+        initialMessageSpokenForScenarioIdRef.current = scenario.id; 
       }
     }
-  }, [scenario, addMessage, setMeetingActive]);
+  }, [scenario, addMessage, setMeetingActive, ttsSpeak]);
 
 
   const handleEndMeeting = useCallback(() => {
@@ -157,7 +174,14 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
 
     const userMsgText = currentUserResponse.trim();
-    addMessage({participant: 'User', text: userMsgText});
+    // Add user message - TTS for user message is not applicable here
+    setMessages(prev => [...prev, { 
+      id: Date.now().toString() + 'User' + Math.random(), 
+      participant: 'User', 
+      text: userMsgText, 
+      timestamp: Date.now() 
+    }]);
+
 
     if(isMountedRef.current) {
       setCurrentUserResponse("");
@@ -175,12 +199,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
         const agentToRespondRole = activeAgents[currentAgentIndex];
         let agentPersona = "";
         
-        // Specific persona mapping based on scenario and agent role
         if (scenario.id === 'manager-1on1' && agentToRespondRole === 'Product') {
-            agentPersona = scenario.personaConfig.productPersona; // Manager persona
+            agentPersona = scenario.personaConfig.productPersona; 
         } else if (scenario.id === 'job-resignation' && agentToRespondRole === 'HR') {
-             agentPersona = scenario.personaConfig.hrPersona; // Specific HR resignation persona
-        } else { // Generic persona mapping
+             agentPersona = scenario.personaConfig.hrPersona; 
+        } else { 
             switch (agentToRespondRole) {
                 case 'CTO': agentPersona = scenario.personaConfig.ctoPersona; break;
                 case 'Finance': agentPersona = scenario.personaConfig.financePersona; break;
@@ -199,6 +222,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
           };
           const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
           if (agentResponse && agentResponse.agentFeedback) {
+            // Call addMessage for agent responses; its internal logic will handle TTS
             addMessage({participant: agentToRespondRole, text: agentResponse.agentFeedback});
           }
           if(isMountedRef.current) setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
@@ -211,6 +235,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       if(isMountedRef.current) setCurrentTurn(prev => prev + 1);
       const nextTurn = currentTurn + 1;
       if (scenario.maxTurns && nextTurn >= scenario.maxTurns) {
+        // Add system message for meeting end; addMessage will handle its TTS
         addMessage({participant: "System", text: "The meeting time is up. This session has now concluded."});
         handleEndMeeting();
       }
@@ -218,6 +243,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     } catch (error) {
       console.error("[MeetingSimulation] AI interaction error:", error);
       toast({ title: "AI Error", description: "An error occurred while processing your request.", variant: "destructive" });
+      // Add system error message; addMessage will handle its TTS
       addMessage({participant: "System", text: "Sorry, I encountered an error. Please try again."});
     } finally {
       if(isMountedRef.current) setIsAiThinking(false);
@@ -225,7 +251,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   }, [
     currentUserResponse, scenario, isAiThinking, addMessage, setCurrentUserResponse, meetingActive,
     setBaseTextForSpeech, setIsAiThinking, ttsCancel, currentAgentIndex, setCurrentAgentIndex,
-    currentTurn, setCurrentTurn, handleEndMeeting, toast
+    currentTurn, setCurrentTurn, handleEndMeeting, toast, setMessages // Added setMessages and addMessage
   ]);
 
 
@@ -253,7 +279,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
               timestamp: Date.now(),
               action: { type: 'button', label: 'Start Meeting', actionKey: 'INITIATE_MEETING_START', disabled: false }
             };
-            setMessages([startPromptMessage]);
+            // This message has an action, so addMessage's TTS logic will skip it.
+            setMessages([startPromptMessage]); 
             
             setCurrentTurn(0);
             setMeetingEnded(false);
