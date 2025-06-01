@@ -15,6 +15,7 @@ import { PhoneOff, Mic, MicOff } from 'lucide-react';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
 import type { ParticipantRole } from '@/lib/types';
+import { SoundWaveAnimation } from '../animations/SoundWaveAnimation';
 
 interface MeetingInterfaceProps {
   scenarioId: string;
@@ -39,49 +40,57 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
 
-  const [currentSpeakerImageSrc, setCurrentSpeakerImageSrc] = useState("/images/avatars/default_user.jpg");
-  const [currentSpeakerImageAlt, setCurrentSpeakerImageAlt] = useState("User avatar");
-  const [currentSpeakerImageAiHint, setCurrentSpeakerImageAiHint] = useState("person speaking");
+  const [currentSpeakerImageSrc, setCurrentSpeakerImageSrc] = useState("https://placehold.co/256x256.png");
+  const [currentSpeakerImageAlt, setCurrentSpeakerImageAlt] = useState("Static soundwave avatar");
+  const [currentSpeakerImageAiHint, setCurrentSpeakerImageAiHint] = useState("soundwave audio");
 
   const getAvatarProps = useCallback((participant: ParticipantRole | null, currentScenarioId: string) => {
-    let src = "/images/avatars/default_user.jpg";
-    let alt = "User avatar";
-    let aiHint = "person speaking";
+    let src: string;
+    let alt: string;
+    let aiHint: string;
 
-    if (participant && participant !== 'User' && participant !== 'System') {
-      const agentName = getAgentName(participant, currentScenarioId);
-      alt = `${agentName} avatar`;
-      switch (participant) {
-        case 'CTO':
-          src = "/images/avatars/cto.jpg";
-          aiHint = "tech executive";
-          break;
-        case 'Finance':
-          src = "/images/avatars/finance.jpg";
-          aiHint = "finance professional";
-          break;
-        case 'Product':
-          if (currentScenarioId === 'manager-1on1') {
-            src = "/images/avatars/manager.jpg";
-            aiHint = "manager";
-          } else {
-            src = "/images/avatars/product.jpg";
-            aiHint = "product manager";
-          }
-          break;
-        case 'HR':
-          src = "/images/avatars/hr.jpg";
-          aiHint = "hr representative";
-          break;
-        default:
-          src = "/images/avatars/default_avatar.jpg";
-          alt = "Agent avatar";
-          aiHint = "professional person";
-      }
+    if (participant === 'User' || participant === null) {
+        src = "https://placehold.co/256x256.png";
+        alt = "Static soundwave avatar";
+        aiHint = "soundwave audio";
     } else if (participant === 'System') {
-        src = "/images/avatars/system.jpg";
+        src = "/images/avatars/system.jpg"; 
         alt = "System avatar";
         aiHint = "system icon";
+    } else if (participant) {
+        const agentName = getAgentName(participant, currentScenarioId);
+        alt = `${agentName} avatar`;
+        switch (participant) {
+            case 'CTO':
+                src = "/images/avatars/cto.jpg";
+                aiHint = "tech executive";
+                break;
+            case 'Finance':
+                src = "/images/avatars/finance.jpg";
+                aiHint = "finance professional";
+                break;
+            case 'Product':
+                if (currentScenarioId === 'manager-1on1') {
+                    src = "/images/avatars/manager.jpg";
+                    aiHint = "manager";
+                } else {
+                    src = "/images/avatars/product.jpg";
+                    aiHint = "product manager";
+                }
+                break;
+            case 'HR':
+                src = "/images/avatars/hr.jpg";
+                aiHint = "hr representative";
+                break;
+            default: 
+                src = "https://placehold.co/256x256.png";
+                alt = "Agent placeholder avatar";
+                aiHint = "professional person";
+        }
+    } else { 
+        src = "https://placehold.co/256x256.png"; 
+        alt = "Static soundwave avatar";
+        aiHint = "soundwave audio"; 
     }
     return { src, alt, aiHint };
   }, []);
@@ -90,21 +99,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     const currentSrc = currentSpeakerImageSrc;
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
+    // Fallback to a generic placeholder if local avatars fail
     if (currentSrc.startsWith("/images/avatars/") && currentSrc.endsWith(".jpg")) {
-        if (currentSrc === "/images/avatars/default_user.jpg") {
-            setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
-            setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
-            setCurrentSpeakerImageAiHint("placeholder avatar");
-        } else if (currentSrc === "/images/avatars/default_avatar.jpg") {
-            setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
-            setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
-            setCurrentSpeakerImageAiHint("placeholder avatar");
-        } else if (currentSrc !== "/images/avatars/default_avatar.jpg") { // Fallback for specific agent images like cto.jpg
-            setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg"); // Fallback to default agent avatar
-            setCurrentSpeakerImageAlt("Default agent avatar");
-            setCurrentSpeakerImageAiHint("professional person");
-        }
+        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+        setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
+        setCurrentSpeakerImageAiHint("placeholder avatar");
     } else if (currentSrc.startsWith("https://placehold.co/")) {
+      // If even the primary placeholder fails, this indicates a broader issue, but no further fallback here.
       console.error("[MeetingInterface] Placeholder image also failed to load. No further fallbacks.");
     }
   }, [currentSpeakerImageSrc]);
@@ -132,20 +133,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   }, [messages]);
 
 
-  const DiagnosticBar = () => {
-    const speakerName = currentSpeakingParticipant ? getAgentName(currentSpeakingParticipant, scenarioId) : null;
-    const showSpeakerInfo = speakerName && speakerName.toLowerCase() !== 'none' && speakerName.toLowerCase() !== 'user';
-
-    return (
-      <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
-        STT Supported: {isSTTSupported ? 'Yes' : 'No'} |
-        Recording: {isRecording ? 'Yes' : 'No'} |
-        TTS Speaking: {isTTSSpeaking ? 'Yes' : 'No'}
-        {showSpeakerInfo && ` | Current Speaker: ${speakerName}`}
-      </div>
-    );
-  };
-
   if (!scenario && !meetingEnded) {
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-4 bg-background">
@@ -162,24 +149,26 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
-      <DiagnosticBar />
-
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
-            <Image
-              key={currentSpeakerImageSrc} 
-              src={currentSpeakerImageSrc}
-              alt={currentSpeakerImageAlt}
-              width={256}
-              height={256}
-              className={cn(
-                'rounded-full object-cover transition-transform duration-200 ease-in-out',
-                isTTSSpeaking && currentSpeakingParticipant !== 'User' && 'animate-breathing'
-              )}
-              data-ai-hint={currentSpeakerImageAiHint}
-              priority
-              onError={handleImageError}
-            />
+            {isRecording ? (
+              <SoundWaveAnimation width={256} height={256} />
+            ) : (
+              <Image
+                key={currentSpeakerImageSrc} 
+                src={currentSpeakerImageSrc}
+                alt={currentSpeakerImageAlt}
+                width={256}
+                height={256}
+                className={cn(
+                  'rounded-full object-cover transition-transform duration-200 ease-in-out',
+                  isTTSSpeaking && currentSpeakingParticipant !== 'User' && 'animate-breathing'
+                )}
+                data-ai-hint={currentSpeakerImageAiHint}
+                priority
+                onError={handleImageError}
+              />
+            )}
           {isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
             <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
               {getAgentName(currentSpeakingParticipant, scenarioId)} speaking
@@ -226,8 +215,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               ))}
               {isAiThinking && messages[messages.length-1]?.participant === 'User' && (
                 <div className="flex items-end gap-2 mb-4 justify-start">
-                  <Skeleton className="h-8 w-8 rounded-full self-start" />
-                  <div className="max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-muted">
+                  <div className={cn(
+                      "max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-muted",
+                      // No extra margin needed as all avatars are removed from chat messages
+                  )}>
                     <span className="text-sm italic text-muted-foreground">
                         Thinking
                       <span className="animate-ellipsis"></span>
@@ -253,5 +244,3 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
-
-    
