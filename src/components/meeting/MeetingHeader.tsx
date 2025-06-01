@@ -1,4 +1,3 @@
-
 import type { Scenario } from '@/lib/types';
 import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -58,7 +57,7 @@ export function MeetingHeader({
                 )}
               </Button>
             )}
-            <Button variant="outline" size="sm" onClick={onEndMeeting} className="ml-auto">
+            <Button variant="destructive" size="sm" onClick={onEndMeeting} className="ml-auto">
               <LogOut className="mr-2 h-4 w-4" /> End Meeting
             </Button>
           </div>
