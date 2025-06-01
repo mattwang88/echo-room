@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PhoneOff } from 'lucide-react';
+import { PhoneOff, Mic, MicOff } from 'lucide-react';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
 import type { ParticipantRole } from '@/lib/types';
@@ -92,24 +92,19 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
     if (currentSrc.startsWith("/images/avatars/") && currentSrc.endsWith(".jpg")) {
         if (currentSrc === "/images/avatars/default_user.jpg") {
-            // Fallback for default_user.jpg
             setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
             setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
             setCurrentSpeakerImageAiHint("placeholder avatar");
         } else if (currentSrc === "/images/avatars/default_avatar.jpg") {
-            // Fallback for default_avatar.jpg itself
             setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
             setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
             setCurrentSpeakerImageAiHint("placeholder avatar");
         } else if (currentSrc !== "/images/avatars/default_avatar.jpg") {
-            // Fallback for specific agent images (cto.jpg, etc.) to default_avatar.jpg
             setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
             setCurrentSpeakerImageAlt("Default agent avatar");
             setCurrentSpeakerImageAiHint("professional person");
         }
-        // If it's already default_avatar.jpg and it failed, the next error will trigger the placeholder
     } else if (currentSrc.startsWith("https://placehold.co/")) {
-      // If the placeholder itself fails, log and stop to prevent infinite loop.
       console.error("[MeetingInterface] Placeholder image also failed to load. No further fallbacks.");
     }
   }, [currentSpeakerImageSrc]);
@@ -192,14 +187,25 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             </p>
           )}
           
-          <Button
-            variant="destructive"
-            onClick={handleEndMeeting}
-            className="mt-20 rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
-            aria-label="End Meeting"
-          >
-            <PhoneOff className="h-8 w-8" />
-          </Button>
+          <div className="flex items-center justify-center gap-4 mt-20">
+            <Button
+              variant={isRecording ? "destructive" : "accent"}
+              onClick={handleToggleRecording}
+              disabled={!isSTTSupported || meetingEnded || isTTSSpeaking || isAiThinking}
+              className="rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
+              aria-label={isRecording ? "Stop recording" : "Start recording"}
+            >
+              {isRecording ? <MicOff className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleEndMeeting}
+              className="rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
+              aria-label="End Meeting"
+            >
+              <PhoneOff className="h-8 w-8" />
+            </Button>
+          </div>
 
            {meetingEnded && !isTTSSpeaking && (
              <p className="mt-4 text-lg text-muted-foreground">Meeting has ended.</p>
