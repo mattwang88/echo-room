@@ -4,7 +4,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import Image from 'next/image';
 import { useMeetingSimulation } from '@/hooks/use-meeting-simulation';
-import { MeetingHeader } from './MeetingHeader';
+// MeetingHeader import removed
 import { ChatMessage } from './ChatMessage';
 import { ResponseInput } from './ResponseInput';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -86,23 +86,23 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
     return { src, alt, aiHint };
   }, []);
-  
+
   const handleImageError = useCallback(() => {
     const currentSrc = currentSpeakerImageSrc;
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
     if (currentSrc.startsWith("/images/avatars/")) {
-      if (currentSrc.includes("default_user.jpg")) { // If default_user.jpg failed
+      if (currentSrc.includes("default_user.jpg")) {
         console.log(`[MeetingInterface] Fallback from ${currentSrc} to placeholder.`);
         setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
         setCurrentSpeakerImageAlt("Fallback placeholder avatar");
         setCurrentSpeakerImageAiHint("placeholder avatar");
-      } else if (currentSrc !== "/images/avatars/default_avatar.jpg") { // If a specific agent image (not default_avatar.jpg) failed
+      } else if (currentSrc !== "/images/avatars/default_avatar.jpg") {
         console.log(`[MeetingInterface] Fallback from ${currentSrc} to /images/avatars/default_avatar.jpg`);
         setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
         setCurrentSpeakerImageAlt("Default agent avatar");
         setCurrentSpeakerImageAiHint("professional person");
-      } else if (currentSrc === "/images/avatars/default_avatar.jpg") { // If default_avatar.jpg (as a fallback) failed
+      } else if (currentSrc === "/images/avatars/default_avatar.jpg") {
         console.log(`[MeetingInterface] Fallback for ${currentSrc} to placeholder.`);
         setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
         setCurrentSpeakerImageAlt("Fallback placeholder avatar");
@@ -112,7 +112,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       console.error("[MeetingInterface] Placeholder image also failed. This shouldn't happen frequently.");
     }
   }, [currentSpeakerImageSrc]);
-
 
   useEffect(() => {
     const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
@@ -162,10 +161,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
-      <MeetingHeader
-        scenario={scenario}
-        onEndMeeting={handleEndMeeting}
-      />
+      {/* MeetingHeader component removed from here */}
       <DiagnosticBar />
 
       <div className="flex flex-1 overflow-hidden">
