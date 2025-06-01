@@ -20,7 +20,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [currentUserResponse, setCurrentUserResponse] = useState<string>("");
   const [isAiThinking, setIsAiThinking] = useState<boolean>(false);
   const [meetingEnded, setMeetingEnded] = useState<boolean>(false);
-  const [meetingActive, setMeetingActive] = useState<boolean>(false); // New state
+  const [meetingActive, setMeetingActive] = useState<boolean>(false);
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
   const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null);
@@ -30,7 +30,42 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
   const [intentToSubmitAfterStop, setIntentToSubmitAfterStop] = useState(false);
 
+  // Initialize hooks that provide functions used by callbacks earlier
   const { speak: ttsSpeak, cancel: ttsCancel, isSpeaking: isTTSSpeaking, currentSpeakingParticipant: ttsCurrentSpeaker } = useTextToSpeech();
+
+  const handleSttListeningChange = useCallback((listening: boolean) => {
+    if (!isMountedRef.current) return;
+    setIsRecording(listening);
+  }, [setIsRecording]);
+
+  const handleSttTranscript = useCallback((finalTranscriptSegment: string) => {
+    if (!isMountedRef.current) return;
+    console.log(`[MeetingSimulation] STT Final Transcript Segment Received: "${finalTranscriptSegment}"`);
+    setBaseTextForSpeech(prevBaseText => {
+      const newCumulativeText = (prevBaseText ? prevBaseText + " " : "") + finalTranscriptSegment.trim();
+      setCurrentUserResponse(newCumulativeText);
+      return newCumulativeText;
+    });
+  }, [setCurrentUserResponse, setBaseTextForSpeech]);
+
+  const handleSttInterimTranscript = useCallback((interim: string) => {
+    if (!isMountedRef.current) return;
+    setCurrentUserResponse(prev => baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim.trim());
+  }, [baseTextForSpeech, setCurrentUserResponse]);
+
+  const {
+    isListening: sttInternalIsListening,
+    startListening: sttStartListening,
+    stopListening: sttStopListening,
+    isSTTSupported: browserSupportsSTT,
+    sttError,
+    clearSTTError,
+  } = useSpeechToText({
+    onTranscript: handleSttTranscript,
+    onInterimTranscript: handleSttInterimTranscript,
+    onListeningChange: handleSttListeningChange,
+  });
+
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -48,13 +83,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
     };
     setMessages(prev => [...prev, newMessage]);
 
-    // Only speak if it's an agent response and the meeting is active
     if (meetingActive && messageData.participant !== 'User' && messageData.participant !== 'System' && !messageData.action) {
         console.log(`[MeetingSimulation] Initiating TTS for ${messageData.participant}'s message: "${messageData.text.substring(0,30)}..."`);
         ttsSpeak(messageData.text, messageData.participant);
     } else if (meetingActive && messageData.participant === 'System' && initialMessageSpokenForScenarioIdRef.current === scenario?.id && !messageData.action) {
-      // Speak System messages if it's the scenario's initial message (after start)
-       console.log(`[MeetingSimulation] Initiating TTS for System's initial message: "${messageData.text.substring(0,30)}..."`);
+       console.log(`[MeetingSimulation DEBUG] Initiating TTS for System's actual initial message: "${messageData.text.substring(0,30)}..."`);
        ttsSpeak(messageData.text, messageData.participant);
     }
   }, [setMessages, ttsSpeak, meetingActive, scenario]);
@@ -67,7 +100,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
       console.log('[MeetingSimulation] Starting meeting...');
       setMeetingActive(true);
 
-      // Update the "Start Meeting" prompt message
       setMessages(prevMessages =>
         prevMessages.map(msg =>
           msg.id === messageId
@@ -76,23 +108,21 @@ export function useMeetingSimulation(scenarioId: string | null) {
         )
       );
       
-      // Add and speak the scenario's actual initial message
       const actualInitialMessage = scenario.initialMessage;
       if (actualInitialMessage) {
          addMessage({
           participant: actualInitialMessage.participant,
           text: actualInitialMessage.text,
         });
-        // TTS for this added message is handled by the addMessage's internal logic now
-        initialMessageSpokenForScenarioIdRef.current = scenario.id; // Mark as spoken
+        initialMessageSpokenForScenarioIdRef.current = scenario.id;
       }
     }
-  }, [scenario, addMessage, ttsSpeak]);
+  }, [scenario, addMessage]);
 
 
   const handleEndMeeting = useCallback(() => {
     setMeetingEnded(true);
-    setMeetingActive(false); // Ensure meeting is not active
+    setMeetingActive(false); 
     if (!scenario) return;
     console.log('[MeetingSimulation] Ending meeting.');
 
@@ -106,7 +136,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     const summaryData: MeetingSummaryData = {
       scenarioTitle: scenario.title,
       objective: scenario.objective,
-      messages: messages.filter(msg => msg.id !== START_MEETING_PROMPT_ID), // Exclude start prompt from summary
+      messages: messages.filter(msg => msg.id !== START_MEETING_PROMPT_ID), 
     };
     try {
       localStorage.setItem('echoRoomMeetingSummary', JSON.stringify(summaryData));
@@ -119,7 +149,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
 
   const submitUserResponse = useCallback(async () => {
-    if (!currentUserResponse.trim() || !scenario || isAiThinking || !meetingActive) { // Check meetingActive
+    if (!currentUserResponse.trim() || !scenario || isAiThinking || !meetingActive) { 
       return;
     }
 
@@ -194,38 +224,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
     currentTurn, setCurrentTurn, handleEndMeeting, toast
   ]);
 
-  const handleSttListeningChange = useCallback((listening: boolean) => {
-    if (!isMountedRef.current) return;
-    setIsRecording(listening);
-  }, [setIsRecording]); 
-
-  const handleSttTranscript = useCallback((finalTranscriptSegment: string) => {
-    if (!isMountedRef.current) return;
-    console.log(`[MeetingSimulation] STT Final Transcript Segment Received: "${finalTranscriptSegment}"`);
-    setBaseTextForSpeech(prevBaseText => {
-      const newCumulativeText = (prevBaseText ? prevBaseText + " " : "") + finalTranscriptSegment.trim();
-      setCurrentUserResponse(newCumulativeText);
-      return newCumulativeText;
-    });
-  }, [setCurrentUserResponse, setBaseTextForSpeech]);
-
-  const handleSttInterimTranscript = useCallback((interim: string) => {
-    if (!isMountedRef.current) return;
-    setCurrentUserResponse(prev => baseTextForSpeech + (baseTextForSpeech ? " " : "") + interim.trim());
-  }, [baseTextForSpeech, setCurrentUserResponse]);
-
-  const {
-    isListening: sttInternalIsListening,
-    startListening: sttStartListening,
-    stopListening: sttStopListening,
-    isSTTSupported: browserSupportsSTT,
-    sttError,
-    clearSTTError,
-  } = useSpeechToText({
-    onTranscript: handleSttTranscript,
-    onInterimTranscript: handleSttInterimTranscript,
-    onListeningChange: handleSttListeningChange,
-  });
 
   useEffect(() => {
     if (sttError && isMountedRef.current) {
@@ -242,9 +240,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
           console.log(`[MeetingSimulation] Loading new scenario for ID: ${scenarioId}`);
           if(isMountedRef.current) {
             setScenario(foundScenario);
-            setMeetingActive(false); // Meeting is not active until Start button is clicked
+            setMeetingActive(false); 
             
-            // Add the "Start Meeting" prompt
             const startPromptMessage: Message = {
               id: START_MEETING_PROMPT_ID,
               participant: 'System',
@@ -265,7 +262,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
             }
             ttsCancel(); 
             clearSTTError();
-            initialMessageSpokenForScenarioIdRef.current = null;
+            initialMessageSpokenForScenarioIdRef.current = null; 
           }
         }
       } else {
@@ -281,11 +278,14 @@ export function useMeetingSimulation(scenarioId: string | null) {
       ttsCancel();
       if (isRecording) sttStopListening();
     }
-  }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario, ttsSpeak, ttsCancel, setCurrentUserResponse, setMessages, setScenario, setMeetingEnded, setCurrentTurn, setCurrentAgentIndex, setBaseTextForSpeech]);
+  // Dependencies like `ttsSpeak` are stable due to useCallback in their respective hooks
+  // `sttStopListening`, `clearSTTError` are also stable from `useSpeechToText`
+  // `scenario` is included to re-evaluate if the direct `scenario` object changes identity, though ID is primary driver.
+  }, [scenarioId, router, toast, isRecording, scenario, ttsCancel, sttStopListening, clearSTTError]);
 
 
   const handleToggleRecording = () => {
-    if (!meetingActive) { // Do not allow recording if meeting hasn't started
+    if (!meetingActive) { 
        toast({ title: "Meeting Not Started", description: "Please start the meeting before recording your response.", variant: "default"});
       return;
     }
@@ -313,7 +313,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   useEffect(() => {
     if (!isRecording && intentToSubmitAfterStop) {
       console.log("[MeetingSimulation] useEffect detected isRecording is false and intentToSubmitAfterStop is true.");
-      if (currentUserResponse.trim() && meetingActive) { // Also check meetingActive
+      if (currentUserResponse.trim() && meetingActive) { 
         console.log("[MeetingSimulation] Calling submitUserResponse due to intent after STT stop.");
         submitUserResponse();
       } else {
@@ -334,8 +334,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isAiThinking,
     submitUserResponse,
     meetingEnded,
-    meetingActive, // expose meetingActive
-    handleMeetingAction, // expose action handler
+    meetingActive, 
+    handleMeetingAction, 
     handleEndMeeting,
     isRecording,
     handleToggleRecording,
