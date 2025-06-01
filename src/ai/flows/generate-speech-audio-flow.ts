@@ -1,9 +1,8 @@
-
 'use server';
 /**
- * @fileOverview A Genkit flow for generating speech audio using Google Cloud Text-to-Speech.
+ * @fileOverview Generates speech audio from text using Google Cloud Text-to-Speech.
  *
- * - generateSpeechAudio - A function that synthesizes speech from text.
+ * - generateSpeechAudio - A function that synthesizes speech.
  * - GenerateSpeechAudioInput - The input type for the generateSpeechAudio function.
  * - GenerateSpeechAudioOutput - The return type for the generateSpeechAudio function.
  */
@@ -14,24 +13,20 @@ import {TextToSpeechClient} from '@google-cloud/text-to-speech';
 import type { protos } from '@google-cloud/text-to-speech';
 
 const GenerateSpeechAudioInputSchema = z.object({
-  text: z.string().describe('The plain text to synthesize into speech.'),
-  languageCode: z.string().optional().default('en-US').describe('The language code for the speech synthesis (e.g., "en-US", "es-ES").'),
-  voiceName: z.string().optional().default('en-US-Neural2-A').describe('The specific voice name to use (e.g., "en-US-Neural2-A", "en-GB-Neural2-A").'),
+  text: z.string().describe('The text to synthesize into speech.'),
+  languageCode: z.string().optional().default('en-US').describe('The language code (e.g., "en-US").'),
+  voiceName: z.string().optional().default('en-US-Neural2-A').describe('The voice name (e.g., "en-US-Wavenet-D").'),
 });
 export type GenerateSpeechAudioInput = z.infer<typeof GenerateSpeechAudioInputSchema>;
 
 const GenerateSpeechAudioOutputSchema = z.object({
-  audioContentDataUri: z.string().describe('The synthesized audio content as a base64 encoded data URI (e.g., "data:audio/mp3;base64,..."). Null if synthesis failed.'),
-  errorMessage: z.string().optional().describe('An error message if speech synthesis failed.'),
+  audioContentDataUri: z.string().describe('The synthesized audio content as a Base64 encoded data URI (MP3 format).'),
 });
 export type GenerateSpeechAudioOutput = z.infer<typeof GenerateSpeechAudioOutputSchema>;
-
 
 export async function generateSpeechAudio(input: GenerateSpeechAudioInput): Promise<GenerateSpeechAudioOutput> {
   return generateSpeechAudioFlow(input);
 }
-
-const ttsClient = new TextToSpeechClient();
 
 const generateSpeechAudioFlow = ai.defineFlow(
   {
@@ -40,20 +35,14 @@ const generateSpeechAudioFlow = ai.defineFlow(
     outputSchema: GenerateSpeechAudioOutputSchema,
   },
   async (input) => {
-    console.log('[generateSpeechAudioFlow] Received input for TTS (expecting plain text):', JSON.stringify({text: input.text.substring(0,100) + "...", voice: input.voiceName, lang: input.languageCode}));
+    console.log('[generateSpeechAudioFlow] Received input for TTS (expecting plain text):', JSON.stringify({text: input.text, voice: input.voiceName, lang: input.languageCode}));
+    const client = new TextToSpeechClient();
 
     const langCode = input.languageCode || 'en-US';
-    const voiceName = input.voiceName || 'en-US-Neural2-A'; // Defaulting to a high-quality voice
-
-    if (!input.text.trim()) {
-      console.warn('[generateSpeechAudioFlow] Input text is empty. Skipping synthesis.');
-      return { audioContentDataUri: '', errorMessage: "Input text was empty." };
-    }
-    
-    console.log(`[generateSpeechAudioFlow] Requesting speech synthesis with voice: ${voiceName}, lang: ${langCode}`);
+    const voiceName = input.voiceName || 'en-US-Neural2-A';
 
     const request: protos.google.cloud.texttospeech.v1.ISynthesizeSpeechRequest = {
-      input: {text: input.text}, // Use text input field
+      input: {text: input.text},
       voice: {
         languageCode: langCode,
         name: voiceName,
@@ -62,28 +51,23 @@ const generateSpeechAudioFlow = ai.defineFlow(
         audioEncoding: 'MP3',
       },
     };
+    console.log(`[generateSpeechAudioFlow] Requesting speech synthesis with voice: ${voiceName}, lang: ${langCode}`);
 
     try {
-      const [response] = await ttsClient.synthesizeSpeech(request);
+      const [response] = await client.synthesizeSpeech(request);
       if (response.audioContent) {
         const audioBytes = response.audioContent as Uint8Array;
         const audioBase64 = Buffer.from(audioBytes).toString('base64');
         const audioContentDataUri = `data:audio/mp3;base64,${audioBase64}`;
-        const audioLength = audioBytes.length;
-        console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Audio content length: ${audioLength}. Data URI starts with: ${audioContentDataUri.substring(0,50)}...`);
-        return { audioContentDataUri, errorMessage: undefined };
+        console.log(`[generateSpeechAudioFlow] Successfully synthesized audio. Data URI starts with: ${audioContentDataUri.substring(0,50)}...`);
+        return { audioContentDataUri };
       } else {
-        console.warn('[generateSpeechAudioFlow] TTS API returned no audio content.');
-        return { audioContentDataUri: '', errorMessage: 'TTS API returned no audio content.' };
+        console.error('[generateSpeechAudioFlow] No audio content in response.');
+        throw new Error('No audio content received from Text-to-Speech API.');
       }
     } catch (error) {
-      console.error('[generateSpeechAudioFlow] Error synthesizing speech from text:', error);
-      const errorMessage = error instanceof Error ? error.message : String(error);
-       if (errorMessage.includes("INVALID_ARGUMENT") && errorMessage.includes("Voice name and locale cannot both be empty")) {
-         console.error('[generateSpeechAudioFlow] Specific error: Voice name and/or locale were empty or invalid in the API request.');
-      }
-      // Rethrow or return structured error
-      throw new Error(`Failed to synthesize speech from text: ${errorMessage}`);
+      console.error('[generateSpeechAudioFlow] Error synthesizing speech:', error);
+      throw new Error(`Failed to synthesize speech from text: ${error instanceof Error ? error.message : String(error)}`);
     }
   }
 );

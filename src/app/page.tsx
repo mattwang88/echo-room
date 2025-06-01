@@ -27,6 +27,13 @@ import { getAllUserPersonas } from '@/lib/userPersonas';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { Scenario, Persona } from '@/lib/types';
 
+const DEFAULT_AGENT_ROLES = [
+  { label: 'CTO', value: 'CTO' },
+  { label: 'Finance', value: 'Finance' },
+  { label: 'Product', value: 'Product' },
+  { label: 'HR', value: 'HR' },
+];
+
 export default function ScenarioSelectionPage() {
   const [open, setOpen] = useState(false);
   const [title, setTitle] = useState('');

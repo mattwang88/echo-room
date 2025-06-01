@@ -21,6 +21,13 @@ export const AnalyzeResponseOutputSchema = z.object({
 });
 export type AnalyzeResponseOutput = z.infer<typeof AnalyzeResponseOutputSchema>;
 
+export interface MessageAction {
+  type: 'button';
+  label: string;
+  actionKey: string; // e.g., 'START_MEETING'
+  disabled?: boolean;
+}
+
 export interface Message {
   id: string;
   participant: ParticipantRole;
@@ -30,6 +37,7 @@ export interface Message {
   avatar?: string;
   coachingFeedback?: AnalyzeResponseOutput;
   semanticEvaluation?: EvaluateSemanticSkillOutput;
+  action?: MessageAction;
 }
 
 export interface Scenario {
