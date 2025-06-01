@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuItem,
+  DropdownMenuCheckboxItem, // Changed from DropdownMenuItem
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
@@ -19,7 +19,7 @@ import {
   UserCircle2, 
   Sparkles, 
   Mic, 
-  Users, // Changed from Link2
+  Users, 
   Plus, 
   Upload, 
   Package, 
@@ -39,6 +39,15 @@ const participantRoles = ["CTO", "Finance", "Product", "HR"];
 
 export default function HomePage() {
   const [simulationDescription, setSimulationDescription] = useState('');
+  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+
+  const handleRoleSelect = (role: string) => {
+    setSelectedRoles(prevSelectedRoles =>
+      prevSelectedRoles.includes(role)
+        ? prevSelectedRoles.filter(r => r !== role)
+        : [...prevSelectedRoles, role]
+    );
+  };
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -115,9 +124,16 @@ export default function HomePage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
                       {participantRoles.map((role) => (
-                        <DropdownMenuItem key={role} onSelect={() => console.log(`${role} selected`)}>
+                        <DropdownMenuCheckboxItem
+                          key={role}
+                          checked={selectedRoles.includes(role)}
+                          onSelect={(event) => {
+                            event.preventDefault(); // Keep menu open
+                            handleRoleSelect(role);
+                          }}
+                        >
                           {role}
-                        </DropdownMenuItem>
+                        </DropdownMenuCheckboxItem>
                       ))}
                     </DropdownMenuContent>
                   </DropdownMenu>
