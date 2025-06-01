@@ -4,21 +4,26 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { generateSpeechAudio, type GenerateSpeechAudioInput } from '@/ai/flows/generate-speech-audio-flow';
-import type { ParticipantRole } from '@/lib/types';
+import type { ParticipantRole, AgentRole } from '@/lib/types'; // Added AgentRole
 
 interface VoiceConfig {
   voiceName: string;
   languageCode: string;
 }
 
-const voiceMap: Record<ParticipantRole, VoiceConfig> = {
+// Updated voiceMap to include Manager and ensure all AgentRoles are covered
+const voiceMap: Record<AgentRole, VoiceConfig> = {
   CTO: { voiceName: 'en-US-Neural2-D', languageCode: 'en-US' },
   Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' },
-  Product: { voiceName: 'en-US-Neural2-I', languageCode: 'en-US' },
+  Product: { voiceName: 'en-US-Neural2-I', languageCode: 'en-US' }, // Also used for Manager in 1on1
   HR: { voiceName: 'en-US-Wavenet-E', languageCode: 'en-US' },
+  Manager: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US' }, // Dedicated voice for Manager
   System: { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US' },
-  User: { voiceName: '', languageCode: '' }, // User voice is not synthesized
+  // User voice is not synthesized, but to satisfy the Record type, we add it.
+  // It won't be used because speak() checks for participant === 'User'.
+  User: { voiceName: '', languageCode: '' }, 
 };
+
 
 export function useTextToSpeech() {
   const { toast } = useToast();
@@ -53,14 +58,13 @@ export function useTextToSpeech() {
         const mediaError = e.target.error;
         const currentSrcUsedByPlayer = (e.target as HTMLAudioElement).currentSrc || (e.target as HTMLAudioElement).src; 
         
-        // Determine if this is likely a benign error due to cancellation or specific known issues
         const isLikelyCancellationError =
-            mediaError.code === 1 || // MEDIA_ERR_ABORTED
-            (mediaError.code === 4 && // MEDIA_ERR_SRC_NOT_SUPPORTED
+            mediaError.code === 1 || 
+            (mediaError.code === 4 && 
                 (
                     !currentSrcUsedByPlayer ||
                     (currentSrcUsedByPlayer && !currentSrcUsedByPlayer.startsWith('data:audio/')) ||
-                    (mediaError.message && mediaError.message.includes("Empty src attribute")) // Check for specific message
+                    (mediaError.message && mediaError.message.includes("Empty src attribute")) 
                 )
             );
 
@@ -75,16 +79,16 @@ export function useTextToSpeech() {
         }
         
         switch (mediaError.code) {
-            case 1: // MEDIA_ERR_ABORTED
+            case 1: 
                 errorMessage = "Audio playback aborted.";
                 break;
-            case 2: // MEDIA_ERR_NETWORK
+            case 2: 
                 errorMessage = "A network error caused audio download to fail.";
                 break;
-            case 3: // MEDIA_ERR_DECODE
+            case 3: 
                 errorMessage = "Audio playback failed due to a media decoding error.";
                 break;
-            case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
+            case 4: 
                 if (!currentSrcUsedByPlayer || (currentSrcUsedByPlayer && !currentSrcUsedByPlayer.startsWith('data:audio/'))) {
                   errorMessage = "Audio source was empty or invalid, possibly due to cancellation.";
                 } else if (mediaError.message && mediaError.message.includes("Empty src attribute")) {
@@ -107,7 +111,7 @@ export function useTextToSpeech() {
     }
 
     if (isSpeakingStateRef.current && currentSpeechTextRef.current) {
-        if (logAsError) { // Only toast if it's not a likely cancellation error
+        if (logAsError) { 
             toast({
                 title: "Audio Playback Error",
                 description: errorMessage,
@@ -184,7 +188,7 @@ export function useTextToSpeech() {
 
     if (isSpeakingStateRef.current) {
       memoizedCancel();
-      await new Promise(resolve => setTimeout(resolve, 100)); // Short delay for cancel to take effect
+      await new Promise(resolve => setTimeout(resolve, 100)); 
     }
     
     if (!isMountedRef.current) return;
@@ -195,8 +199,17 @@ export function useTextToSpeech() {
       setIsSpeakingState(true);
       setDisplayedSpeaker(participant);
     }
-
-    const voiceConfig = voiceMap[participant] || voiceMap.System;
+    
+    // Determine the voice configuration
+    let voiceConfig: VoiceConfig;
+    if (participant === 'System') {
+        voiceConfig = voiceMap.System;
+    } else if (voiceMap[participant as AgentRole]) { // Check if it's a defined AgentRole
+        voiceConfig = voiceMap[participant as AgentRole];
+    } else {
+        console.warn(`[useTextToSpeech] No specific voice for role: ${participant}. Defaulting to System voice.`);
+        voiceConfig = voiceMap.System; // Default for any other custom or unexpected roles
+    }
     
     const input: GenerateSpeechAudioInput = {
       text,
@@ -208,11 +221,10 @@ export function useTextToSpeech() {
       const { audioContentDataUri } = await generateSpeechAudio(input);
 
       if (!isMountedRef.current || currentSpeechTextRef.current !== text || currentParticipantRef.current !== participant || !isSpeakingStateRef.current) {
-          if (isSpeakingStateRef.current && isMountedRef.current) { // Only reset if it was speaking and still mounted
+          if (isSpeakingStateRef.current && isMountedRef.current) { 
              setIsSpeakingState(false);
              setDisplayedSpeaker(null);
           }
-          // Clear refs if the target changed before audio loaded, or if unmounted
           if (currentSpeechTextRef.current !== text || currentParticipantRef.current !== participant) {
             currentSpeechTextRef.current = null;
             currentParticipantRef.current = null;

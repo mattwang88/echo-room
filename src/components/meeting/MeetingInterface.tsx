@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -32,8 +33,10 @@ const agentAvatarMap: Record<AgentRole, AgentAvatarConfig> = {
     Finance: { src: "/images/avatars/finance.jpg", alt: "Finance head avatar", aiHint: "finance professional" },
     Product: { src: "/images/avatars/product.jpg", alt: "Product head avatar", aiHint: "product manager" },
     HR: { src: "/images/avatars/hr.jpg", alt: "HR representative avatar", aiHint: "hr representative" },
+    Manager: { src: "/images/avatars/manager.jpg", alt: "Manager avatar", aiHint: "manager professional" },
 };
-const managerAvatar: AgentAvatarConfig = { src: "/images/avatars/manager.jpg", alt: "Manager avatar", aiHint: "manager" };
+// Special case for the manager-1on1 scenario where Product IS the manager
+const manager1on1Avatar: AgentAvatarConfig = { src: "/images/avatars/manager.jpg", alt: "Manager avatar", aiHint: "manager professional" };
 
 
 export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
@@ -88,23 +91,25 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     if (!isTTSSpeaking || !currentSpeakingParticipant || currentSpeakingParticipant === 'User' || currentSpeakingParticipant === 'System') {
       return null;
     }
+    // Handle the specific 'manager-1on1' scenario where 'Product' role uses the manager avatar
     if (scenarioId === 'manager-1on1' && currentSpeakingParticipant === 'Product') {
-      return managerAvatar;
+      return manager1on1Avatar;
     }
+    // For all other scenarios or other roles, use the standard agentAvatarMap
     return agentAvatarMap[currentSpeakingParticipant as AgentRole] || null;
   };
 
   const speakingAgentAvatar = getSpeakingAgentAvatar();
 
   const isMicButtonDisabled = !meetingActive || !browserSupportsSTT || meetingEnded || isTTSSpeaking || isAiThinking;
-  const isEndMeetingButtonDisabled = meetingEnded; // Can always end meeting, unless already ended.
+  const isEndMeetingButtonDisabled = meetingEnded;
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30 relative">
            {/* Speaker / Recording Status Banner */}
-           <div className="absolute top-4 left-1/2 -translate-x-1/2 w-auto max-w-[90%]">
+           <div className="absolute top-4 left-1/2 -translate-x-1/2 w-auto max-w-[90%] z-20">
             {meetingActive && isRecording && !isTTSSpeaking && (
               <div className="bg-primary/80 text-primary-foreground px-4 py-2 rounded-lg shadow-md text-center">
                 <p className="text-sm font-semibold animate-pulse">
@@ -136,17 +141,17 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             <SoundWaveAnimation width={512} height={256} isAnimating={true} />
           ) : meetingActive && speakingAgentAvatar ? (
             <Image
-              key={speakingAgentAvatar.src}
+              key={speakingAgentAvatar.src} // Key ensures re-render if avatar changes
               src={speakingAgentAvatar.src}
               alt={speakingAgentAvatar.alt}
               width={256}
               height={256}
-              className="rounded-full object-cover animate-breathing"
+              className="rounded-full object-cover animate-breathing shadow-xl"
               data-ai-hint={speakingAgentAvatar.aiHint}
               priority
               onError={(e) => {
                 console.warn(`Error loading avatar for ${currentSpeakingParticipant}: ${speakingAgentAvatar.src}`);
-                (e.target as HTMLImageElement).src = "https://placehold.co/256x256.png";
+                (e.target as HTMLImageElement).src = "https://placehold.co/256x256.png"; // Fallback placeholder
                 (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar');
               }}
             />
@@ -231,7 +236,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             onChange={(e) => setCurrentUserResponse(e.target.value)}
             onSubmit={submitUserResponse}
             isSending={isAiThinking}
-            disabled={meetingEnded || isTTSSpeaking || !meetingActive} // Disable if meeting not active
+            disabled={meetingEnded || isTTSSpeaking || !meetingActive}
             isRecording={isRecording}
             onToggleRecording={handleToggleRecording}
             isSTTSupported={browserSupportsSTT}
