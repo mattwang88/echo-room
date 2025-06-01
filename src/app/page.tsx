@@ -92,11 +92,33 @@ export default function HomePage() {
           
           {/* Action Icons Bar */}
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
-            {[Link2, Plus, Upload, Package, Layers].map((Icon, index) => (
-              <Button key={index} variant="outline" size="icon" className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10">
-                <Icon className="h-4 w-4 sm:h-5 sm:w-5" />
-              </Button>
-            ))}
+            {[Link2, Plus, Upload, Package, Layers].map((IconComponent, index) => {
+              if (index === 0) { // Change for the first button (Link2)
+                return (
+                  <Button 
+                    key={index} 
+                    variant="default" 
+                    size="default" 
+                    aria-label="Link action"
+                  >
+                    <Link2 className="h-4 w-4 mr-2" />
+                    Link
+                  </Button>
+                );
+              }
+              // Keep others as icon buttons
+              return (
+                <Button 
+                  key={index} 
+                  variant="outline" 
+                  size="icon" 
+                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10" 
+                  aria-label={IconComponent.displayName ? IconComponent.displayName.replace('Icon', '').trim() : `Action ${index + 1}`}
+                >
+                  <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              );
+            })}
           </div>
         </div>
       </main>
