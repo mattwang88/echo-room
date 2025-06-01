@@ -48,7 +48,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     let alt = "User avatar";
     let aiHint = "person speaking";
 
-    if (participant && participant !== 'User' && participant !== 'System') { // System also might not have a specific avatar in the same way
+    if (participant && participant !== 'User' && participant !== 'System') {
       const agentName = getAgentName(participant, currentScenarioId);
       alt = `${agentName} avatar`;
       switch (participant) {
@@ -73,18 +73,16 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           src = "/images/avatars/hr.jpg";
           aiHint = "hr representative";
           break;
-        // No 'System' case here, it will fall through to default or default_user
-        default: // Fallback for any other unhandled agent role
+        default:
           src = "/images/avatars/default_avatar.jpg";
           alt = "Agent avatar";
           aiHint = "professional person";
       }
     } else if (participant === 'System') {
-        src = "/images/avatars/system.jpg"; // Specific image for System
+        src = "/images/avatars/system.jpg";
         alt = "System avatar";
         aiHint = "system icon";
     }
-    // If participant is 'User' or null, it keeps the initial default_user.jpg
     return { src, alt, aiHint };
   }, []);
   
@@ -93,33 +91,27 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
     if (currentSrc === "/images/avatars/default_user.jpg") {
-        // If the default user image itself fails, use a placeholder
         setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
         setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
         setCurrentSpeakerImageAiHint("placeholder avatar");
     } else if (currentSrc === "/images/avatars/default_avatar.jpg") {
-        // If the default agent avatar fails, use a placeholder
         setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
         setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
         setCurrentSpeakerImageAiHint("placeholder avatar");
     } else if (currentSrc.startsWith("/images/avatars/") && currentSrc !== "/images/avatars/default_avatar.jpg") {
-        // If a specific agent image (not default_avatar) fails, try default_avatar.jpg
         setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
-        setCurrentSpeakerImageAlt("Default agent avatar"); // Update alt text
+        setCurrentSpeakerImageAlt("Default agent avatar");
         setCurrentSpeakerImageAiHint("professional person");
     } else if (currentSrc.startsWith("https://placehold.co/")) {
-      // If even the placeholder fails (unlikely but good to log)
-      console.error("[MeetingInterface] Placeholder image also failed. This shouldn't happen frequently.");
+      console.error("[MeetingInterface] Placeholder image also failed.");
     }
-    // If it's already a placeholder or an unknown case, no further action here to prevent loops
   }, [currentSpeakerImageSrc]);
 
 
   useEffect(() => {
-    if (!scenarioId) return; // Guard against scenarioId being null or undefined
+    if (!scenarioId) return; 
 
     const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
-    // Check if the new src is different from the current one to avoid unnecessary state updates
     if (src !== currentSpeakerImageSrc) {
       setCurrentSpeakerImageSrc(src);
       setCurrentSpeakerImageAlt(alt);
@@ -195,12 +187,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           
           <Button
             variant="destructive"
-            size="icon"
             onClick={handleEndMeeting}
-            className="mt-20 rounded-lg shadow-lg hover:scale-105 transition-transform h-30 w-60"
+            className="mt-20 rounded-lg shadow-lg hover:scale-105 transition-transform h-16 w-52"
             aria-label="End Meeting"
           >
-            <PhoneOff className="h-16 w-16" />
+            <PhoneOff className="h-8 w-8" />
           </Button>
 
            {meetingEnded && !isTTSSpeaking && (
