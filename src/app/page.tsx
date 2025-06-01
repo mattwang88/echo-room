@@ -53,12 +53,12 @@ export default function HomePage() {
       {/* Header */}
       <header className="px-4 sm:px-6 py-3 border-b border-gray-200">
         <div className="flex justify-between items-center max-w-screen-xl mx-auto">
-          <Image 
-            src="/images/logo.png" 
-            alt="EchoRoom Logo" 
-            width={120} 
-            height={32} 
-            data-ai-hint="company logo" 
+          <Image
+            src="/images/logo.png"
+            alt="EchoRoom Logo"
+            width={150}
+            height={40}
+            data-ai-hint="company logo"
           />
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" className="text-gray-600 hover:text-gray-900">
