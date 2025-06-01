@@ -14,12 +14,28 @@ import { Button } from '@/components/ui/button';
 import { PhoneOff, Mic, MicOff } from 'lucide-react';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
-import type { ParticipantRole } from '@/lib/types';
+import type { ParticipantRole, AgentRole } from '@/lib/types';
 import { SoundWaveAnimation } from '@/components/animations/SoundWaveAnimation';
+
 
 interface MeetingInterfaceProps {
   scenarioId: string;
 }
+
+interface AgentAvatarConfig {
+    src: string;
+    alt: string;
+    aiHint: string;
+}
+
+const agentAvatarMap: Record<AgentRole, AgentAvatarConfig> = {
+    CTO: { src: "/images/avatars/cto.jpg", alt: "CTO avatar", aiHint: "tech executive" },
+    Finance: { src: "/images/avatars/finance.jpg", alt: "Finance head avatar", aiHint: "finance professional" },
+    Product: { src: "/images/avatars/product.jpg", alt: "Product head avatar", aiHint: "product manager" },
+    HR: { src: "/images/avatars/hr.jpg", alt: "HR representative avatar", aiHint: "hr representative" },
+};
+const managerAvatar: AgentAvatarConfig = { src: "/images/avatars/manager.jpg", alt: "Manager avatar", aiHint: "manager" };
+
 
 export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   const {
@@ -39,87 +55,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
-
-  const [currentSpeakerImageSrc, setCurrentSpeakerImageSrc] = useState("https://placehold.co/256x256.png");
-  const [currentSpeakerImageAlt, setCurrentSpeakerImageAlt] = useState("Static soundwave avatar");
-  const [currentSpeakerImageAiHint, setCurrentSpeakerImageAiHint] = useState("soundwave audio");
-
-  const getAvatarProps = useCallback((participant: ParticipantRole | null, currentScenarioId: string) => {
-    let src: string;
-    let alt: string;
-    let aiHint: string;
-
-    if (participant === 'User' || participant === null) {
-        src = "https://placehold.co/256x256.png";
-        alt = "Static soundwave avatar";
-        aiHint = "soundwave audio";
-    } else if (participant === 'System') {
-        src = "/images/avatars/system.jpg";
-        alt = "System avatar";
-        aiHint = "system icon";
-    } else if (participant) {
-        const agentName = getAgentName(participant, currentScenarioId);
-        alt = `${agentName} avatar`;
-        switch (participant) {
-            case 'CTO':
-                src = "/images/avatars/cto.jpg";
-                aiHint = "tech executive";
-                break;
-            case 'Finance':
-                src = "/images/avatars/finance.jpg";
-                aiHint = "finance professional";
-                break;
-            case 'Product':
-                if (currentScenarioId === 'manager-1on1') {
-                    src = "/images/avatars/manager.jpg";
-                    aiHint = "manager";
-                } else {
-                    src = "/images/avatars/product.jpg";
-                    aiHint = "product manager";
-                }
-                break;
-            case 'HR':
-                src = "/images/avatars/hr.jpg";
-                aiHint = "hr representative";
-                break;
-            default:
-                src = "https://placehold.co/256x256.png";
-                alt = "Agent placeholder avatar";
-                aiHint = "professional person";
-        }
-    } else {
-        src = "https://placehold.co/256x256.png";
-        alt = "Static soundwave avatar";
-        aiHint = "soundwave audio";
-    }
-    return { src, alt, aiHint };
-  }, []);
-
-  const handleImageError = useCallback(() => {
-    const currentSrc = currentSpeakerImageSrc;
-    console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
-
-    if (currentSrc.startsWith("/images/avatars/") && currentSrc.endsWith(".jpg")) {
-        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
-        setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
-        setCurrentSpeakerImageAiHint("placeholder avatar");
-    } else if (currentSrc.startsWith("https://placehold.co/")) {
-      console.error("[MeetingInterface] Placeholder image also failed to load. No further fallbacks.");
-    }
-  }, [currentSpeakerImageSrc]);
-
-
-  useEffect(() => {
-    if (!scenarioId) return;
-
-    const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
-    if (src !== currentSpeakerImageSrc) {
-      setCurrentSpeakerImageSrc(src);
-      setCurrentSpeakerImageAlt(alt);
-      setCurrentSpeakerImageAiHint(aiHint);
-    }
-  }, [currentSpeakingParticipant, scenarioId, getAvatarProps, currentSpeakerImageSrc]);
-
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -145,34 +80,59 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     );
   }
 
+  const getSpeakingAgentAvatar = (): AgentAvatarConfig | null => {
+    if (!isTTSSpeaking || !currentSpeakingParticipant || currentSpeakingParticipant === 'User' || currentSpeakingParticipant === 'System') {
+      return null;
+    }
+    if (scenarioId === 'manager-1on1' && currentSpeakingParticipant === 'Product') {
+      return managerAvatar;
+    }
+    return agentAvatarMap[currentSpeakingParticipant as AgentRole] || null;
+  };
+
+  const speakingAgentAvatar = getSpeakingAgentAvatar();
+
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
-            {isRecording ? (
-              <SoundWaveAnimation width={256} height={256} />
-            ) : (
-              <Image
-                key={currentSpeakerImageSrc}
-                src={currentSpeakerImageSrc}
-                alt={currentSpeakerImageAlt}
-                width={256}
-                height={256}
-                className={cn(
-                  'rounded-full object-cover transition-transform duration-200 ease-in-out',
-                  isTTSSpeaking && currentSpeakingParticipant !== 'User' && 'animate-breathing'
-                )}
-                data-ai-hint={currentSpeakerImageAiHint}
-                priority
-                onError={handleImageError}
-              />
-            )}
+          {isRecording ? (
+            <SoundWaveAnimation width={256} height={256} isAnimating={true} />
+          ) : speakingAgentAvatar ? (
+            <Image
+              key={speakingAgentAvatar.src}
+              src={speakingAgentAvatar.src}
+              alt={speakingAgentAvatar.alt}
+              width={256}
+              height={256}
+              className="rounded-full object-cover animate-breathing"
+              data-ai-hint={speakingAgentAvatar.aiHint}
+              priority
+              onError={(e) => {
+                console.warn(`Error loading avatar for ${currentSpeakingParticipant}: ${speakingAgentAvatar.src}`);
+                // Fallback to a placeholder if the specific agent avatar fails
+                (e.target as HTMLImageElement).src = "https://placehold.co/256x256.png";
+                (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar');
+              }}
+            />
+          ) : (
+            // Idle state - show SoundWaveAnimation but not animating
+            <SoundWaveAnimation width={256} height={256} isAnimating={false} />
+          )}
+
+          {isRecording && !isTTSSpeaking && (
+            <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
+              You are speaking
+              <span className="animate-ellipsis"></span>
+            </p>
+          )}
           {isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
             <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
               {getAgentName(currentSpeakingParticipant, scenarioId)} speaking
               <span className="animate-ellipsis"></span>
             </p>
           )}
+
 
           <div className="flex items-center justify-center gap-4 mt-20">
             <Button
