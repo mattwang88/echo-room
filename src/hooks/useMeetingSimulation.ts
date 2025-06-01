@@ -158,6 +158,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       if (activeAgents.includes('HR') && agentResponses.hrFeedback) {
         addMessage('HR', agentResponses.hrFeedback);
       }
+      
 
       setCurrentTurn(prev => prev + 1);
       if (scenario.maxTurns && currentTurn + 1 >= scenario.maxTurns) {
