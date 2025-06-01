@@ -12,8 +12,7 @@ interface ResponseInputProps {
   onChange: (e: React.ChangeEvent<HTMLTextAreaElement>) => void;
   onSubmit: () => void;
   isSending: boolean;
-  disabled?: boolean; // General disabled state for the input (e.g., meeting ended)
-  // STT Props, synchronized from useMeetingSimulation
+  disabled?: boolean; // General disabled state (e.g., meeting ended, meeting not active)
   isRecording?: boolean;
   onToggleRecording?: () => void;
   isSTTSupported?: boolean;
@@ -24,7 +23,7 @@ export function ResponseInput({
   onChange,
   onSubmit,
   isSending,
-  disabled, // This is the overall disabled state (e.g. meetingEnded)
+  disabled, 
   isRecording,
   onToggleRecording,
   isSTTSupported,
@@ -33,7 +32,6 @@ export function ResponseInput({
   const handleKeyDown = (event: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (event.key === 'Enter' && !event.shiftKey) {
       event.preventDefault();
-      // Allow submission only if not sending, not globally disabled, value is present, AND not currently recording.
       if (!isSending && !disabled && value.trim() && !isRecording) {
         onSubmit();
       }
@@ -41,23 +39,21 @@ export function ResponseInput({
   };
 
   const handleMicClick = () => {
-    if (onToggleRecording) {
+    if (onToggleRecording && !disabled) { // Also check general disabled state for mic
       onToggleRecording();
     }
   };
 
   const getPlaceholderText = () => {
+    if (disabled && !isRecording) return "Meeting controls are currently disabled."; // General disabled message
     if (isRecording) return "Listening... Click mic again to stop.";
     if (isSTTSupported) return "Type your response or click the mic to speak...";
     return "Type your response... (Voice input not supported by your browser)";
   };
 
-  // Textarea is disabled if globally disabled, OR if STT is supported AND currently recording.
   const isTextareaDisabled = disabled || (isSTTSupported && isRecording);
-  // Send button is disabled if textarea is disabled, or sending, or no value, or recording.
   const isSendButtonDisabled = isTextareaDisabled || isSending || !value.trim() || (isSTTSupported && isRecording);
-  // Mic button is disabled if globally disabled or sending (but not just because STT isn't supported - click should give toast then).
-  const isMicButtonDisabled = disabled || isSending;
+  const isMicButtonOverallDisabled = disabled || isSending;
 
 
   return (
@@ -69,12 +65,11 @@ export function ResponseInput({
           onKeyDown={handleKeyDown}
           placeholder={getPlaceholderText()}
           className="flex-1 resize-none border-0 focus-visible:ring-0 focus-visible:ring-offset-0 shadow-none min-h-[60px] max-h-[150px] scrollbar-thin bg-transparent"
-          rows={1} // Start with 1 row, it will auto-grow based on Tailwind/CSS setup if configured
+          rows={1} 
           disabled={isTextareaDisabled}
           aria-label="Your response"
         />
         <div className="flex flex-col space-y-1 flex-shrink-0" data-testid="response-buttons-wrapper">
-          {/* Send Button */}
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -94,12 +89,11 @@ export function ResponseInput({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                <p>{isSendButtonDisabled ? (isRecording ? "Stop recording to send" : "Type a message to send") : "Send response (Enter)"}</p>
+                <p>{isSendButtonDisabled ? (isRecording ? "Stop recording to send" : (disabled ? "Controls disabled" : "Type a message to send")) : "Send response (Enter)"}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
-          {/* Microphone Button */}
           <TooltipProvider delayDuration={200}>
             <Tooltip>
               <TooltipTrigger asChild>
@@ -107,7 +101,7 @@ export function ResponseInput({
                   variant={isRecording ? "destructive" : "outline"}
                   size="icon"
                   onClick={handleMicClick}
-                  disabled={isMicButtonDisabled} 
+                  disabled={isMicButtonOverallDisabled} 
                   className="h-9 w-9"
                   aria-label={isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported by browser")}
                   data-testid="mic-button"
@@ -116,7 +110,7 @@ export function ResponseInput({
                 </Button>
               </TooltipTrigger>
               <TooltipContent>
-                 <p>{isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported by browser")}</p>
+                 <p>{isMicButtonOverallDisabled ? "Controls disabled" : (isRecording ? "Stop recording" : (isSTTSupported ? "Start recording" : "Voice input not supported by browser"))}</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

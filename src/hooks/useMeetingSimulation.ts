@@ -21,6 +21,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [meetingEnded, setMeetingEnded] = useState<boolean>(false);
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentCoaching, setCurrentCoaching] = useState<AnalyzeResponseOutput | null>(null);
+  const [currentSpeakingParticipant, setCurrentSpeakingParticipant] = useState<ParticipantRole | null>(null);
 
   // Speech-to-Text state and handlers
   const [isRecording, setIsRecording] = useState(false);
@@ -68,6 +69,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
           text: foundScenario.initialMessage.text,
           timestamp: Date.now(),
         }]);
+        setCurrentSpeakingParticipant(foundScenario.initialMessage.participant);
         setCurrentTurn(0);
         setMeetingEnded(false);
         setCurrentCoaching(null);
@@ -82,6 +84,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   }, [scenarioId, router, toast]);
 
   const addMessage = (participant: ParticipantRole, text: string, coachingFeedback?: AnalyzeResponseOutput, semanticEvaluation?: EvaluateSemanticSkillOutput) => {
+    setCurrentSpeakingParticipant(participant);
     setMessages(prev => [...prev, { 
       id: Date.now().toString() + participant + Math.random(), 
       participant, 
@@ -202,5 +205,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     handleToggleRecording,
     isSTTSupported,
     sttInterimTranscript,
+    // TTS related (used by MeetingInterface to show who is speaking)
+    currentSpeakingParticipant,
   };
 }

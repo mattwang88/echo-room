@@ -21,14 +21,23 @@ export const AnalyzeResponseOutputSchema = z.object({
 });
 export type AnalyzeResponseOutput = z.infer<typeof AnalyzeResponseOutputSchema>;
 
+export interface MessageAction {
+  type: 'button';
+  label: string;
+  actionKey: string; // e.g., 'START_MEETING'
+  disabled?: boolean;
+}
+
 export interface Message {
   id: string;
   participant: ParticipantRole;
+  participantName?: string; // Optional name of the persona
   text: string;
   timestamp: number; // Use number (Date.now()) for easier serialization
   avatar?: string;
   coachingFeedback?: AnalyzeResponseOutput;
   semanticEvaluation?: EvaluateSemanticSkillOutput;
+  action?: MessageAction;
 }
 
 export interface Scenario {
@@ -41,12 +50,7 @@ export interface Scenario {
     text: string;
   };
   agentsInvolved: string[]; // Allow any role name
-  personaConfig: {
-    ctoPersona: string;
-    financePersona: string;
-    productPersona: string;
-    hrPersona: string;
-  };
+  personaConfig: Record<string, string>; // Dynamic persona config based on roles
   maxTurns?: number; // Optional: to define an end condition for the meeting
 }
 
@@ -56,3 +60,10 @@ export interface MeetingSummaryData {
   messages: Message[];
   finalThoughts?: string; // Could be AI generated summary
 }
+
+export type Persona = {
+  id: string;
+  name: string;
+  role: string;
+  instructionPrompt: string;
+};
