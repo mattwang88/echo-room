@@ -90,20 +90,27 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     const currentSrc = currentSpeakerImageSrc;
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
-    if (currentSrc === "/images/avatars/default_user.jpg") {
-        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
-        setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
-        setCurrentSpeakerImageAiHint("placeholder avatar");
-    } else if (currentSrc === "/images/avatars/default_avatar.jpg") {
-        setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
-        setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
-        setCurrentSpeakerImageAiHint("placeholder avatar");
-    } else if (currentSrc.startsWith("/images/avatars/") && currentSrc !== "/images/avatars/default_avatar.jpg") {
-        setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
-        setCurrentSpeakerImageAlt("Default agent avatar");
-        setCurrentSpeakerImageAiHint("professional person");
+    if (currentSrc.startsWith("/images/avatars/") && currentSrc.endsWith(".jpg")) {
+        if (currentSrc === "/images/avatars/default_user.jpg") {
+            // Fallback for default_user.jpg
+            setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+            setCurrentSpeakerImageAlt("Fallback placeholder user avatar");
+            setCurrentSpeakerImageAiHint("placeholder avatar");
+        } else if (currentSrc === "/images/avatars/default_avatar.jpg") {
+            // Fallback for default_avatar.jpg itself
+            setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
+            setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
+            setCurrentSpeakerImageAiHint("placeholder avatar");
+        } else if (currentSrc !== "/images/avatars/default_avatar.jpg") {
+            // Fallback for specific agent images (cto.jpg, etc.) to default_avatar.jpg
+            setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
+            setCurrentSpeakerImageAlt("Default agent avatar");
+            setCurrentSpeakerImageAiHint("professional person");
+        }
+        // If it's already default_avatar.jpg and it failed, the next error will trigger the placeholder
     } else if (currentSrc.startsWith("https://placehold.co/")) {
-      console.error("[MeetingInterface] Placeholder image also failed.");
+      // If the placeholder itself fails, log and stop to prevent infinite loop.
+      console.error("[MeetingInterface] Placeholder image also failed to load. No further fallbacks.");
     }
   }, [currentSpeakerImageSrc]);
 
@@ -188,7 +195,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           <Button
             variant="destructive"
             onClick={handleEndMeeting}
-            className="mt-20 rounded-lg shadow-lg hover:scale-105 transition-transform h-16 w-52"
+            className="mt-20 rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
             aria-label="End Meeting"
           >
             <PhoneOff className="h-8 w-8" />
