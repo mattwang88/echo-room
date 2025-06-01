@@ -42,7 +42,7 @@ const scenariosForButtons = [
   { id: 'job-resignation', title: 'Practice Resignation' },
 ];
 
-const participantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR"];
+const participantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
 
 export default function HomePage() {
   const router = useRouter();
@@ -68,15 +68,6 @@ export default function HomePage() {
       });
       return;
     }
-    // Optional: Check if at least one role is selected, or allow generating with no AI roles
-    // if (selectedRoles.length === 0) {
-    //   toast({
-    //     title: "Participants Missing",
-    //     description: "Please select at least one AI participant role.",
-    //     variant: "destructive",
-    //   });
-    //   return;
-    // }
 
     setIsGenerating(true);
     try {
@@ -89,12 +80,17 @@ export default function HomePage() {
       const newScenarioId = `custom-${uuidv4()}`;
       
       const personaConf: Record<string, string> = {};
-      const standardPersonaRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR"]; // Define all possible roles
+      // Include "Manager" in the list of roles for which persona instructions are generated
+      const standardPersonaRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"]; 
       
       standardPersonaRoles.forEach(stdRole => {
         const key = `${stdRole.toLowerCase()}Persona`;
         if (selectedRoles.includes(stdRole)) {
-          personaConf[key] = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
+          let personaInstruction = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
+          if (stdRole === "Manager") {
+            personaInstruction = `You are the Manager. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively, providing guidance, feedback, and asking relevant questions from a managerial perspective.`;
+          }
+          personaConf[key] = personaInstruction;
         } else {
           // Provide a non-participating persona if the role isn't selected for this custom scenario
           personaConf[key] = `You are the ${stdRole}. You are not actively participating in this specific custom scenario titled "${aiGeneratedDetails.scenarioTitle}".`;
@@ -195,7 +191,7 @@ export default function HomePage() {
              <Button 
                 onClick={handleGenerateScenario}
                 disabled={!simulationDescription.trim() || isGenerating}
-                className="bg-black text-white hover:bg-gray-800 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0"
               >
               {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate"}
             </Button>
@@ -266,7 +262,7 @@ export default function HomePage() {
       </section>
 
       {/* Messages Button (Fixed Position) */}
-      <div className="fixed bottom-6 left-6 z-50">
+       <div className="fixed bottom-6 left-6 z-50">
         <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
           <MessageCircle className="h-5 w-5 mr-2" />
           Messages
@@ -276,3 +272,4 @@ export default function HomePage() {
     </div>
   );
 }
+
