@@ -4,6 +4,8 @@
 import { useState } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -23,9 +25,15 @@ import {
   Upload,
   Package,
   Layers,
-  MessageCircle
+  MessageCircle,
+  Loader2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { addUserCreatedScenario } from '@/lib/userScenarios';
+import { generateCustomScenarioDetails, type GenerateCustomScenarioInput } from '@/ai/flows/generate-custom-scenario-flow';
+import type { Scenario, AgentRole } from '@/lib/types';
+import { useToast } from "@/hooks/use-toast";
+
 
 const scenariosForButtons = [
   { id: 'product-pitch', title: 'New Product Pitch' },
@@ -34,13 +42,16 @@ const scenariosForButtons = [
   { id: 'job-resignation', title: 'Practice Resignation' },
 ];
 
-const participantRoles = ["CTO", "Finance", "Product", "HR"];
+const participantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR"];
 
 export default function HomePage() {
+  const router = useRouter();
+  const { toast } = useToast();
   const [simulationDescription, setSimulationDescription] = useState('');
-  const [selectedRoles, setSelectedRoles] = useState<string[]>([]);
+  const [selectedRoles, setSelectedRoles] = useState<AgentRole[]>([]);
+  const [isGenerating, setIsGenerating] = useState(false);
 
-  const handleRoleSelect = (role: string) => {
+  const handleRoleSelect = (role: AgentRole) => {
     setSelectedRoles(prevSelectedRoles =>
       prevSelectedRoles.includes(role)
         ? prevSelectedRoles.filter(r => r !== role)
@@ -48,13 +59,85 @@ export default function HomePage() {
     );
   };
 
+  const handleGenerateScenario = async () => {
+    if (!simulationDescription.trim()) {
+      toast({
+        title: "Description Missing",
+        description: "Please describe the simulation topic.",
+        variant: "destructive",
+      });
+      return;
+    }
+    // Optional: Check if at least one role is selected, or allow generating with no AI roles
+    // if (selectedRoles.length === 0) {
+    //   toast({
+    //     title: "Participants Missing",
+    //     description: "Please select at least one AI participant role.",
+    //     variant: "destructive",
+    //   });
+    //   return;
+    // }
+
+    setIsGenerating(true);
+    try {
+      const aiInput: GenerateCustomScenarioInput = {
+        simulationDescription,
+        selectedRoles,
+      };
+      const aiGeneratedDetails = await generateCustomScenarioDetails(aiInput);
+
+      const newScenarioId = `custom-${uuidv4()}`;
+      
+      const personaConf: Record<string, string> = {};
+      const standardPersonaRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR"]; // Define all possible roles
+      
+      standardPersonaRoles.forEach(stdRole => {
+        const key = `${stdRole.toLowerCase()}Persona`;
+        if (selectedRoles.includes(stdRole)) {
+          personaConf[key] = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
+        } else {
+          // Provide a non-participating persona if the role isn't selected for this custom scenario
+          personaConf[key] = `You are the ${stdRole}. You are not actively participating in this specific custom scenario titled "${aiGeneratedDetails.scenarioTitle}".`;
+        }
+      });
+
+      const newScenario: Scenario = {
+        id: newScenarioId,
+        title: aiGeneratedDetails.scenarioTitle,
+        description: simulationDescription, // User's raw description
+        objective: aiGeneratedDetails.scenarioObjective,
+        initialMessage: {
+          participant: 'System',
+          text: aiGeneratedDetails.initialSystemMessage,
+        },
+        agentsInvolved: selectedRoles,
+        personaConfig: personaConf,
+        maxTurns: 10, // Default max turns for custom scenarios
+      };
+
+      addUserCreatedScenario(newScenario);
+      router.push(`/meeting/${newScenarioId}`);
+
+    } catch (error) {
+      console.error("Failed to generate scenario:", error);
+      toast({
+        title: "Generation Failed",
+        description: error instanceof Error ? error.message : "Could not generate the scenario. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
       {/* Header */}
       <header className="px-4 sm:px-6 py-3 border-b border-gray-200">
         <div className="flex justify-between items-center max-w-screen-xl mx-auto">
           <div className="flex items-center space-x-4">
-            <Image
+             <Image
               src="/images/logo.png"
               alt="EchoRoom Logo"
               width={150}
@@ -86,12 +169,12 @@ export default function HomePage() {
           <div className="mb-8">
             <Image
               src="/images/front-page.gif"
-              alt="Front page animation"
+              alt="Front page animation of an abstract sphere"
               width={300}
               height={200}
               className="mx-auto rounded-lg"
-              data-ai-hint="front page animation"
-              unoptimized // Add this prop for GIFs to prevent optimization issues
+              data-ai-hint="abstract sphere animation"
+              unoptimized 
             />
           </div>
 
@@ -99,7 +182,7 @@ export default function HomePage() {
           <div className="relative flex items-center w-full p-1 bg-card border border-gray-300 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-primary">
             <Sparkles className="h-5 w-5 text-gray-400 mx-3 flex-shrink-0" />
             <Textarea
-              placeholder="Describe Simulation"
+              placeholder="Describe the meeting topic or scenario you want to practice..."
               value={simulationDescription}
               onChange={(e) => setSimulationDescription(e.target.value)}
               className="flex-grow !p-3 !border-0 !shadow-none !ring-0 resize-none min-h-[50px] bg-transparent focus:outline-none placeholder-gray-500"
@@ -109,8 +192,12 @@ export default function HomePage() {
               <Mic className="h-5 w-5" />
               <span className="sr-only">Use microphone</span>
             </Button>
-             <Button className="bg-black text-white hover:bg-gray-800 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0">
-              Generate
+             <Button 
+                onClick={handleGenerateScenario}
+                disabled={!simulationDescription.trim() || isGenerating}
+                className="bg-black text-white hover:bg-gray-800 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0"
+              >
+              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate"}
             </Button>
           </div>
 
@@ -133,7 +220,7 @@ export default function HomePage() {
                     key={role}
                     checked={selectedRoles.includes(role)}
                     onSelect={(event) => {
-                      event.preventDefault();
+                      event.preventDefault(); // Prevent default closing behavior
                       handleRoleSelect(role);
                     }}
                   >
