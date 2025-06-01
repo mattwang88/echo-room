@@ -15,7 +15,7 @@ import { PhoneOff, Mic, MicOff } from 'lucide-react';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
 import type { ParticipantRole } from '@/lib/types';
-import { SoundWaveAnimation } from '../animations/SoundWaveAnimation';
+import { SoundWaveAnimation } from '@/components/animations/SoundWaveAnimation';
 
 interface MeetingInterfaceProps {
   scenarioId: string;
@@ -54,7 +54,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         alt = "Static soundwave avatar";
         aiHint = "soundwave audio";
     } else if (participant === 'System') {
-        src = "/images/avatars/system.jpg"; 
+        src = "/images/avatars/system.jpg";
         alt = "System avatar";
         aiHint = "system icon";
     } else if (participant) {
@@ -82,37 +82,35 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                 src = "/images/avatars/hr.jpg";
                 aiHint = "hr representative";
                 break;
-            default: 
+            default:
                 src = "https://placehold.co/256x256.png";
                 alt = "Agent placeholder avatar";
                 aiHint = "professional person";
         }
-    } else { 
-        src = "https://placehold.co/256x256.png"; 
+    } else {
+        src = "https://placehold.co/256x256.png";
         alt = "Static soundwave avatar";
-        aiHint = "soundwave audio"; 
+        aiHint = "soundwave audio";
     }
     return { src, alt, aiHint };
   }, []);
-  
+
   const handleImageError = useCallback(() => {
     const currentSrc = currentSpeakerImageSrc;
     console.warn(`[MeetingInterface] Image error for src: ${currentSrc}`);
 
-    // Fallback to a generic placeholder if local avatars fail
     if (currentSrc.startsWith("/images/avatars/") && currentSrc.endsWith(".jpg")) {
         setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
         setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
         setCurrentSpeakerImageAiHint("placeholder avatar");
     } else if (currentSrc.startsWith("https://placehold.co/")) {
-      // If even the primary placeholder fails, this indicates a broader issue, but no further fallback here.
       console.error("[MeetingInterface] Placeholder image also failed to load. No further fallbacks.");
     }
   }, [currentSpeakerImageSrc]);
 
 
   useEffect(() => {
-    if (!scenarioId) return; 
+    if (!scenarioId) return;
 
     const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
     if (src !== currentSpeakerImageSrc) {
@@ -155,7 +153,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               <SoundWaveAnimation width={256} height={256} />
             ) : (
               <Image
-                key={currentSpeakerImageSrc} 
+                key={currentSpeakerImageSrc}
                 src={currentSpeakerImageSrc}
                 alt={currentSpeakerImageAlt}
                 width={256}
@@ -175,7 +173,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               <span className="animate-ellipsis"></span>
             </p>
           )}
-          
+
           <div className="flex items-center justify-center gap-4 mt-20">
             <Button
               type="button"
@@ -217,7 +215,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                 <div className="flex items-end gap-2 mb-4 justify-start">
                   <div className={cn(
                       "max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-muted",
-                      // No extra margin needed as all avatars are removed from chat messages
                   )}>
                     <span className="text-sm italic text-muted-foreground">
                         Thinking
