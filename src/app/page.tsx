@@ -3,6 +3,7 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
+import Link from 'next/link'; // Added Link import
 import { GoogleEchoLogo } from '@/components/GoogleEchoLogo';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,13 +22,12 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-const signatureChallenges = [
-  "Ready-to-Win Meeting Drills",
-  "Board-Room Test Drives",
-  "Power Scenarios",
-  "Pitch Presentation Red Team",
-  "Work Interview",
-  "Hot topics"
+// Updated to include specific scenarios with IDs for linking
+const scenariosForButtons = [
+  { id: 'product-pitch', title: 'New Product Pitch' },
+  { id: 'manager-1on1', title: '1-on-1 with Manager' },
+  { id: 'okr-review', title: 'Quarterly OKR Review' },
+  { id: 'job-resignation', title: 'Practice Resignation' }, // Shortened title for button
 ];
 
 export default function HomePage() {
@@ -86,7 +86,7 @@ export default function HomePage() {
               <span className="sr-only">Use microphone</span>
             </Button>
              <Button className="bg-black text-white hover:bg-gray-800 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0">
-              Generate
+              tell me what this button do
             </Button>
           </div>
           
@@ -108,14 +108,15 @@ export default function HomePage() {
             Signature Challenges
           </h2>
           <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
-            {signatureChallenges.map((challenge) => (
-              <Button 
-                key={challenge} 
-                variant="outline" 
-                className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto"
-              >
-                {challenge}
-              </Button>
+            {scenariosForButtons.map((challenge) => (
+              <Link key={challenge.id} href={`/meeting/${challenge.id}`} passHref legacyBehavior>
+                <Button 
+                  variant="outline" 
+                  className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto"
+                >
+                  {challenge.title}
+                </Button>
+              </Link>
             ))}
           </div>
         </div>
