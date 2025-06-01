@@ -13,14 +13,14 @@ interface SoundWaveAnimationProps {
 export function SoundWaveAnimation({ width = 512, height = 256, className, isAnimating = true }: SoundWaveAnimationProps) {
   const baseBarClasses = "bg-primary rounded-full";
   const animationClass = isAnimating ? "animate-sound-wave" : "";
-  // Width is w-3, gap is now increased
+  // Width is w-3, gap is now increased to gap-2
   const barClasses = cn(baseBarClasses, animationClass, "w-3");
 
   return (
     <div
       className={cn(
         "flex items-end justify-center",
-        "gap-1.5", // Increased gap from gap-1 to gap-1.5
+        "gap-2", // Increased gap from gap-1.5 to gap-2
         className
       )}
       style={{ width: `${width}px`, height: `${height}px` }}
@@ -39,4 +39,3 @@ export function SoundWaveAnimation({ width = 512, height = 256, className, isAni
     </div>
   );
 }
-
