@@ -99,8 +99,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             setCurrentSpeakerImageSrc("https://placehold.co/256x256.png");
             setCurrentSpeakerImageAlt("Fallback placeholder agent avatar");
             setCurrentSpeakerImageAiHint("placeholder avatar");
-        } else if (currentSrc !== "/images/avatars/default_avatar.jpg") {
-            setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
+        } else if (currentSrc !== "/images/avatars/default_avatar.jpg") { // Fallback for specific agent images like cto.jpg
+            setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg"); // Fallback to default agent avatar
             setCurrentSpeakerImageAlt("Default agent avatar");
             setCurrentSpeakerImageAiHint("professional person");
         }
@@ -134,7 +134,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   const DiagnosticBar = () => {
     const speakerName = currentSpeakingParticipant ? getAgentName(currentSpeakingParticipant, scenarioId) : null;
-    const showSpeakerInfo = speakerName && speakerName.toLowerCase() !== 'none';
+    const showSpeakerInfo = speakerName && speakerName.toLowerCase() !== 'none' && speakerName.toLowerCase() !== 'user';
 
     return (
       <div className="p-1 bg-yellow-100 text-yellow-700 text-xs text-center border-b border-yellow-300 text-[10px] leading-tight">
@@ -174,7 +174,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               height={256}
               className={cn(
                 'rounded-full object-cover transition-transform duration-200 ease-in-out',
-                isTTSSpeaking && 'animate-breathing'
+                isTTSSpeaking && currentSpeakingParticipant !== 'User' && 'animate-breathing'
               )}
               data-ai-hint={currentSpeakerImageAiHint}
               priority
@@ -189,6 +189,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           
           <div className="flex items-center justify-center gap-4 mt-20">
             <Button
+              type="button"
               variant={isRecording ? "destructive" : "accent"}
               onClick={handleToggleRecording}
               disabled={!isSTTSupported || meetingEnded || isTTSSpeaking || isAiThinking}
@@ -198,6 +199,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               {isRecording ? <MicOff className="h-8 w-8" /> : <Mic className="h-8 w-8" />}
             </Button>
             <Button
+              type="button"
               variant="destructive"
               onClick={handleEndMeeting}
               className="rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
@@ -251,3 +253,5 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
+
+    
