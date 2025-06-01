@@ -161,10 +161,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
   const handleSttListeningChange = useCallback((listening: boolean) => {
     if (!isMountedRef.current) return;
-    const wasRecording = isRecording; 
     setIsRecording(listening);
     // This function is primarily to update `isRecording`. Auto-submit logic is handled in useEffect.
-  }, [setIsRecording, isRecording]); 
+  }, [setIsRecording]); 
 
   const handleSttTranscript = useCallback((finalTranscriptSegment: string) => {
     if (!isMountedRef.current) return;
@@ -201,14 +200,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
   }, [sttError]);
 
   useEffect(() => {
-    console.log(`[MeetingSimulation] ScenarioID effect. ID: ${scenarioId}, Current scenario: ${scenario?.id}`);
+    console.log(`[MeetingSimulation] ScenarioID effect. ID: ${scenarioId}, Current scenario state: ${scenario?.id}`);
     if (scenarioId) {
       const foundScenario = getScenarioById(scenarioId);
       if (foundScenario) {
         if (!scenario || scenario.id !== scenarioId) {
-          console.log(`[MeetingSimulation] Loading scenario for ID: ${scenarioId}`);
+          console.log(`[MeetingSimulation] Loading new scenario for ID: ${scenarioId}`);
           if(isMountedRef.current) {
-            // Clear any pending timeout for a previous initial message
             if (initialMessageTimeoutIdRef.current) {
               clearTimeout(initialMessageTimeoutIdRef.current);
               initialMessageTimeoutIdRef.current = null;
@@ -242,18 +240,24 @@ export function useMeetingSimulation(scenarioId: string | null) {
                console.log(`[MeetingSimulation] Initial scenario setup: Scheduling initial message speak for scenario ${scenarioId}: "${textToSpeak.substring(0,30)}..."`);
                
                initialMessageTimeoutIdRef.current = setTimeout(() => {
+                // Use foundScenario here as `scenario` state might not be updated yet
                 if (isMountedRef.current && 
-                    scenario && scenario.id === scenarioId && // Ensure current scenario matches the one we scheduled for
-                    initialMessageSpokenForScenarioIdRef.current !== scenarioId) { // Ensure it hasn't been marked "spoken" by another path
+                    foundScenario && foundScenario.id === scenarioId && 
+                    initialMessageSpokenForScenarioIdRef.current !== scenarioId) { 
                   
                   console.log(`[MeetingSimulation] Timeout fired: Speaking initial message for scenario ${scenarioId}.`);
                   ttsSpeak(textToSpeak, participantToSpeak);
-                  initialMessageSpokenForScenarioIdRef.current = scenarioId; // Mark as "spoken" for this scenario
+                  initialMessageSpokenForScenarioIdRef.current = scenarioId; 
                 } else {
-                  console.log(`[MeetingSimulation] Timeout fired, but conditions to speak initial message for ${scenarioId} no longer met.`);
+                  let reason = "";
+                  if (!isMountedRef.current) reason += "Component unmounted. ";
+                  if (!foundScenario) reason += "foundScenario was null during timeout. ";
+                  else if (foundScenario.id !== scenarioId) reason += `Scenario ID mismatch in timeout (expected: ${scenarioId}, found in foundScenario: ${foundScenario.id}). `;
+                  if (initialMessageSpokenForScenarioIdRef.current === scenarioId) reason += `Already spoken for ${scenarioId}. `;
+                  console.log(`[MeetingSimulation] Timeout fired, but conditions to speak initial message for ${scenarioId} no longer met. Reasons: ${reason}`);
                 }
-                initialMessageTimeoutIdRef.current = null; // Clear ref after execution
-              }, 50); // 50ms delay
+                initialMessageTimeoutIdRef.current = null; 
+              }, 50); 
             } else {
                 console.log(`[MeetingSimulation] Initial message for ${scenarioId} already marked as spoken, or TTS disabled, or no text.`);
             }
@@ -285,12 +289,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
         clearTimeout(initialMessageTimeoutIdRef.current);
         initialMessageTimeoutIdRef.current = null;
       }
-      // Other cleanup calls like ttsCancel(), sttStopListening() should be here if they are
-      // exclusively tied to this effect's lifecycle rather than specific conditions like `isRecording`.
-      // For instance, `ttsCancel()` might be relevant if navigating away while an initial message is scheduled.
-      // The original placement of ttsCancel() and sttStopListening() inside the `if(isMountedRef.current)` block
-      // when scenarioId becomes active or is reset is specific to those state transitions.
-      // A general cleanup for `ttsCancel()` might be good if TTS could be active from this effect.
     };
   }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario, ttsSpeak, ttsCancel, setCurrentUserResponse, setMessages, setScenario, setMeetingEnded, setCurrentTurn, setCurrentAgentIndex, setBaseTextForSpeech]);
 
