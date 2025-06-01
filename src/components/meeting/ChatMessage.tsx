@@ -1,6 +1,6 @@
 
 import type { Message } from '@/lib/types';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar } from '@/components/ui/avatar';
 import { AgentIcon, getAgentName, getAgentColor } from '@/components/icons/AgentIcons';
 import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { cn } from '@/lib/utils';
@@ -23,7 +23,7 @@ export function ChatMessage({ message, scenarioId }: ChatMessageProps) {
       {!isUser && (
         <Avatar className="h-8 w-8 self-start">
           <AgentIcon role={message.participant} scenarioId={scenarioId} className="h-8 w-8" />
-          <AvatarFallback>{agentName.substring(0, 2)}</AvatarFallback>
+          {/* <AvatarFallback>{agentName.substring(0, 2)}</AvatarFallback> Removed */}
         </Avatar>
       )}
       <Card className={cn(
@@ -45,7 +45,7 @@ export function ChatMessage({ message, scenarioId }: ChatMessageProps) {
       {isUser && (
          <Avatar className="h-8 w-8 self-start">
           <AgentIcon role={message.participant} scenarioId={scenarioId} className="h-8 w-8" />
-          <AvatarFallback>{agentName.substring(0, 2)}</AvatarFallback>
+          {/* <AvatarFallback>{agentName.substring(0, 2)}</AvatarFallback> Removed */}
         </Avatar>
       )}
     </div>
