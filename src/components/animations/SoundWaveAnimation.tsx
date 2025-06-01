@@ -7,10 +7,15 @@ interface SoundWaveAnimationProps {
   width?: number;
   height?: number;
   className?: string;
+  isAnimating?: boolean; // Added prop to control animation
 }
 
-export function SoundWaveAnimation({ width = 256, height = 256, className }: SoundWaveAnimationProps) {
-  const barClasses = "w-3 bg-primary rounded-full animate-sound-wave"; // Increased width to w-3 for better visibility
+export function SoundWaveAnimation({ width = 256, height = 256, className, isAnimating = true }: SoundWaveAnimationProps) {
+  const baseBarClasses = "bg-primary rounded-full";
+  const animationClass = isAnimating ? "animate-sound-wave" : "";
+  // Increased width from w-3 to w-4
+  const barClasses = cn(baseBarClasses, animationClass, "w-4");
+
   return (
     <div
       className={cn(
