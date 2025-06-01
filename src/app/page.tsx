@@ -10,7 +10,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   DropdownMenu,
   DropdownMenuContent,
-  DropdownMenuCheckboxItem, // Changed from DropdownMenuItem
+  DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { 
@@ -114,12 +114,12 @@ export default function HomePage() {
                   <DropdownMenu key={index}>
                     <DropdownMenuTrigger asChild>
                       <Button 
-                        variant="default" 
-                        size="default" 
-                        aria-label="Select Participant"
+                        variant="outline" 
+                        size="icon" 
+                        className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
+                        aria-label="Select Participants"
                       >
-                        <Users className="h-4 w-4 mr-2" />
-                        Participant
+                        <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
