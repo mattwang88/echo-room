@@ -103,7 +103,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         setCurrentSpeakerImageAlt("Fallback placeholder avatar");
         setCurrentSpeakerImageAiHint("placeholder avatar");
       } else {
-        // Specific agent image failed, try default_avatar.jpg
         console.log(`[MeetingInterface] Fallback from ${currentSrc} to /images/avatars/default_avatar.jpg`);
         setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
         setCurrentSpeakerImageAlt("Default agent avatar");
@@ -112,14 +111,13 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     } else if (currentSrc.startsWith("https://placehold.co/")) {
       console.error("[MeetingInterface] Placeholder image also failed. This shouldn't happen frequently.");
     } else {
-      // Unrecognized local src, attempt default_avatar first, then placeholder
       console.log(`[MeetingInterface] Generic fallback for unrecognized local src ${currentSrc} to default_avatar.jpg.`);
       setCurrentSpeakerImageSrc("/images/avatars/default_avatar.jpg");
       setCurrentSpeakerImageAlt("Default agent avatar");
       setCurrentSpeakerImageAiHint("professional person");
     }
   }, [currentSpeakerImageSrc]);
-
+  
   useEffect(() => {
     const { src, alt, aiHint } = getAvatarProps(currentSpeakingParticipant, scenarioId);
     setCurrentSpeakerImageSrc(src);
@@ -196,19 +194,19 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               <span className="animate-ellipsis"></span>
             </p>
           )}
-           {!isTTSSpeaking && (
-            <Button
-              variant="destructive"
-              size="lg"
-              onClick={handleEndMeeting}
-              className="mt-8 rounded-full shadow-lg hover:scale-105 transition-transform"
-              aria-label="End Meeting"
-            >
-              <PhoneOff className="mr-2 h-5 w-5" /> End Meeting
-            </Button>
-          )}
+          
+          <Button
+            variant="destructive"
+            size="lg"
+            onClick={handleEndMeeting}
+            className="mt-8 rounded-full shadow-lg hover:scale-105 transition-transform"
+            aria-label="End Meeting"
+          >
+            <PhoneOff className="mr-2 h-5 w-5" /> End Meeting
+          </Button>
+
            {meetingEnded && !isTTSSpeaking && (
-             <p className="mt-8 text-lg text-muted-foreground">Meeting has ended.</p>
+             <p className="mt-4 text-lg text-muted-foreground">Meeting has ended.</p>
            )}
         </div>
 
