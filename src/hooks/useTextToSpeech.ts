@@ -47,21 +47,25 @@ export function useTextToSpeech() {
   const handleAudioError = useCallback((e: Event | string) => {
     if (!isMountedRef.current) return;
     let errorMessage = "Audio playback error.";
-    let logAsError = true; // Default to logging as error
+    let logAsError = true;
 
     if (e instanceof Event && e.target instanceof HTMLAudioElement && e.target.error) {
         const mediaError = e.target.error;
-        const currentSrcUsedByPlayer = (e.target as HTMLAudioElement).currentSrc || (e.target as HTMLAudioElement).src;
-
-        // Determine if this is likely a benign error due to cancellation
-        // Using numeric codes: 1 for MEDIA_ERR_ABORTED, 4 for MEDIA_ERR_SRC_NOT_SUPPORTED
+        const currentSrcUsedByPlayer = (e.target as HTMLAudioElement).currentSrc || (e.target as HTMLAudioElement).src; 
+        
+        // Determine if this is likely a benign error due to cancellation or specific known issues
         const isLikelyCancellationError =
-            mediaError.code === 1 || 
-            (mediaError.code === 4 && 
-             (!currentSrcUsedByPlayer || (currentSrcUsedByPlayer && !currentSrcUsedByPlayer.startsWith('data:audio/'))));
+            mediaError.code === 1 || // MEDIA_ERR_ABORTED
+            (mediaError.code === 4 && // MEDIA_ERR_SRC_NOT_SUPPORTED
+                (
+                    !currentSrcUsedByPlayer ||
+                    (currentSrcUsedByPlayer && !currentSrcUsedByPlayer.startsWith('data:audio/')) ||
+                    (mediaError.message && mediaError.message.includes("Empty src attribute")) // Check for specific message
+                )
+            );
 
         if (isLikelyCancellationError) {
-            logAsError = false; // Downgrade to warn for likely cancellation errors
+            logAsError = false; 
         }
 
         if (logAsError) {
@@ -83,7 +87,10 @@ export function useTextToSpeech() {
             case 4: // MEDIA_ERR_SRC_NOT_SUPPORTED
                 if (!currentSrcUsedByPlayer || (currentSrcUsedByPlayer && !currentSrcUsedByPlayer.startsWith('data:audio/'))) {
                   errorMessage = "Audio source was empty or invalid, possibly due to cancellation.";
-                } else {
+                } else if (mediaError.message && mediaError.message.includes("Empty src attribute")) {
+                  errorMessage = "Audio source processing failed (reported as empty/invalid by browser), possibly due to cancellation or malformed data.";
+                }
+                 else {
                   errorMessage = "The audio format is not supported or the source is invalid.";
                 }
                 break;
@@ -100,7 +107,7 @@ export function useTextToSpeech() {
     }
 
     if (isSpeakingStateRef.current && currentSpeechTextRef.current) {
-        if (logAsError) {
+        if (logAsError) { // Only toast if it's not a likely cancellation error
             toast({
                 title: "Audio Playback Error",
                 description: errorMessage,
@@ -251,3 +258,4 @@ export function useTextToSpeech() {
     currentSpeakingParticipant: displayedSpeaker,
   };
 }
+
