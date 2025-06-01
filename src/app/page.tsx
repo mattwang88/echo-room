@@ -73,7 +73,7 @@ export default function HomePage() {
       </header>
 
       {/* Main Content */}
-      <main className="flex-1 flex flex-col items-center justify-center text-center py-10 px-4">
+      <main className="flex-1 flex flex-col items-center justify-center text-center pt-10 pb-4 px-4">
         <div className="w-full max-w-2xl">
           {/* Animated Sphere Placeholder */}
           <div className="mb-8">
