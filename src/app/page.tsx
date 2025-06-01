@@ -53,13 +53,20 @@ export default function HomePage() {
       {/* Header */}
       <header className="px-4 sm:px-6 py-3 border-b border-gray-200">
         <div className="flex justify-between items-center max-w-screen-xl mx-auto">
-          <Image
-            src="/images/logo.png"
-            alt="EchoRoom Logo"
-            width={150}
-            height={40}
-            data-ai-hint="company logo"
-          />
+          <div className="flex items-center space-x-4">
+            <Image
+              src="/images/logo.png"
+              alt="EchoRoom Logo"
+              width={150}
+              height={40}
+              data-ai-hint="company logo"
+            />
+            <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
+              <MessageCircle className="h-5 w-5 mr-2" />
+              Messages
+              <span className="ml-2 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">1</span>
+            </Button>
+          </div>
           <div className="flex items-center space-x-4">
             <Button variant="ghost" size="icon" className="text-gray-600 hover:text-gray-900">
               <Bell className="h-5 w-5" />
@@ -175,15 +182,6 @@ export default function HomePage() {
           </div>
         </div>
       </section>
-
-      {/* Floating Messages Button */}
-      <div className="fixed bottom-6 left-6">
-        <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
-          <MessageCircle className="h-5 w-5 mr-2" />
-          Messages
-          <span className="ml-2 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">1</span>
-        </Button>
-      </div>
     </div>
   );
 }
