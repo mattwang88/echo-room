@@ -78,12 +78,13 @@ export default function HomePage() {
           {/* Animated Sphere Placeholder */}
           <div className="mb-8">
             <Image 
-              src="https://placehold.co/300x200.png" 
-              alt="Abstract sphere animation placeholder" 
+              src="/images/front-page.gif" 
+              alt="Front page animation" 
               width={300} 
               height={200} 
               className="mx-auto rounded-lg"
-              data-ai-hint="abstract sphere animation"
+              data-ai-hint="front page animation"
+              unoptimized // Add this prop for GIFs to prevent optimization issues
             />
           </div>
 
