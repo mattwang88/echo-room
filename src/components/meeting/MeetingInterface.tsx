@@ -156,7 +156,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           </div>
 
            {meetingEnded && !isTTSSpeaking && (
-             <p className="mt-4 text-lg text-muted-foreground">Meeting has ended.</p>
+             <p className="mt-4 text-lg text-muted-foreground">Meeting ended. Loading report...</p>
            )}
         </div>
 
