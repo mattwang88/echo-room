@@ -15,23 +15,20 @@ export function ChatMessage({ message, scenarioId }: ChatMessageProps) {
   const isUser = message.participant === 'User';
   const agentName = getAgentName(message.participant, scenarioId);
   const agentColor = getAgentColor(message.participant, scenarioId);
-  const showAvatarForParticipant = !isUser && message.participant !== 'System';
+  // const showAvatarForParticipant = !isUser && message.participant !== 'System'; // No longer needed
 
   return (
     <div className={cn("flex items-end gap-2 mb-4", isUser ? "justify-end" : "justify-start")}>
-      {showAvatarForParticipant && (
-        <Avatar className="h-8 w-8 self-start">
-          <AgentIcon role={message.participant} scenarioId={scenarioId} className="h-8 w-8" />
-        </Avatar>
-      )}
+      {/* Avatar for non-user participants removed */}
       <Card className={cn(
         "max-w-md md:max-w-lg lg:max-w-xl rounded-xl shadow-md",
         isUser ? "bg-primary text-primary-foreground" : "bg-card text-card-foreground",
-        isUser ? "rounded-br-none" : "rounded-bl-none",
-        !showAvatarForParticipant && !isUser ? "ml-10" : "" // Add margin if no avatar for non-user, non-system
+        isUser ? "rounded-br-none" : "rounded-bl-none"
+        // Removed conditional margin: !showAvatarForParticipant && !isUser ? "ml-10" : ""
       )}>
         <CardContent className="p-3">
-          {!isUser && <p className={`text-xs font-semibold mb-1 ${agentColor}`}>{agentName}</p>}
+          {!isUser && message.participant !== 'System' && <p className={`text-xs font-semibold mb-1 ${agentColor}`}>{agentName}</p>}
+          {message.participant === 'System' && <p className={`text-xs font-semibold mb-1 ${agentColor}`}>{agentName}</p>}
           <p className="text-sm whitespace-pre-wrap">{message.text}</p>
         </CardContent>
         <CardFooter className="px-3 py-1 text-xs flex justify-between items-center">
@@ -40,11 +37,7 @@ export function ChatMessage({ message, scenarioId }: ChatMessageProps) {
           </span>
         </CardFooter>
       </Card>
-      {isUser && (
-         <Avatar className="h-8 w-8 self-start">
-          <AgentIcon role={message.participant} scenarioId={scenarioId} className="h-8 w-8" />
-        </Avatar>
-      )}
+      {/* Avatar for user removed */}
     </div>
   );
 }
