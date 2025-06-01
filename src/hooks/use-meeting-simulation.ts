@@ -230,29 +230,22 @@ export function useMeetingSimulation(scenarioId: string | null) {
             }
             ttsCancel(); 
             clearSTTError();
-            initialMessageSpokenForScenarioIdRef.current = null; // Reset for the new scenario
+            initialMessageSpokenForScenarioIdRef.current = null; 
             
             const textToSpeak = foundScenario.initialMessage.text;
             const participantToSpeak = foundScenario.initialMessage.participant;
 
-            if (isMountedRef.current && textToSpeak) { 
-              console.log(`[MeetingSimulation DEBUG] Preparing 100ms fallback to speak initial message for ${foundScenario.id}. Participant: ${participantToSpeak}, Text: "${textToSpeak.substring(0, 30)}..."`);
+            if (isMountedRef.current && textToSpeak && initialMessageSpokenForScenarioIdRef.current !== foundScenario.id) { 
+              console.log(`[MeetingSimulation DEBUG] Preparing 100ms FORCED fallback to speak initial message for ${foundScenario.id}. Participant: ${participantToSpeak}, Text: "${textToSpeak.substring(0, 30)}..."`);
               initialMessageTimeoutRef.current = setTimeout(() => {
                 if (!isMountedRef.current) {
                   console.log('[MeetingSimulation DEBUG] 100ms initial message timeout fired, but component unmounted.');
                   return;
                 }
-                if (isTTSSpeaking) {
-                  console.log(`[MeetingSimulation DEBUG] 100ms initial message timeout fired for ${foundScenario.id}, but TTS is already speaking. Initial message will not be force-played.`);
-                  return;
-                }
-                if (initialMessageSpokenForScenarioIdRef.current === foundScenario.id) {
-                  console.log(`[MeetingSimulation DEBUG] 100ms initial message timeout for ${foundScenario.id} fired, but it was already marked as spoken. Skipping.`);
-                  return;
-                }
-                console.log(`[MeetingSimulation DEBUG] 100ms initial message timeout for ${foundScenario.id} fired. No TTS active. Speaking initial message. Participant: ${participantToSpeak}`);
+                // Force speak, ignoring isTTSSpeaking and previous initialMessageSpokenForScenarioIdRef check for THIS specific timeout instance
+                console.log(`[MeetingSimulation DEBUG] 100ms initial message timeout FORCING speak for ${foundScenario.id}. Participant: ${participantToSpeak}`);
                 ttsSpeak(textToSpeak, participantToSpeak);
-                initialMessageSpokenForScenarioIdRef.current = foundScenario.id;
+                initialMessageSpokenForScenarioIdRef.current = foundScenario.id; // Mark as spoken *after* this forced attempt
               }, 100);
             }
           }
@@ -276,7 +269,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
         initialMessageTimeoutRef.current = null;
       }
     };
-  }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario, ttsSpeak, ttsCancel, setCurrentUserResponse, setMessages, setScenario, setMeetingEnded, setCurrentTurn, setCurrentAgentIndex, setBaseTextForSpeech, isTTSSpeaking]);
+  }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario, ttsSpeak, ttsCancel, setCurrentUserResponse, setMessages, setScenario, setMeetingEnded, setCurrentTurn, setCurrentAgentIndex, setBaseTextForSpeech]);
 
 
   const handleToggleRecording = () => {
