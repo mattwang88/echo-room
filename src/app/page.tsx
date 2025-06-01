@@ -86,7 +86,7 @@ export default function HomePage() {
               <span className="sr-only">Use microphone</span>
             </Button>
              <Button className="bg-black text-white hover:bg-gray-800 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0">
-              tell me what this button do
+              Generate
             </Button>
           </div>
           
