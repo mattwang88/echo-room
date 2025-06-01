@@ -3,17 +3,23 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import Link from 'next/link'; // Added Link import
+import Link from 'next/link';
 import { GoogleEchoLogo } from '@/components/GoogleEchoLogo';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { 
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { 
   Bell, 
   Settings, 
   UserCircle2, 
   Sparkles, 
   Mic, 
-  Link2, 
+  Users, // Changed from Link2
   Plus, 
   Upload, 
   Package, 
@@ -22,13 +28,14 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
-// Updated to include specific scenarios with IDs for linking
 const scenariosForButtons = [
   { id: 'product-pitch', title: 'New Product Pitch' },
   { id: 'manager-1on1', title: '1-on-1 with Manager' },
   { id: 'okr-review', title: 'Quarterly OKR Review' },
-  { id: 'job-resignation', title: 'Practice Resignation' }, // Shortened title for button
+  { id: 'job-resignation', title: 'Practice Resignation' },
 ];
+
+const participantRoles = ["CTO", "Finance", "Product", "HR"];
 
 export default function HomePage() {
   const [simulationDescription, setSimulationDescription] = useState('');
@@ -92,18 +99,28 @@ export default function HomePage() {
           
           {/* Action Icons Bar */}
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
-            {[Link2, Plus, Upload, Package, Layers].map((IconComponent, index) => {
-              if (index === 0) { // Change for the first button (Link2)
+            {[Users, Plus, Upload, Package, Layers].map((IconComponent, index) => {
+              if (index === 0) { // Change for the first button (Users icon)
                 return (
-                  <Button 
-                    key={index} 
-                    variant="default" 
-                    size="default" 
-                    aria-label="Link action"
-                  >
-                    <Link2 className="h-4 w-4 mr-2" />
-                    Link
-                  </Button>
+                  <DropdownMenu key={index}>
+                    <DropdownMenuTrigger asChild>
+                      <Button 
+                        variant="default" 
+                        size="default" 
+                        aria-label="Select Participant"
+                      >
+                        <Users className="h-4 w-4 mr-2" />
+                        Participant
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent>
+                      {participantRoles.map((role) => (
+                        <DropdownMenuItem key={role} onSelect={() => console.log(`${role} selected`)}>
+                          {role}
+                        </DropdownMenuItem>
+                      ))}
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 );
               }
               // Keep others as icon buttons
