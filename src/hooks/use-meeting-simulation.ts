@@ -21,6 +21,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
   const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null);
+  const initialMessageTimeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
   const [isRecording, setIsRecording] = useState(false);
@@ -33,6 +34,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
+      if (initialMessageTimeoutIdRef.current) {
+        clearTimeout(initialMessageTimeoutIdRef.current);
+      }
     };
   }, []);
 
@@ -59,7 +63,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
     if (isRecording) {
       console.log('[MeetingSimulation] Stopping STT due to meeting end.');
-      // sttStopListening(); // sttStopListening will be called by unmount or explicit stop
+      // sttStopListening will be called by unmount or explicit stop
     }
     console.log('[MeetingSimulation] Cancelling any ongoing TTS due to meeting end.');
     ttsCancel();
@@ -160,7 +164,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     const wasRecording = isRecording; 
     setIsRecording(listening);
     // This function is primarily to update `isRecording`. Auto-submit logic is handled in useEffect.
-  }, [setIsRecording, isRecording]); // Added isRecording to dep array
+  }, [setIsRecording, isRecording]); 
 
   const handleSttTranscript = useCallback((finalTranscriptSegment: string) => {
     if (!isMountedRef.current) return;
@@ -204,14 +208,20 @@ export function useMeetingSimulation(scenarioId: string | null) {
         if (!scenario || scenario.id !== scenarioId) {
           console.log(`[MeetingSimulation] Loading scenario for ID: ${scenarioId}`);
           if(isMountedRef.current) {
+            // Clear any pending timeout for a previous initial message
+            if (initialMessageTimeoutIdRef.current) {
+              clearTimeout(initialMessageTimeoutIdRef.current);
+              initialMessageTimeoutIdRef.current = null;
+            }
+
             setScenario(foundScenario);
-            const initialMsg: Message = {
+            const initialMsgForState: Message = {
               id: Date.now().toString(),
               participant: foundScenario.initialMessage.participant,
               text: foundScenario.initialMessage.text,
               timestamp: Date.now(),
             };
-            setMessages([initialMsg]);
+            setMessages([initialMsgForState]);
             setCurrentTurn(0);
             setMeetingEnded(false);
             setCurrentUserResponse("");
@@ -223,28 +233,65 @@ export function useMeetingSimulation(scenarioId: string | null) {
             }
             ttsCancel(); 
             clearSTTError();
-            console.log(`[MeetingSimulation] Decision point for initial message: initialMsg text available: ${!!initialMsg.text}`);
-            if (initialMsg.text && initialMessageSpokenForScenarioIdRef.current !== scenarioId) {
-               console.log(`[MeetingSimulation] Initial scenario setup: Attempting to speak initial message: "${initialMsg.text.substring(0,30)}..."`);
-               ttsSpeak(initialMsg.text, initialMsg.participant);
-               initialMessageSpokenForScenarioIdRef.current = scenarioId;
+            
+            const textToSpeak = foundScenario.initialMessage.text;
+            const participantToSpeak = foundScenario.initialMessage.participant;
+
+            console.log(`[MeetingSimulation] Decision point for initial message: text available: ${!!textToSpeak}`);
+            if (textToSpeak && initialMessageSpokenForScenarioIdRef.current !== scenarioId) {
+               console.log(`[MeetingSimulation] Initial scenario setup: Scheduling initial message speak for scenario ${scenarioId}: "${textToSpeak.substring(0,30)}..."`);
+               
+               initialMessageTimeoutIdRef.current = setTimeout(() => {
+                if (isMountedRef.current && 
+                    scenario && scenario.id === scenarioId && // Ensure current scenario matches the one we scheduled for
+                    initialMessageSpokenForScenarioIdRef.current !== scenarioId) { // Ensure it hasn't been marked "spoken" by another path
+                  
+                  console.log(`[MeetingSimulation] Timeout fired: Speaking initial message for scenario ${scenarioId}.`);
+                  ttsSpeak(textToSpeak, participantToSpeak);
+                  initialMessageSpokenForScenarioIdRef.current = scenarioId; // Mark as "spoken" for this scenario
+                } else {
+                  console.log(`[MeetingSimulation] Timeout fired, but conditions to speak initial message for ${scenarioId} no longer met.`);
+                }
+                initialMessageTimeoutIdRef.current = null; // Clear ref after execution
+              }, 50); // 50ms delay
             } else {
-                console.log(`[MeetingSimulation] Initial message for ${scenarioId} already spoken or TTS disabled, or no text.`);
+                console.log(`[MeetingSimulation] Initial message for ${scenarioId} already marked as spoken, or TTS disabled, or no text.`);
             }
           }
         }
       } else {
         toast({ title: "Error", description: "Scenario not found.", variant: "destructive" });
+        if (initialMessageTimeoutIdRef.current) {
+            clearTimeout(initialMessageTimeoutIdRef.current);
+            initialMessageTimeoutIdRef.current = null;
+        }
         if (isMountedRef.current) router.push('/');
       }
     } else if (!scenarioId && scenario) { 
       console.log('[MeetingSimulation] scenarioId is null, resetting scenario state.');
+      if (initialMessageTimeoutIdRef.current) {
+        clearTimeout(initialMessageTimeoutIdRef.current);
+        initialMessageTimeoutIdRef.current = null;
+      }
       if(isMountedRef.current) setScenario(null);
       if(isMountedRef.current) setMessages([]);
       initialMessageSpokenForScenarioIdRef.current = null;
       ttsCancel();
       if (isRecording) sttStopListening();
     }
+
+    return () => {
+      if (initialMessageTimeoutIdRef.current) {
+        clearTimeout(initialMessageTimeoutIdRef.current);
+        initialMessageTimeoutIdRef.current = null;
+      }
+      // Other cleanup calls like ttsCancel(), sttStopListening() should be here if they are
+      // exclusively tied to this effect's lifecycle rather than specific conditions like `isRecording`.
+      // For instance, `ttsCancel()` might be relevant if navigating away while an initial message is scheduled.
+      // The original placement of ttsCancel() and sttStopListening() inside the `if(isMountedRef.current)` block
+      // when scenarioId becomes active or is reset is specific to those state transitions.
+      // A general cleanup for `ttsCancel()` might be good if TTS could be active from this effect.
+    };
   }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario, ttsSpeak, ttsCancel, setCurrentUserResponse, setMessages, setScenario, setMeetingEnded, setCurrentTurn, setCurrentAgentIndex, setBaseTextForSpeech]);
 
 
