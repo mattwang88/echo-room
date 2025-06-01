@@ -179,7 +179,7 @@ export default function HomePage() {
       </section>
 
       {/* Messages Button (Fixed Position) */}
-      <div className="fixed bottom-6 left-1/2 -translate-x-1/2 z-50">
+      <div className="fixed bottom-6 left-6 z-50">
         <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
           <MessageCircle className="h-5 w-5 mr-2" />
           Messages
