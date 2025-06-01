@@ -11,7 +11,7 @@ import { Skeleton } from '@/components/ui/skeleton';
 import { Logo } from '@/components/Logo';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PhoneOff, Mic, MicOff } from 'lucide-react';
+import { PhoneOff, Mic, MicOff, PlayCircle, AlertTriangle } from 'lucide-react';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
 import type { ParticipantRole, AgentRole } from '@/lib/types';
@@ -46,6 +46,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     isAiThinking,
     submitUserResponse,
     meetingEnded,
+    meetingActive, // new state
+    handleMeetingAction, // new handler
     handleEndMeeting,
     isRecording,
     handleToggleRecording,
@@ -92,13 +94,45 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   const speakingAgentAvatar = getSpeakingAgentAvatar();
 
+  const isMicButtonDisabled = !meetingActive || !isSTTSupported || meetingEnded || isTTSSpeaking || isAiThinking;
+  const isEndMeetingButtonDisabled = meetingEnded; // Can always end meeting, unless already ended.
+
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
       <div className="flex flex-1 overflow-hidden">
-        <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30">
-          {isRecording ? (
+        <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30 relative">
+           {/* Speaker / Recording Status Banner */}
+           <div className="absolute top-4 left-1/2 -translate-x-1/2 w-auto max-w-[90%]">
+            {meetingActive && isRecording && !isTTSSpeaking && (
+              <div className="bg-primary/80 text-primary-foreground px-4 py-2 rounded-lg shadow-md text-center">
+                <p className="text-sm font-semibold animate-pulse">
+                  You are speaking
+                  <span className="animate-ellipsis"></span>
+                </p>
+              </div>
+            )}
+            {meetingActive && isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
+               <div className="bg-secondary/80 text-secondary-foreground px-4 py-2 rounded-lg shadow-md text-center">
+                <p className="text-sm font-semibold animate-pulse">
+                  {getAgentName(currentSpeakingParticipant, scenarioId)} speaking
+                  <span className="animate-ellipsis"></span>
+                </p>
+              </div>
+            )}
+            {!meetingActive && !meetingEnded && (
+                 <div className="bg-muted px-4 py-2 rounded-lg shadow-md text-center">
+                    <p className="text-sm font-semibold text-muted-foreground">
+                        Meeting has not started yet.
+                    </p>
+                </div>
+            )}
+          </div>
+
+
+          {/* Central Visual Area */}
+          {meetingActive && isRecording ? (
             <SoundWaveAnimation width={512} height={256} isAnimating={true} />
-          ) : speakingAgentAvatar ? (
+          ) : meetingActive && speakingAgentAvatar ? (
             <Image
               key={speakingAgentAvatar.src}
               src={speakingAgentAvatar.src}
@@ -114,31 +148,24 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                 (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar');
               }}
             />
-          ) : (
-            // Idle state - show SoundWaveAnimation but not animating
+          ) : meetingActive ? ( // Meeting active but no one speaking and not recording
             <SoundWaveAnimation width={512} height={256} isAnimating={false} />
+          ) : !meetingEnded ? ( // Meeting not active, not ended (waiting for start)
+            <div className="flex flex-col items-center text-center">
+                <PlayCircle className="h-32 w-32 text-primary/30 mb-4" />
+                <p className="text-xl text-muted-foreground">Click "Start Meeting" in the chat to begin.</p>
+            </div>
+          ) : ( // Meeting ended
+             <AlertTriangle className="h-32 w-32 text-destructive/70 mb-4" />
           )}
 
-          {isRecording && !isTTSSpeaking && (
-            <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
-              You are speaking
-              <span className="animate-ellipsis"></span>
-            </p>
-          )}
-          {isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
-            <p className="mt-6 text-xl font-semibold text-foreground animate-pulse">
-              {getAgentName(currentSpeakingParticipant, scenarioId)} speaking
-              <span className="animate-ellipsis"></span>
-            </p>
-          )}
-
-
+          {/* Buttons Area */}
           <div className="flex items-center justify-center gap-4 mt-20">
             <Button
               type="button"
               variant={isRecording ? "destructive" : "accent"}
               onClick={handleToggleRecording}
-              disabled={!isSTTSupported || meetingEnded || isTTSSpeaking || isAiThinking}
+              disabled={isMicButtonDisabled}
               className="rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
               aria-label={isRecording ? "Stop recording" : "Start recording"}
             >
@@ -148,6 +175,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               type="button"
               variant="destructive"
               onClick={handleEndMeeting}
+              disabled={isEndMeetingButtonDisabled}
               className="rounded-full shadow-lg hover:scale-105 transition-transform h-16 w-16"
               aria-label="End Meeting"
             >
@@ -168,9 +196,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                   key={msg.id}
                   message={msg}
                   scenarioId={scenarioId}
+                  onMessageAction={handleMeetingAction} // Pass action handler
                 />
               ))}
-              {isAiThinking && messages[messages.length-1]?.participant === 'User' && (
+              {meetingActive && isAiThinking && messages[messages.length-1]?.participant === 'User' && (
                 <div className="flex items-end gap-2 mb-4 justify-start">
                   <div className={cn(
                       "max-w-md p-3 rounded-xl rounded-bl-none shadow-md bg-muted",
@@ -190,7 +219,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             onChange={(e) => setCurrentUserResponse(e.target.value)}
             onSubmit={submitUserResponse}
             isSending={isAiThinking}
-            disabled={meetingEnded || isTTSSpeaking}
+            disabled={meetingEnded || isTTSSpeaking || !meetingActive} // Disable if meeting not active
             isRecording={isRecording}
             onToggleRecording={handleToggleRecording}
             isSTTSupported={isSTTSupported}
@@ -200,4 +229,3 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
-
