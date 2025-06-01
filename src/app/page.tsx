@@ -156,11 +156,11 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Signature Challenges Section */}
+      {/* Signature Scenarios Section */}
       <section className="pb-16 pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
-            Signature Challenges
+            Signature Scenarios
           </h2>
           <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
             {scenariosForButtons.map((challenge) => (
