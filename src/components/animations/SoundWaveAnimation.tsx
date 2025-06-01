@@ -13,20 +13,20 @@ interface SoundWaveAnimationProps {
 export function SoundWaveAnimation({ width = 512, height = 256, className, isAnimating = true }: SoundWaveAnimationProps) {
   const baseBarClasses = "bg-primary rounded-full";
   const animationClass = isAnimating ? "animate-sound-wave" : "";
-  const barClasses = cn(baseBarClasses, animationClass, "w-3"); // w-3 from previous adjustment
+  const barClasses = cn(baseBarClasses, animationClass, "w-3");
 
   return (
     <div
       className={cn(
-        "flex items-end justify-center",
-        "gap-2", // gap-2 from previous adjustment
+        "flex items-center justify-center", // Changed from items-end to items-center
+        "gap-2",
         className
       )}
       style={{ width: `${width}px`, height: `${height}px` }}
       aria-label="Sound wave animation"
       data-ai-hint="soundwave animation"
     >
-      {/* One Peak, One Valley - Right part upside down of left */}
+      {/* Current pattern: low, mid, high, mid, low, high, mid, low, mid */}
       <div className={cn(barClasses, "h-1/5")} style={{animationDelay: '0ms'}}></div>    {/* Bar 1 */}
       <div className={cn(barClasses, "h-2/5")} style={{animationDelay: '100ms'}}></div>   {/* Bar 2 */}
       <div className={cn(barClasses, "h-3/5")} style={{animationDelay: '200ms'}}></div>   {/* Bar 3 - Peak 1 */}
