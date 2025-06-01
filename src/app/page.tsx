@@ -110,7 +110,7 @@ export default function HomePage() {
           {/* Action Icons Bar */}
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
             {[Users, Plus, Upload, Package, Layers].map((IconComponent, index) => {
-              if (index === 0) { // Change for the first button (Users icon)
+              if (index === 0) { 
                 return (
                   <DropdownMenu key={index}>
                     <DropdownMenuTrigger asChild>
@@ -120,7 +120,7 @@ export default function HomePage() {
                         className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
                         aria-label="Select Participants"
                       >
-                        <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                        <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent>
@@ -129,7 +129,7 @@ export default function HomePage() {
                           key={role}
                           checked={selectedRoles.includes(role)}
                           onSelect={(event) => {
-                            event.preventDefault(); // Keep menu open
+                            event.preventDefault(); 
                             handleRoleSelect(role);
                           }}
                         >
@@ -140,7 +140,6 @@ export default function HomePage() {
                   </DropdownMenu>
                 );
               }
-              // Keep others as icon buttons
               return (
                 <Button 
                   key={index} 
@@ -158,7 +157,7 @@ export default function HomePage() {
       </main>
 
       {/* Signature Challenges Section */}
-      <section className="pb-10 pt-6 px-4">
+      <section className="pb-16 pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Signature Challenges
@@ -189,3 +188,4 @@ export default function HomePage() {
     </div>
   );
 }
+
