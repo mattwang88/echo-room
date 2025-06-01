@@ -109,55 +109,49 @@ export default function HomePage() {
           
           {/* Action Icons Bar */}
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
-            {[Users, Plus, Upload, Package, Layers].map((IconComponent, index) => {
-              if (index === 0) { 
-                return (
-                  <DropdownMenu key={index}>
-                    <DropdownMenuTrigger asChild>
-                      <Button 
-                        variant="outline" 
-                        size="icon" 
-                        className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
-                        aria-label="Select Participants"
-                      >
-                        <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent>
-                      {participantRoles.map((role) => (
-                        <DropdownMenuCheckboxItem
-                          key={role}
-                          checked={selectedRoles.includes(role)}
-                          onSelect={(event) => {
-                            event.preventDefault(); 
-                            handleRoleSelect(role);
-                          }}
-                        >
-                          {role}
-                        </DropdownMenuCheckboxItem>
-                      ))}
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                );
-              }
-              return (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
                 <Button 
-                  key={index} 
                   variant="outline" 
                   size="icon" 
-                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10" 
-                  aria-label={IconComponent.displayName ? IconComponent.displayName.replace('Icon', '').trim() : `Action ${index + 1}`}
+                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
+                  aria-label="Select Participants"
                 >
-                  <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
-              );
-            })}
+              </DropdownMenuTrigger>
+              <DropdownMenuContent>
+                {participantRoles.map((role) => (
+                  <DropdownMenuCheckboxItem
+                    key={role}
+                    checked={selectedRoles.includes(role)}
+                    onSelect={(event) => {
+                      event.preventDefault(); 
+                      handleRoleSelect(role);
+                    }}
+                  >
+                    {role}
+                  </DropdownMenuCheckboxItem>
+                ))}
+              </DropdownMenuContent>
+            </DropdownMenu>
+            {[Plus, Upload, Package, Layers].map((IconComponent, index) => (
+              <Button 
+                key={index} 
+                variant="outline" 
+                size="icon" 
+                className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10" 
+                aria-label={IconComponent.displayName ? IconComponent.displayName.replace('Icon', '').trim() : `Action ${index + 2}`}
+              >
+                <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+            ))}
           </div>
         </div>
       </main>
 
       {/* Signature Scenarios Section */}
-      <section className="pb-16 pt-6 px-4">
+      <section className="pb-32 pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Signature Scenarios
