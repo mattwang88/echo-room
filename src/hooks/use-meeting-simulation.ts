@@ -21,7 +21,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [currentTurn, setCurrentTurn] = useState<number>(0);
   const [currentAgentIndex, setCurrentAgentIndex] = useState<number>(0);
   const initialMessageSpokenForScenarioIdRef = useRef<string | null>(null);
-  const initialMessageTimeoutIdRef = useRef<NodeJS.Timeout | null>(null);
   const isMountedRef = useRef(true);
 
   const [isRecording, setIsRecording] = useState(false);
@@ -34,9 +33,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isMountedRef.current = true;
     return () => {
       isMountedRef.current = false;
-      if (initialMessageTimeoutIdRef.current) {
-        clearTimeout(initialMessageTimeoutIdRef.current);
-      }
     };
   }, []);
 
@@ -207,11 +203,6 @@ export function useMeetingSimulation(scenarioId: string | null) {
         if (!scenario || scenario.id !== scenarioId) {
           console.log(`[MeetingSimulation] Loading new scenario for ID: ${scenarioId}`);
           if(isMountedRef.current) {
-            if (initialMessageTimeoutIdRef.current) {
-              clearTimeout(initialMessageTimeoutIdRef.current);
-              initialMessageTimeoutIdRef.current = null;
-            }
-
             setScenario(foundScenario);
             const initialMsgForState: Message = {
               id: Date.now().toString(),
@@ -235,60 +226,38 @@ export function useMeetingSimulation(scenarioId: string | null) {
             const textToSpeak = foundScenario.initialMessage.text;
             const participantToSpeak = foundScenario.initialMessage.participant;
 
-            console.log(`[MeetingSimulation] Decision point for initial message: text available: ${!!textToSpeak}`);
-            if (textToSpeak && initialMessageSpokenForScenarioIdRef.current !== scenarioId) {
-               console.log(`[MeetingSimulation] Initial scenario setup: Scheduling initial message speak for scenario ${scenarioId}: "${textToSpeak.substring(0,30)}..."`);
-               
-               initialMessageTimeoutIdRef.current = setTimeout(() => {
-                if (isMountedRef.current && 
-                    foundScenario && foundScenario.id === scenarioId && 
-                    initialMessageSpokenForScenarioIdRef.current !== scenarioId) { 
-                  
-                  console.log(`[MeetingSimulation DEBUG] Preparing to speak initial message. Scenario ID: ${scenarioId}, Participant: ${participantToSpeak}, Text: "${textToSpeak.substring(0, 30)}..."`);
-                  ttsSpeak(textToSpeak, participantToSpeak);
-                  initialMessageSpokenForScenarioIdRef.current = scenarioId; 
-                } else {
-                  let reason = "";
-                  if (!isMountedRef.current) reason += "Component unmounted. ";
-                  if (!foundScenario) reason += "foundScenario was null during timeout. ";
-                  else if (foundScenario.id !== scenarioId) reason += `Scenario ID mismatch in timeout (expected: ${scenarioId}, found in foundScenario: ${foundScenario.id}). `;
-                  if (initialMessageSpokenForScenarioIdRef.current === scenarioId) reason += `Already spoken for ${scenarioId}. `;
-                  console.log(`[MeetingSimulation] Timeout fired, but conditions to speak initial message for ${scenarioId} no longer met. Reasons: ${reason}`);
-                }
-                initialMessageTimeoutIdRef.current = null; 
-              }, 50); 
+            console.log(`[MeetingSimulation DEBUG] Preparing to speak initial message. Scenario ID: ${scenarioId}, Participant: ${participantToSpeak}, Text: "${textToSpeak ? textToSpeak.substring(0, 30) : 'N/A'}..."`);
+            if (isMountedRef.current && 
+                foundScenario && foundScenario.id === scenarioId && 
+                initialMessageSpokenForScenarioIdRef.current !== scenarioId &&
+                textToSpeak) { 
+              
+              console.log(`[MeetingSimulation DEBUG] Conditions met. Speaking initial message immediately. Participant: ${participantToSpeak}`);
+              ttsSpeak(textToSpeak, participantToSpeak);
+              initialMessageSpokenForScenarioIdRef.current = scenarioId; 
             } else {
-                console.log(`[MeetingSimulation] Initial message for ${scenarioId} already marked as spoken, or TTS disabled, or no text.`);
+              let reason = "";
+              if (!isMountedRef.current) reason += "Component unmounted. ";
+              if (!foundScenario) reason += "foundScenario was null. ";
+              else if (foundScenario.id !== scenarioId) reason += `Scenario ID mismatch (expected: ${scenarioId}, found in foundScenario: ${foundScenario.id}). `;
+              if (initialMessageSpokenForScenarioIdRef.current === scenarioId) reason += `Already spoken for ${scenarioId}. `;
+              if (!textToSpeak) reason += "No text to speak. ";
+              console.log(`[MeetingSimulation] Conditions to speak initial message for ${scenarioId} not met immediately. Reasons: ${reason}`);
             }
           }
         }
       } else {
         toast({ title: "Error", description: "Scenario not found.", variant: "destructive" });
-        if (initialMessageTimeoutIdRef.current) {
-            clearTimeout(initialMessageTimeoutIdRef.current);
-            initialMessageTimeoutIdRef.current = null;
-        }
         if (isMountedRef.current) router.push('/');
       }
     } else if (!scenarioId && scenario) { 
       console.log('[MeetingSimulation] scenarioId is null, resetting scenario state.');
-      if (initialMessageTimeoutIdRef.current) {
-        clearTimeout(initialMessageTimeoutIdRef.current);
-        initialMessageTimeoutIdRef.current = null;
-      }
       if(isMountedRef.current) setScenario(null);
       if(isMountedRef.current) setMessages([]);
       initialMessageSpokenForScenarioIdRef.current = null;
       ttsCancel();
       if (isRecording) sttStopListening();
     }
-
-    return () => {
-      if (initialMessageTimeoutIdRef.current) {
-        clearTimeout(initialMessageTimeoutIdRef.current);
-        initialMessageTimeoutIdRef.current = null;
-      }
-    };
   }, [scenarioId, router, toast, isRecording, sttStopListening, clearSTTError, scenario, ttsSpeak, ttsCancel, setCurrentUserResponse, setMessages, setScenario, setMeetingEnded, setCurrentTurn, setCurrentAgentIndex, setBaseTextForSpeech]);
 
 
