@@ -8,13 +8,24 @@ import {
   DialogTitle,
   DialogDescription,
   DialogFooter,
-} from '@/components/ui/dialog'; // No DialogClose, Dialog, DialogTrigger from here
+} from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { Persona } from '@/lib/types';
-import { addUserPersona, deleteUserPersona } from '@/lib/userPersonas'; // getAllUserPersonas is used in parent
+import { addUserPersona, deleteUserPersona } from '@/lib/userPersonas';
 
 interface PersonaManagerProps {
   personas: Persona[];
@@ -27,6 +38,8 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
   const [role, setRole] = useState('');
   const [instructionPrompt, setInstructionPrompt] = useState('');
   const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
+  const [isAlertOpen, setIsAlertOpen] = useState(false);
+  const [personaToDeleteId, setPersonaToDeleteId] = useState<string | null>(null);
 
   const resetForm = () => {
     setName('');
@@ -35,12 +48,8 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
     setEditingPersona(null);
   };
   
-  // Effect to reset form if editingPersona becomes null (e.g., after successful save of an edit)
-  // or if the component visibility changes (though this is harder to track without an 'open' prop here)
   useEffect(() => {
     if (!editingPersona && (name || role || instructionPrompt)) {
-      // If we are not editing, but form has data, it means we switched from editing to creating.
-      // Or it means a create succeeded. resetForm is called on submit.
       // This primarily handles deselecting an edit.
     }
   }, [editingPersona, name, role, instructionPrompt]);
@@ -58,11 +67,11 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
       instructionPrompt: instructionPrompt.trim(),
     };
 
-    addUserPersona(persona); // This updates localStorage
+    addUserPersona(persona); 
     const updatedPersonas = editingPersona 
       ? personas.map(p => p.id === editingPersona.id ? persona : p)
       : [...personas, persona];
-    onPersonasUpdate(updatedPersonas); // This updates parent state
+    onPersonasUpdate(updatedPersonas); 
 
     if (onFormSubmitSuccess) {
       onFormSubmitSuccess();
@@ -75,23 +84,26 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
     setName(persona.name);
     setRole(persona.role);
     setInstructionPrompt(persona.instructionPrompt);
-    // The dialog is already open, just populate the form
   };
 
-  const handleDeletePersona = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this persona?')) {
-      deleteUserPersona(id); // This updates localStorage
-      const updatedPersonas = personas.filter(p => p.id !== id);
-      onPersonasUpdate(updatedPersonas); // This updates parent state
-      if (editingPersona?.id === id) { // If deleting the persona being edited
+  const confirmDeletePersona = () => {
+    if (personaToDeleteId) {
+      deleteUserPersona(personaToDeleteId); 
+      const updatedPersonas = personas.filter(p => p.id !== personaToDeleteId);
+      onPersonasUpdate(updatedPersonas); 
+      if (editingPersona?.id === personaToDeleteId) { 
         resetForm();
       }
+      setPersonaToDeleteId(null);
+      setIsAlertOpen(false);
     }
   };
-  
-  // When the dialog is closed externally, parent manages 'open'.
-  // If form needs reset upon external close, PersonaManager would need an 'isOpen' prop.
-  // For now, resetForm is called on successful submission or when an edit is cancelled/switched.
+
+  const openDeleteConfirmation = (id: string) => {
+    console.log('Attempting to open delete confirmation for ID:', id);
+    setPersonaToDeleteId(id);
+    setIsAlertOpen(true);
+  };
 
   return (
     <>
@@ -150,8 +162,6 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
           >
             {editingPersona ? 'Save Changes' : 'Create Persona'}
           </Button>
-          {/* The actual DialogClose button is usually part of DialogContent in shadcn (the 'X')
-              or the parent controls 'open' state. This footer is for form actions. */}
         </DialogFooter>
       </form>
 
@@ -184,7 +194,7 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleDeletePersona(persona.id)}
+                      onClick={() => openDeleteConfirmation(persona.id)}
                       className="h-7 w-7 hover:bg-destructive hover:text-destructive-foreground"
                       title="Delete Persona"
                     >
@@ -197,6 +207,23 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
           </div>
         </div>
       )}
+
+      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the persona.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPersonaToDeleteId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeletePersona} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
