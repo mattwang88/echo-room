@@ -74,7 +74,7 @@ export default function WelcomePage() {
           )}
         >
           {/* Logo Group */}
-          <div className="relative flex items-center justify-center translate-y-16">
+          <div className="relative w-full flex items-center justify-center translate-y-16">
             {/* Google G Logo */}
             <Image
               src="/images/google_icon.png"
@@ -85,7 +85,9 @@ export default function WelcomePage() {
               data-ai-hint="google logo multicolor"
             />
             {/* Echo Text Span directly */}
-            <span className="absolute left-1/2 -translate-x-1/2 translate-x-32 text-6xl sm:text-7xl font-semibold text-white">Echo</span>
+            <span className="absolute left-1/2 -translate-x-1/2 translate-x-25 text-6xl sm:text-7xl font-semibold text-white">
+              Echo
+            </span>
           </div>
 
           {/* Enter Button - positioned absolutely near the bottom */}
