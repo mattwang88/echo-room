@@ -77,38 +77,33 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   useEffect(() => {
     console.log(`[AvatarDebug] Effect triggered. isTTSSpeaking: ${isTTSSpeaking}, currentSpeakingRole: ${currentSpeakingRole}, currentSpeakingGender: ${currentSpeakingGender}`);
-    if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User') {
-      let pathList: string[];
-      let chosenPath: string | null = null;
-      console.log(`[AvatarDebug] Selecting avatar for role: ${currentSpeakingRole}, gender: ${currentSpeakingGender}`);
-      switch (currentSpeakingGender) {
-        case 'male':
-          pathList = maleAvatarPaths;
-          if (pathList.length > 0) {
-            const randomIndex = Math.floor(Math.random() * pathList.length);
-            chosenPath = pathList[randomIndex];
-          } else {
-            chosenPath = neutralAvatarPath;
-          }
-          console.log(`[AvatarDebug] Male avatar selected. List length: ${pathList.length}, Chosen: ${chosenPath}`);
-          break;
-        case 'female':
-          pathList = femaleAvatarPaths;
-          if (pathList.length > 0) {
-            const randomIndex = Math.floor(Math.random() * pathList.length);
-            chosenPath = pathList[randomIndex];
-          } else {
-            chosenPath = neutralAvatarPath;
-          }
-          console.log(`[AvatarDebug] Female avatar selected. List length: ${pathList.length}, Chosen: ${chosenPath}`);
-          break;
-        default:
-          chosenPath = neutralAvatarPath;
-          console.log(`[AvatarDebug] Neutral/default avatar selected for gender '${currentSpeakingGender}': ${chosenPath}`);
-          break;
-      }
-      setCurrentDisplayAvatarPath(chosenPath);
-      console.log(`[AvatarDebug] setCurrentDisplayAvatarPath called with: ${chosenPath}`);
+    if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && currentSpeakingRole !== 'System') {
+      // --- SIMPLIFIED LOGIC FOR TESTING ---
+      const testAvatarPath = '/images/males/avatar1.png'; // Hardcode to test one specific avatar
+      setCurrentDisplayAvatarPath(testAvatarPath);
+      console.log(`[AvatarDebug] TESTING: Hardcoded avatar path for AI agent: ${testAvatarPath}`);
+      // --- END OF SIMPLIFIED LOGIC ---
+
+      // Original logic (commented out for now):
+      // let chosenPath: string | null = null;
+      // if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
+      //   const randomIndex = Math.floor(Math.random() * maleAvatarPaths.length);
+      //   chosenPath = maleAvatarPaths[randomIndex];
+      //   console.log(`[AvatarDebug] Male avatar selected. List length: ${maleAvatarPaths.length}, Chosen: ${chosenPath}`);
+      // } else if (currentSpeakingGender === 'female' && femaleAvatarPaths.length > 0) {
+      //   const randomIndex = Math.floor(Math.random() * femaleAvatarPaths.length);
+      //   chosenPath = femaleAvatarPaths[randomIndex];
+      //   console.log(`[AvatarDebug] Female avatar selected. List length: ${femaleAvatarPaths.length}, Chosen: ${chosenPath}`);
+      // } else {
+      //   chosenPath = neutralAvatarPath; // Fallback if gender is not male/female or lists are empty
+      //   console.log(`[AvatarDebug] Neutral/default avatar selected for gender '${currentSpeakingGender}' or empty list: ${chosenPath}`);
+      // }
+      // setCurrentDisplayAvatarPath(chosenPath);
+      // console.log(`[AvatarDebug] setCurrentDisplayAvatarPath called with: ${chosenPath}`);
+
+    } else if (isTTSSpeaking && currentSpeakingRole === 'System') {
+      setCurrentDisplayAvatarPath(neutralAvatarPath); // System always uses neutral
+      console.log(`[AvatarDebug] System speaking, using neutral avatar: ${neutralAvatarPath}`);
     } else if (!isTTSSpeaking) {
       setCurrentDisplayAvatarPath(null);
       console.log(`[AvatarDebug] Not speaking or User is speaking. Cleared currentDisplayAvatarPath.`);
@@ -184,9 +179,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               className="rounded-full object-cover animate-breathing shadow-xl"
               data-ai-hint={getAvatarAiHint()}
               onError={(e) => {
-                console.warn(`[AvatarDebug] Error loading avatar. Attempted src: ${currentDisplayAvatarPath}. Event:`, e);
-                (e.target as HTMLImageElement).src = neutralAvatarPath;
-                (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar error');
+                console.error(`[AvatarDebug] Error loading avatar. Attempted src: ${(e.target as HTMLImageElement).src}. Event:`, e);
+                // Don't set to neutralAvatarPath here as it might trigger loops if that also fails
               }}
             />
           ) : meetingActive ? (
