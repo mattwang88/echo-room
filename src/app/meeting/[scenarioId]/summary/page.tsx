@@ -2,7 +2,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { MeetingSummaryData, Message, AnalyzeResponseOutput, EvaluateSemanticSkillOutput } from '@/lib/types';
+import type { MeetingSummaryData, Message, AnalyzeResponseOutput } from '@/lib/types';
+import type { EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import { FeedbackReport } from '@/components/summary/FeedbackReport';
 import { Logo } from '@/components/Logo';
 import { Loader2, Copy, AlertTriangle } from 'lucide-react';
@@ -45,12 +46,29 @@ export default function SummaryPage() {
         for (const message of rawSummaryData.messages) {
           if (message.participant === 'User') {
             try {
-              const coachingInput: AnalyzeResponseInput = { response: message.text, context: rawSummaryData.objective };
-              const coachingResult = await analyzeResponse(coachingInput);
+              // Check if we already have cached feedback for this message
+              const cachedFeedback = localStorage.getItem(`echoRoomFeedback_${message.id}`);
+              let coachingResult: AnalyzeResponseOutput;
+              let semanticResult: EvaluateSemanticSkillOutput;
 
-              const semanticInput: EvaluateSemanticSkillInput = { responseText: message.text, context: rawSummaryData.objective };
-              const semanticResult = await evaluateSemanticSkill(semanticInput);
+              if (cachedFeedback) {
+                const { coaching, semantic } = JSON.parse(cachedFeedback);
+                coachingResult = coaching;
+                semanticResult = semantic;
+              } else {
+                const coachingInput: AnalyzeResponseInput = { response: message.text, context: rawSummaryData.objective };
+                coachingResult = await analyzeResponse(coachingInput);
 
+                const semanticInput: EvaluateSemanticSkillInput = { responseText: message.text, context: rawSummaryData.objective };
+                semanticResult = await evaluateSemanticSkill(semanticInput);
+
+                // Cache the feedback
+                localStorage.setItem(`echoRoomFeedback_${message.id}`, JSON.stringify({
+                  coaching: coachingResult,
+                  semantic: semanticResult
+                }));
+              }
+              
               enrichedMessages.push({
                 ...message,
                 coachingFeedback: coachingResult,
