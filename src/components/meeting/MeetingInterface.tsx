@@ -148,7 +148,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           alt={currentSpeakingRole ? `${getAgentName(currentSpeakingRole, scenarioId)} avatar` : "Agent avatar"}
           width={256}
           height={256}
-          className="rounded-full object-cover animate-breathing shadow-xl"
+          className="rounded-full object-cover shadow-xl animate-breathing"
           data-ai-hint={getAvatarAiHint(currentDisplayAvatarPath)}
           onError={(e) => {
             console.error(`[AvatarDebug] Error loading PRIMARY avatar. Attempted src: ${(e.target as HTMLImageElement).src}. Event:`, e);
@@ -158,12 +158,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
     
     if (meetingActive) {
-      // This is the branch where currentDisplayAvatarPath is null/falsy,
-      // user is not recording, and meeting is active.
       if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && currentSpeakingRole !== 'System') {
-        // Fallback: TTS is active for an AI agent, but currentDisplayAvatarPath wasn't set.
-        // Render an avatar directly.
-        let fallbackDisplayPath = neutralAvatarPath; // Default to neutral
+        let fallbackDisplayPath = neutralAvatarPath; 
         let hintPathType = 'neutral';
 
         if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
@@ -181,7 +177,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             alt={`${currentSpeakingRole || 'Agent'} avatar (render fallback)`}
             width={256}
             height={256}
-            className="rounded-full object-cover animate-breathing shadow-xl"
+            className="rounded-full object-cover shadow-xl animate-breathing"
             data-ai-hint={getAvatarAiHint(fallbackDisplayPath)}
             onError={(e) => {
               console.error(`[AvatarDebug] Error loading RENDER FALLBACK avatar. Attempted src: ${(e.target as HTMLImageElement).src}. Event:`, e);
@@ -189,7 +185,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           />
         );
       } else {
-        // TTS is not active for an AI agent, or role is User/System, show static sound wave.
         console.log(`[AvatarDebug] Render: Displaying static SoundWaveAnimation because currentDisplayAvatarPath is null and AI agent is not speaking.`);
         return <SoundWaveAnimation width={512} height={256} isAnimating={false} />;
       }
