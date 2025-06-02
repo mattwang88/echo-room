@@ -101,7 +101,7 @@ export default function HomePage() {
   const handleClosePersonaManager = () => {
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas();
+    loadPersonas(); // Reload personas when dialog closes
   };
 
   const handleDeletePersonaRequest = (id: string) => {
@@ -112,7 +112,7 @@ export default function HomePage() {
   const confirmDeleteHomepagePersona = () => {
     if (personaToDeleteId) {
       deleteUserPersona(personaToDeleteId);
-      loadPersonas();
+      loadPersonas(); // Refresh persona list on homepage
       toast({ title: "Persona Deleted", description: "The persona has been successfully removed." });
     }
     setPersonaToDeleteId(null);
@@ -155,6 +155,8 @@ export default function HomePage() {
           }
           personaConf[key] = personaInstruction;
         } else {
+          // Provide a default or minimal instruction even if not actively selected,
+          // as simulateAiAgents might still expect all persona fields.
           personaConf[key] = `You are the ${stdRole}. You are not actively participating in this specific custom scenario titled "${aiGeneratedDetails.scenarioTitle}".`;
         }
       });
@@ -170,7 +172,7 @@ export default function HomePage() {
         },
         agentsInvolved: selectedRoles,
         personaConfig: personaConf,
-        maxTurns: 10,
+        maxTurns: 10, // Default max turns for custom scenarios
       };
 
       addUserCreatedScenario(newScenario);
@@ -188,6 +190,7 @@ export default function HomePage() {
     }
   };
 
+  // Roles that have a custom persona created by the user
   const customPersonaRolesDisplayed = userPersonas.map(p => p.role);
 
   return (
@@ -276,7 +279,7 @@ export default function HomePage() {
                     key={role}
                     checked={selectedRoles.includes(role)}
                     onSelect={(event) => {
-                      event.preventDefault();
+                      event.preventDefault(); // Prevent default closing behavior
                       handleRoleSelect(role);
                     }}
                   >
@@ -293,7 +296,7 @@ export default function HomePage() {
                   size="icon"
                   className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
                   aria-label="Manage Personas"
-                  onClick={() => handleOpenPersonaManager()}
+                  onClick={() => handleOpenPersonaManager()} // Opens dialog for new persona
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
@@ -335,11 +338,11 @@ export default function HomePage() {
                   <Button
                     variant="outline"
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-10"
-                    onClick={() => handleOpenPersonaManager(persona)}
+                    onClick={() => handleOpenPersonaManager(persona)} // Clicking main button can also edit
                   >
                     {persona.name}
                   </Button>
-                  <div className="absolute top-0 right-0 h-full flex items-center opacity-0 group-hover:opacity-100 transition-opacity mr-1">
+                  <div className="absolute top-1 right-1 flex space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
                     <Button
                       variant="ghost"
                       size="icon"
@@ -362,7 +365,7 @@ export default function HomePage() {
                 </div>
               ))}
 
-              {/* Display selected standard roles that don't have a custom persona */}
+              {/* Display selected standard roles that DON'T have a custom persona */}
               {selectedRoles
                 .filter(role => !customPersonaRolesDisplayed.includes(role))
                 .map((role) => (
@@ -370,7 +373,7 @@ export default function HomePage() {
                     key={role}
                     variant="outline"
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
-                    disabled
+                    disabled // These are just indicators
                   >
                     {role}
                   </Button>
@@ -378,7 +381,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-left ml-1">
-              Create custom personas or select roles to see participants here.
+              Create or select participants to see them here.
             </p>
           )}
         </div>
