@@ -44,7 +44,7 @@ import {
   Loader2,
   Pencil,
   X,
-  LogIn
+  LogIn // LogIn might not be needed here anymore if this is not a direct entry point
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addUserCreatedScenario } from '@/lib/userScenarios';
@@ -565,3 +565,5 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
