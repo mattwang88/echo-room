@@ -172,10 +172,21 @@ export default function HomePage() {
   };
 
   const handleClosePersonaManager = () => {
+    // Snapshot selectedRoles BEFORE any state change that might cause re-renders affecting it
+    const rolesBeforeLoad = [...selectedRoles];
+
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas();
+    loadPersonas(); // This updates userPersonas state, triggering re-render
+
+    // Explicitly ensure selectedRoles is what it was,
+    // in case the re-render from loadPersonas had an unintended side effect.
+    // This is a safeguard.
+    // Note: React might batch these state updates. If issues persist, a microtask (setTimeout 0)
+    // could be used, but direct restoration is preferred if effective.
+    setSelectedRoles(rolesBeforeLoad);
   };
+
 
   const handleDeletePersonaRequest = (id: string) => {
     setPersonaToDeleteId(id);
@@ -370,7 +381,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
-             <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
+            <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
                  <Button
                   variant="outline"
@@ -391,7 +402,7 @@ export default function HomePage() {
                 />
               </DialogContent>
             </Dialog>
-
+            
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -534,3 +545,4 @@ export default function HomePage() {
     </div>
   );
 }
+
