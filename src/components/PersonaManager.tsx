@@ -24,28 +24,25 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { Persona } from '@/lib/types';
-import { addUserPersona, deleteUserPersona, getAllUserPersonas } from '@/lib/userPersonas'; // Added getAllUserPersonas
+import { addUserPersona, deleteUserPersona, getAllUserPersonas } from '@/lib/userPersonas';
 
 interface PersonaManagerProps {
-  personas: Persona[]; // Personas to display in its internal list
-  onPersonasUpdate: (personas: Persona[]) => void; // To update its internal list
-  onFormSubmitSuccess?: () => void; // To close the dialog from homepage
-  personaToEdit?: Persona | null; // Persona being edited, passed from homepage
+  personas: Persona[];
+  onFormSubmitSuccess?: () => void;
+  personaToEdit?: Persona | null;
 }
 
-export function PersonaManager({ 
-  personas: initialPersonas, // Renamed to avoid conflict with internal state
-  onPersonasUpdate, 
-  onFormSubmitSuccess, 
-  personaToEdit 
+export function PersonaManager({
+  personas: initialPersonas,
+  onFormSubmitSuccess,
+  personaToEdit
 }: PersonaManagerProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [instructionPrompt, setInstructionPrompt] = useState('');
   const [currentEditingId, setCurrentEditingId] = useState<string | null>(null);
-  
-  // Internal list of personas for display *within* this component's UI (if needed)
-  const [internalPersonas, setInternalPersonas] = useState<Persona[]>(initialPersonas);
+
+  const [internalPersonas, setInternalPersonas] = useState<Persona[]>(initialPersonas || []);
 
   const [isInternalAlertOpen, setIsInternalAlertOpen] = useState(false);
   const [personaToDeleteInternallyId, setPersonaToDeleteInternallyId] = useState<string | null>(null);
@@ -56,7 +53,7 @@ export function PersonaManager({
     setInstructionPrompt('');
     setCurrentEditingId(null);
   }, []);
-  
+
   useEffect(() => {
     if (personaToEdit) {
       setName(personaToEdit.name);
@@ -68,9 +65,8 @@ export function PersonaManager({
     }
   }, [personaToEdit, resetForm]);
 
-  // Effect to keep internalPersonas in sync with the prop if it changes
   useEffect(() => {
-    setInternalPersonas(initialPersonas);
+    setInternalPersonas(initialPersonas || []);
   }, [initialPersonas]);
 
 
@@ -86,12 +82,10 @@ export function PersonaManager({
       instructionPrompt: instructionPrompt.trim(),
     };
 
-    addUserPersona(persona); 
-    
-    // Refresh the internal list if this component displays one
-    const updatedInternalPersonas = getAllUserPersonas();
-    setInternalPersonas(updatedInternalPersonas);
-    onPersonasUpdate(updatedInternalPersonas); // Notify parent of changes if needed for its own display
+    addUserPersona(persona);
+    const updatedLivePersonas = getAllUserPersonas(); // Get the latest list from storage
+    setInternalPersonas(updatedLivePersonas); // Update internal list for display within manager
+
 
     if (onFormSubmitSuccess) {
       onFormSubmitSuccess(); // This will close the dialog and trigger homepage refresh
@@ -100,10 +94,6 @@ export function PersonaManager({
   };
 
   const handleEditInternalPersona = (persona: Persona) => {
-    // This function is for editing personas from the list *within* this dialog
-    // If called, it means we are not using the personaToEdit prop from parent
-    // but rather picking one from the internal list.
-    // This might be redundant if editing is always initiated from homepage buttons.
     setName(persona.name);
     setRole(persona.role);
     setInstructionPrompt(persona.instructionPrompt);
@@ -112,16 +102,19 @@ export function PersonaManager({
 
   const confirmDeleteInternalPersona = () => {
     if (personaToDeleteInternallyId) {
-      deleteUserPersona(personaToDeleteInternallyId); 
-      const updatedInternalPersonas = internalPersonas.filter(p => p.id !== personaToDeleteInternallyId);
-      setInternalPersonas(updatedInternalPersonas);
-      onPersonasUpdate(updatedInternalPersonas); 
-      
-      if (currentEditingId === personaToDeleteInternallyId) { 
+      deleteUserPersona(personaToDeleteInternallyId);
+      const updatedLivePersonas = getAllUserPersonas(); // Get the latest list
+      setInternalPersonas(updatedLivePersonas);
+
+
+      if (currentEditingId === personaToDeleteInternallyId) {
         resetForm();
       }
       setPersonaToDeleteInternallyId(null);
       setIsInternalAlertOpen(false);
+      if (onFormSubmitSuccess) { // Notify parent if a delete happened here
+        onFormSubmitSuccess();
+      }
     }
   };
 
@@ -178,11 +171,11 @@ export function PersonaManager({
         <DialogFooter className="pt-2">
           {currentEditingId && (
             <Button type="button" variant="outline" onClick={() => { resetForm(); if (onFormSubmitSuccess) onFormSubmitSuccess(); }} className="mr-auto">
-              Cancel
+              Cancel Edit
             </Button>
           )}
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={!name.trim() || !role.trim() || !instructionPrompt.trim()}
           >
             {currentEditingId ? 'Save Changes' : 'Create Persona'}
@@ -191,18 +184,18 @@ export function PersonaManager({
       </form>
 
       {/* List of personas *within* this dialog - can be kept or removed if homepage buttons are primary */}
-      {internalPersonas.length > 0 && !personaToEdit && ( // Show list only if not in edit mode from homepage
+      {(internalPersonas || []).length > 0 && !personaToEdit && ( // Show list only if not in edit mode from homepage
         <div className="mt-6 pt-4 border-t">
           <h4 className="text-md font-semibold mb-3">Existing Personas (Internal List)</h4>
           <div className="max-h-[200px] overflow-y-auto pr-2 space-y-3">
-            {internalPersonas.map((persona) => (
+            {(internalPersonas || []).map((persona) => (
               <div key={persona.id} className="p-3 border rounded-lg relative group bg-muted/30">
                 <div className="flex justify-between items-start">
                   <div>
                     <h5 className="font-medium text-primary">{persona.name}</h5>
                     <p className="text-xs text-muted-foreground mb-1">{persona.role}</p>
                     <p className="text-sm text-foreground/80 whitespace-pre-wrap text-xs">
-                      {persona.instructionPrompt.length > 100 
+                      {persona.instructionPrompt.length > 100
                         ? `${persona.instructionPrompt.substring(0, 100)}...`
                         : persona.instructionPrompt}
                     </p>
@@ -253,4 +246,3 @@ export function PersonaManager({
     </>
   );
 }
-    
