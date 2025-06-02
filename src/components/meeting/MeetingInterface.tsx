@@ -76,9 +76,11 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   }, [messages]);
 
   useEffect(() => {
+    console.log(`[AvatarDebug] Effect triggered. isTTSSpeaking: ${isTTSSpeaking}, currentSpeakingRole: ${currentSpeakingRole}, currentSpeakingGender: ${currentSpeakingGender}`);
     if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User') {
       let pathList: string[];
       let chosenPath: string | null = null;
+      console.log(`[AvatarDebug] Selecting avatar for role: ${currentSpeakingRole}, gender: ${currentSpeakingGender}`);
       switch (currentSpeakingGender) {
         case 'male':
           pathList = maleAvatarPaths;
@@ -88,6 +90,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           } else {
             chosenPath = neutralAvatarPath;
           }
+          console.log(`[AvatarDebug] Male avatar selected. List length: ${pathList.length}, Chosen: ${chosenPath}`);
           break;
         case 'female':
           pathList = femaleAvatarPaths;
@@ -97,14 +100,18 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
           } else {
             chosenPath = neutralAvatarPath;
           }
+          console.log(`[AvatarDebug] Female avatar selected. List length: ${pathList.length}, Chosen: ${chosenPath}`);
           break;
         default:
           chosenPath = neutralAvatarPath;
+          console.log(`[AvatarDebug] Neutral/default avatar selected for gender '${currentSpeakingGender}': ${chosenPath}`);
           break;
       }
       setCurrentDisplayAvatarPath(chosenPath);
+      console.log(`[AvatarDebug] setCurrentDisplayAvatarPath called with: ${chosenPath}`);
     } else if (!isTTSSpeaking) {
       setCurrentDisplayAvatarPath(null);
+      console.log(`[AvatarDebug] Not speaking or User is speaking. Cleared currentDisplayAvatarPath.`);
     }
   }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender]);
 
@@ -169,18 +176,17 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             <SoundWaveAnimation width={512} height={256} isAnimating={true} />
           ) : meetingActive && currentDisplayAvatarPath ? (
             <Image
-              key={currentDisplayAvatarPath}
+              key={currentDisplayAvatarPath || 'default-avatar-key'}
               src={currentDisplayAvatarPath}
               alt={currentSpeakingRole ? `${getAgentName(currentSpeakingRole, scenarioId)} avatar` : "Agent avatar"}
               width={256}
               height={256}
               className="rounded-full object-cover animate-breathing shadow-xl"
               data-ai-hint={getAvatarAiHint()}
-              priority
               onError={(e) => {
-                console.warn(`Error loading avatar: ${currentDisplayAvatarPath}`);
+                console.warn(`[AvatarDebug] Error loading avatar. Attempted src: ${currentDisplayAvatarPath}. Event:`, e);
                 (e.target as HTMLImageElement).src = neutralAvatarPath;
-                (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar');
+                (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar error');
               }}
             />
           ) : meetingActive ? (
