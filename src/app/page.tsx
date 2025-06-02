@@ -101,7 +101,7 @@ export default function HomePage() {
   const handleClosePersonaManager = () => {
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas(); 
+    loadPersonas();
   };
 
   const handleDeletePersonaRequest = (id: string) => {
@@ -112,7 +112,7 @@ export default function HomePage() {
   const confirmDeleteHomepagePersona = () => {
     if (personaToDeleteId) {
       deleteUserPersona(personaToDeleteId);
-      loadPersonas(); 
+      loadPersonas();
       toast({ title: "Persona Deleted", description: "The persona has been successfully removed." });
     }
     setPersonaToDeleteId(null);
@@ -170,7 +170,7 @@ export default function HomePage() {
         },
         agentsInvolved: selectedRoles,
         personaConfig: personaConf,
-        maxTurns: 10, 
+        maxTurns: 10,
       };
 
       addUserCreatedScenario(newScenario);
@@ -187,10 +187,11 @@ export default function HomePage() {
       setIsGenerating(false);
     }
   };
-  
-  const displayedSelectedStandardRoles = selectedRoles.filter(
+
+  const displayedStandardRoles = selectedRoles.filter(
     (role) => !userPersonas.some((persona) => persona.role === role)
   );
+
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -259,6 +260,27 @@ export default function HomePage() {
           </div>
 
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
+            <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
+                  aria-label="Manage Personas"
+                  onClick={() => handleOpenPersonaManager()}
+                >
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                 <PersonaManager
+                  personas={userPersonas}
+                  onFormSubmitSuccess={handleClosePersonaManager}
+                  personaToEdit={editingPersona}
+                />
+              </DialogContent>
+            </Dialog>
+
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button
@@ -276,7 +298,7 @@ export default function HomePage() {
                     key={role}
                     checked={selectedRoles.includes(role)}
                     onSelect={(event) => {
-                      event.preventDefault(); 
+                      event.preventDefault();
                       handleRoleSelect(role);
                     }}
                   >
@@ -285,27 +307,6 @@ export default function HomePage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-
-            <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
-              <DialogTrigger asChild>
-                <Button
-                  variant="outline"
-                  size="icon"
-                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
-                  aria-label="Manage Personas"
-                  onClick={() => handleOpenPersonaManager()} 
-                >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
-                </Button>
-              </DialogTrigger>
-              <DialogContent className="sm:max-w-[600px]">
-                 <PersonaManager
-                  initialPersonas={userPersonas}
-                  onFormSubmitSuccess={handleClosePersonaManager}
-                  personaToEdit={editingPersona}
-                />
-              </DialogContent>
-            </Dialog>
 
             {[Upload, Package, Layers].map((IconComponent, index) => (
               <Button
@@ -327,44 +328,44 @@ export default function HomePage() {
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Meeting Participants
           </h2>
-          {(userPersonas.length > 0 || displayedSelectedStandardRoles.length > 0) ? (
+          {(userPersonas.length > 0 || displayedStandardRoles.length > 0) ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
                   <Button
                     variant="outline"
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-14"
-                    onClick={() => handleOpenPersonaManager(persona)} 
+                    onClick={() => handleOpenPersonaManager(persona)}
                   >
                     {persona.name}
                   </Button>
                   <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                      onClick={(e) => { e.stopPropagation(); handleDeletePersonaRequest(persona.id); }}
-                      title="Remove Persona"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
                     variant="ghost"
                     size="icon"
-                    className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                    className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
                     onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
                     title="Edit Persona"
                   >
                     <Pencil className="h-3.5 w-3.5" />
                   </Button>
+                  <Button
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                      onClick={(e) => { e.stopPropagation(); handleDeletePersonaRequest(persona.id); }}
+                      title="Remove Persona"
+                    >
+                      <X className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               ))}
 
-              {displayedSelectedStandardRoles.map((role) => (
+              {displayedStandardRoles.map((role) => (
                   <Button
                     key={role}
                     variant="outline"
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
-                    disabled 
+                    disabled
                   >
                     {role}
                   </Button>
@@ -372,7 +373,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-left ml-1">
-             Create custom personas or select participants using the <Users className="inline h-3 w-3 -mt-0.5"/> icon above to see them here.
+              Create custom personas or select participants using the <Users className="inline h-3 w-3 -mt-0.5"/> icon above to see them here.
             </p>
           )}
         </div>
@@ -425,4 +426,3 @@ export default function HomePage() {
     </div>
   );
 }
-    
