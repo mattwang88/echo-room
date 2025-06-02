@@ -76,7 +76,14 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   }, [messages]);
 
   useEffect(() => {
-    console.log(`[AvatarDebug] Effect triggered. isTTSSpeaking: ${isTTSSpeaking}, currentSpeakingRole: ${currentSpeakingRole}, currentSpeakingGender: ${currentSpeakingGender}`);
+    console.log(`[AvatarDebug] Effect triggered. meetingActive: ${meetingActive}, isTTSSpeaking: ${isTTSSpeaking}, currentSpeakingRole: ${currentSpeakingRole}, currentSpeakingGender: ${currentSpeakingGender}`);
+
+    if (!meetingActive) {
+        setCurrentDisplayAvatarPath(null);
+        console.log(`[AvatarDebug] Meeting not active. Cleared currentDisplayAvatarPath.`);
+        return;
+    }
+
     if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && currentSpeakingRole !== 'System') {
       let chosenPath: string | null = null;
       if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
@@ -88,20 +95,21 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
         chosenPath = femaleAvatarPaths[randomIndex];
         console.log(`[AvatarDebug] Female avatar selected. List length: ${femaleAvatarPaths.length}, Chosen: ${chosenPath}`);
       } else {
-        chosenPath = neutralAvatarPath; 
+        // Fallback if gender is not male/female or paths are empty (should not happen with current setup)
+        chosenPath = neutralAvatarPath;
         console.log(`[AvatarDebug] Neutral/default avatar selected for gender '${currentSpeakingGender}' or empty list: ${chosenPath}`);
       }
       setCurrentDisplayAvatarPath(chosenPath);
       console.log(`[AvatarDebug] setCurrentDisplayAvatarPath called with: ${chosenPath}`);
 
     } else if (isTTSSpeaking && currentSpeakingRole === 'System') {
-      setCurrentDisplayAvatarPath(neutralAvatarPath); 
+      setCurrentDisplayAvatarPath(neutralAvatarPath);
       console.log(`[AvatarDebug] System speaking, using neutral avatar: ${neutralAvatarPath}`);
     } else if (!isTTSSpeaking) {
       setCurrentDisplayAvatarPath(null);
       console.log(`[AvatarDebug] Not speaking or User is speaking. Cleared currentDisplayAvatarPath.`);
     }
-  }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender]);
+  }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender, meetingActive]);
 
 
   if (!scenario && !meetingEnded) {
