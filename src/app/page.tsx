@@ -69,7 +69,6 @@ const randomMeetingTopics = [
   "Brainstorm new website design.",
   "Plan team offsite event details.",
   "Resolve customer feedback issue.",
-  "Resolve customer feedback issue.",
   "Prepare client presentation draft.",
   "Align on next month's sales targets.",
   "Improve internal communication flow.",
@@ -172,18 +171,10 @@ export default function HomePage() {
   };
 
   const handleClosePersonaManager = () => {
-    // Snapshot selectedRoles BEFORE any state change that might cause re-renders affecting it
     const rolesBeforeLoad = [...selectedRoles];
-
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas(); // This updates userPersonas state, triggering re-render
-
-    // Explicitly ensure selectedRoles is what it was,
-    // in case the re-render from loadPersonas had an unintended side effect.
-    // This is a safeguard.
-    // Note: React might batch these state updates. If issues persist, a microtask (setTimeout 0)
-    // could be used, but direct restoration is preferred if effective.
+    loadPersonas();
     setSelectedRoles(rolesBeforeLoad);
   };
 
@@ -206,8 +197,15 @@ export default function HomePage() {
   const handleGenerateRandomTopic = () => {
     const randomIndex = Math.floor(Math.random() * randomMeetingTopics.length);
     const randomTopic = randomMeetingTopics[randomIndex];
-    setSimulationDescription(randomTopic);
-    baseTextForSTT.current = randomTopic;
+    if (randomTopic.split(" ").length > 10) { // Simple word count
+        // Fallback or retry logic if a topic is unexpectedly too long
+        const shorterTopic = randomMeetingTopics.find(t => t.split(" ").length <=10) || "Discuss team goals.";
+        setSimulationDescription(shorterTopic);
+        baseTextForSTT.current = shorterTopic;
+    } else {
+        setSimulationDescription(randomTopic);
+        baseTextForSTT.current = randomTopic;
+    }
   };
 
   const handleGenerateScenario = async () => {
@@ -222,31 +220,32 @@ export default function HomePage() {
 
     setIsGeneratingScenario(true);
     try {
+      const rolesFromCustomPersonas = userPersonas.map(p => p.role as AgentRole);
+      const activeAgentsForThisScenario = Array.from(new Set([...rolesFromCustomPersonas, ...selectedRoles]));
+
       const aiInput: GenerateCustomScenarioInput = {
         simulationDescription,
-        selectedRoles,
+        selectedRoles: activeAgentsForThisScenario,
       };
       const aiGeneratedDetails = await generateCustomScenarioDetails(aiInput);
 
       const newScenarioId = `custom-${uuidv4()}`;
-
       const personaConf: Record<string, string> = {};
-      const standardPersonaRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
 
-      standardPersonaRoles.forEach(stdRole => {
-        const key = `${stdRole.toLowerCase()}Persona`;
-        if (selectedRoles.includes(stdRole)) {
+      availableParticipantRoles.forEach(stdRole => {
+        const keyForConfig = `${stdRole.toLowerCase()}Persona`;
+
+        if (activeAgentsForThisScenario.includes(stdRole)) {
           let personaInstruction = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
-
           const customPersonaForRole = userPersonas.find(p => p.role === stdRole);
           if (customPersonaForRole) {
              personaInstruction = customPersonaForRole.instructionPrompt;
           } else if (stdRole === "Manager") {
             personaInstruction = `You are the Manager. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively, providing guidance, feedback, and asking relevant questions from a managerial perspective.`;
           }
-          personaConf[key] = personaInstruction;
+          personaConf[keyForConfig] = personaInstruction;
         } else {
-          personaConf[key] = `You are the ${stdRole}. You are not actively participating in this specific custom scenario titled "${aiGeneratedDetails.scenarioTitle}".`;
+          personaConf[keyForConfig] = `You are the ${stdRole}. You are not actively participating in this specific custom scenario titled "${aiGeneratedDetails.scenarioTitle}".`;
         }
       });
 
@@ -259,7 +258,7 @@ export default function HomePage() {
           participant: 'System',
           text: aiGeneratedDetails.initialSystemMessage,
         },
-        agentsInvolved: selectedRoles,
+        agentsInvolved: activeAgentsForThisScenario,
         personaConfig: personaConf,
         maxTurns: 10,
       };
@@ -287,6 +286,9 @@ export default function HomePage() {
   const displayedParticipantRoles = selectedRoles.filter(
     role => !userPersonas.some(p => p.role === role)
   );
+  
+  const hasActiveParticipantsToShow = userPersonas.length > 0 || displayedParticipantRoles.length > 0;
+
 
   if (showMeetingLoadingOverlay) {
     return (
@@ -381,7 +383,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
-            <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
+             <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
                  <Button
                   variant="outline"
@@ -447,7 +449,7 @@ export default function HomePage() {
 
       <section className="pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
-          {(userPersonas.length > 0 || displayedParticipantRoles.length > 0) && (
+          {hasActiveParticipantsToShow && (
             <>
               <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
                 Meeting Participants
