@@ -4,31 +4,36 @@
 import { useState, useCallback, useEffect, useRef } from 'react';
 import { useToast } from "@/hooks/use-toast";
 import { generateSpeechAudio, type GenerateSpeechAudioInput } from '@/ai/flows/generate-speech-audio-flow';
-import type { ParticipantRole, AgentRole } from '@/lib/types'; // Added AgentRole
+import type { ParticipantRole, AgentRole, VoiceConfig, VoiceGender } from '@/lib/types';
 
-interface VoiceConfig {
-  voiceName: string;
-  languageCode: string;
-}
+const maleVoices: VoiceConfig[] = [
+  { voiceName: 'en-US-Neural2-D', languageCode: 'en-US', gender: 'male' },
+  { voiceName: 'en-US-Neural2-A', languageCode: 'en-US', gender: 'male' },
+  { voiceName: 'en-US-Neural2-J', languageCode: 'en-US', gender: 'male' },
+  { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'male' },
+];
 
-// Updated voiceMap to include Manager and ensure all AgentRoles are covered
-const voiceMap: Record<AgentRole, VoiceConfig> = {
-  CTO: { voiceName: 'en-US-Neural2-D', languageCode: 'en-US' },
-  Finance: { voiceName: 'en-US-Wavenet-C', languageCode: 'en-US' },
-  Product: { voiceName: 'en-US-Neural2-I', languageCode: 'en-US' }, // Also used for Manager in 1on1
-  HR: { voiceName: 'en-US-Wavenet-E', languageCode: 'en-US' },
-  Manager: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US' }, // Dedicated voice for Manager
-  System: { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US' },
-  // User voice is not synthesized, but to satisfy the Record type, we add it.
-  // It won't be used because speak() checks for participant === 'User'.
-  User: { voiceName: '', languageCode: '' }, 
+const femaleVoices: VoiceConfig[] = [
+  { voiceName: 'en-US-Neural2-C', languageCode: 'en-US', gender: 'female' },
+  { voiceName: 'en-US-Neural2-E', languageCode: 'en-US', gender: 'female' },
+  { voiceName: 'en-US-Neural2-F', languageCode: 'en-US', gender: 'female' },
+  { voiceName: 'en-US-Wavenet-F', languageCode: 'en-US', gender: 'female' },
+];
+
+const systemVoice: VoiceConfig = { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'neutral' }; // Wavenet-D is often perceived as male, but we'll mark neutral for System
+
+// VoiceMap for specific non-random roles if ever needed, currently unused for AI agents
+const specificRoleVoiceMap: Partial<Record<AgentRole, VoiceConfig>> = {
+  // Example: Manager: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US', gender: 'male' },
 };
 
 
 export function useTextToSpeech() {
   const { toast } = useToast();
   const [isSpeakingState, setIsSpeakingState] = useState(false);
-  const [displayedSpeaker, setDisplayedSpeaker] = useState<ParticipantRole | null>(null);
+  const [currentSpeakingRole, setCurrentSpeakingRole] = useState<ParticipantRole | null>(null);
+  const [currentSpeakingGender, setCurrentSpeakingGender] = useState<VoiceGender | null>(null);
+  
   const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMountedRef = useRef(true);
   const isSpeakingStateRef = useRef(isSpeakingState);
@@ -45,9 +50,10 @@ export function useTextToSpeech() {
        setIsSpeakingState(false);
        currentSpeechTextRef.current = null;
        currentParticipantRef.current = null;
-       setDisplayedSpeaker(null);
+       setCurrentSpeakingRole(null);
+       setCurrentSpeakingGender(null);
     }
-  }, [setIsSpeakingState, setDisplayedSpeaker]);
+  }, [setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
 
   const handleAudioError = useCallback((e: Event | string) => {
     if (!isMountedRef.current) return;
@@ -121,9 +127,10 @@ export function useTextToSpeech() {
         setIsSpeakingState(false);
         currentSpeechTextRef.current = null;
         currentParticipantRef.current = null;
-        setDisplayedSpeaker(null);
+        setCurrentSpeakingRole(null);
+        setCurrentSpeakingGender(null);
     }
-  }, [toast, setIsSpeakingState, setDisplayedSpeaker]);
+  }, [toast, setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
 
   useEffect(() => {
     isMountedRef.current = true;
@@ -170,11 +177,12 @@ export function useTextToSpeech() {
     }
     if(isMountedRef.current) {
       setIsSpeakingState(false);
-      setDisplayedSpeaker(null);
+      setCurrentSpeakingRole(null);
+      setCurrentSpeakingGender(null);
     }
     currentSpeechTextRef.current = null;
     currentParticipantRef.current = null;
-  }, [setIsSpeakingState, setDisplayedSpeaker]);
+  }, [setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
 
 
   const memoizedSpeak = useCallback(async (text: string, participant: ParticipantRole = 'System') => {
@@ -197,24 +205,34 @@ export function useTextToSpeech() {
     currentParticipantRef.current = participant;
     if(isMountedRef.current) {
       setIsSpeakingState(true);
-      setDisplayedSpeaker(participant);
+      setCurrentSpeakingRole(participant);
     }
     
-    // Determine the voice configuration
-    let voiceConfig: VoiceConfig;
+    let selectedVoiceConfig: VoiceConfig;
+
     if (participant === 'System') {
-        voiceConfig = voiceMap.System;
-    } else if (voiceMap[participant as AgentRole]) { // Check if it's a defined AgentRole
-        voiceConfig = voiceMap[participant as AgentRole];
+        selectedVoiceConfig = systemVoice;
+    } else if (specificRoleVoiceMap[participant as AgentRole]) {
+        selectedVoiceConfig = specificRoleVoiceMap[participant as AgentRole]!;
     } else {
-        console.warn(`[useTextToSpeech] No specific voice for role: ${participant}. Defaulting to System voice.`);
-        voiceConfig = voiceMap.System; // Default for any other custom or unexpected roles
+        // Random selection for other AI agents
+        const randomGender = Math.random() < 0.5 ? 'male' : 'female';
+        const voiceList = randomGender === 'male' ? maleVoices : femaleVoices;
+        if (voiceList.length > 0) {
+            selectedVoiceConfig = voiceList[Math.floor(Math.random() * voiceList.length)];
+        } else { // Fallback if a gender list is empty
+            selectedVoiceConfig = systemVoice; 
+        }
+    }
+    
+    if(isMountedRef.current) {
+        setCurrentSpeakingGender(selectedVoiceConfig.gender);
     }
     
     const input: GenerateSpeechAudioInput = {
       text,
-      voiceName: voiceConfig.voiceName,
-      languageCode: voiceConfig.languageCode,
+      voiceName: selectedVoiceConfig.voiceName,
+      languageCode: selectedVoiceConfig.languageCode,
     };
 
     try {
@@ -223,7 +241,8 @@ export function useTextToSpeech() {
       if (!isMountedRef.current || currentSpeechTextRef.current !== text || currentParticipantRef.current !== participant || !isSpeakingStateRef.current) {
           if (isSpeakingStateRef.current && isMountedRef.current) { 
              setIsSpeakingState(false);
-             setDisplayedSpeaker(null);
+             setCurrentSpeakingRole(null);
+             setCurrentSpeakingGender(null);
           }
           if (currentSpeechTextRef.current !== text || currentParticipantRef.current !== participant) {
             currentSpeechTextRef.current = null;
@@ -238,7 +257,8 @@ export function useTextToSpeech() {
       } else {
           if(isMountedRef.current) {
             setIsSpeakingState(false);
-            setDisplayedSpeaker(null);
+            setCurrentSpeakingRole(null);
+            setCurrentSpeakingGender(null);
           }
           currentSpeechTextRef.current = null;
           currentParticipantRef.current = null;
@@ -253,12 +273,13 @@ export function useTextToSpeech() {
       });
       if(isMountedRef.current) {
         setIsSpeakingState(false);
-        setDisplayedSpeaker(null);
+        setCurrentSpeakingRole(null);
+        setCurrentSpeakingGender(null);
       }
       currentSpeechTextRef.current = null;
       currentParticipantRef.current = null;
     }
-  }, [toast, memoizedCancel, setIsSpeakingState, setDisplayedSpeaker]);
+  }, [toast, memoizedCancel, setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
 
   const isTTSSupported = typeof Audio !== 'undefined'; 
 
@@ -267,7 +288,7 @@ export function useTextToSpeech() {
     cancel: memoizedCancel,
     isSpeaking: isSpeakingState,
     isTTSSupported,
-    currentSpeakingParticipant: displayedSpeaker,
+    currentSpeakingRole,
+    currentSpeakingGender,
   };
 }
-

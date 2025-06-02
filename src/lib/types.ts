@@ -67,3 +67,17 @@ export type Persona = {
   role: string;
   instructionPrompt: string;
 };
+
+export type VoiceGender = 'male' | 'female' | 'neutral';
+
+export interface VoiceConfig {
+  voiceName: string;
+  languageCode: string;
+  gender: VoiceGender;
+}
+
+export interface CurrentSpeakerInfo {
+  role: ParticipantRole;
+  gender: VoiceGender;
+  voiceName: string; // Could be useful for debugging or advanced features
+}

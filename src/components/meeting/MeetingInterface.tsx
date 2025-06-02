@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { PhoneOff, Mic, MicOff, PlayCircle, AlertTriangle, Volume2, VolumeX } from 'lucide-react';
 import { getAgentName } from '@/components/icons/AgentIcons';
 import { cn } from '@/lib/utils';
-import type { ParticipantRole, AgentRole } from '@/lib/types';
+import type { ParticipantRole, AgentRole, VoiceGender } from '@/lib/types';
 import { SoundWaveAnimation } from '@/components/animations/SoundWaveAnimation';
 
 
@@ -22,21 +22,18 @@ interface MeetingInterfaceProps {
   scenarioId: string;
 }
 
-interface AgentAvatarConfig {
-    src: string;
-    alt: string;
-    aiHint: string;
-}
-
-const agentAvatarMap: Record<AgentRole, AgentAvatarConfig> = {
-    CTO: { src: "/images/avatars/cto.jpg", alt: "CTO avatar", aiHint: "tech executive" },
-    Finance: { src: "/images/avatars/finance.jpg", alt: "Finance head avatar", aiHint: "finance professional" },
-    Product: { src: "/images/avatars/product.jpg", alt: "Product head avatar", aiHint: "product manager" },
-    HR: { src: "/images/avatars/hr.jpg", alt: "HR representative avatar", aiHint: "hr representative" },
-    Manager: { src: "/images/avatars/manager.jpg", alt: "Manager avatar", aiHint: "manager professional" },
-};
-// Special case for the manager-1on1 scenario where Product IS the manager
-const manager1on1Avatar: AgentAvatarConfig = { src: "/images/avatars/manager.jpg", alt: "Manager avatar", aiHint: "manager professional" };
+// Predefined lists of avatar image paths
+const maleAvatarPaths = [
+    '/images/males/avatar1.jpg',
+    '/images/males/avatar2.jpg',
+    '/images/males/avatar3.jpg',
+];
+const femaleAvatarPaths = [
+    '/images/females/avatar1.jpg',
+    '/images/females/avatar2.jpg',
+    '/images/females/avatar3.jpg',
+];
+const neutralAvatarPath = 'https://placehold.co/256x256/cccccc/e0e0e0.png'; // A generic placeholder for neutral/System
 
 
 export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
@@ -55,13 +52,15 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported: browserSupportsSTT,
     isTTSSpeaking,
-    currentSpeakingParticipant,
+    currentSpeakingRole, // Renamed from currentSpeakingParticipant
+    currentSpeakingGender, // New state from hook
     personas,
     isTTSEnabled,
     toggleTTS,
   } = useMeetingSimulation(scenarioId);
 
   const scrollAreaRef = useRef<HTMLDivElement>(null);
+  const [currentDisplayAvatarPath, setCurrentDisplayAvatarPath] = useState<string | null>(null);
 
   useEffect(() => {
     if (scrollAreaRef.current) {
@@ -71,6 +70,36 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       }
     }
   }, [messages]);
+
+  useEffect(() => {
+    if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User') {
+      let pathList: string[];
+      let aiHint = "professional person";
+      switch (currentSpeakingGender) {
+        case 'male':
+          pathList = maleAvatarPaths;
+          aiHint = "male professional";
+          break;
+        case 'female':
+          pathList = femaleAvatarPaths;
+          aiHint = "female professional";
+          break;
+        default: // neutral or System
+          setCurrentDisplayAvatarPath(neutralAvatarPath);
+          // Add data-ai-hint directly for neutral if needed, or handle in Image component
+          return;
+      }
+      if (pathList.length > 0) {
+        const randomIndex = Math.floor(Math.random() * pathList.length);
+        const randomPath = pathList[randomIndex];
+        setCurrentDisplayAvatarPath(randomPath);
+      } else {
+        setCurrentDisplayAvatarPath(neutralAvatarPath); // Fallback if list is empty
+      }
+    } else if (!isTTSSpeaking) {
+      setCurrentDisplayAvatarPath(null); // Clear avatar when no one is speaking
+    }
+  }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender]);
 
 
   if (!scenario && !meetingEnded) {
@@ -86,20 +115,15 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       </div>
     );
   }
+  
+  const getAvatarAiHint = () => {
+    if (!currentDisplayAvatarPath) return "placeholder avatar";
+    if (currentDisplayAvatarPath === neutralAvatarPath) return "system icon";
+    if (maleAvatarPaths.includes(currentDisplayAvatarPath)) return "male professional";
+    if (femaleAvatarPaths.includes(currentDisplayAvatarPath)) return "female professional";
+    return "professional person";
+  }
 
-  const getSpeakingAgentAvatar = (): AgentAvatarConfig | null => {
-    if (!isTTSSpeaking || !currentSpeakingParticipant || currentSpeakingParticipant === 'User' || currentSpeakingParticipant === 'System') {
-      return null;
-    }
-    // Handle the specific 'manager-1on1' scenario where 'Product' role uses the manager avatar
-    if (scenarioId === 'manager-1on1' && currentSpeakingParticipant === 'Product') {
-      return manager1on1Avatar;
-    }
-    // For all other scenarios or other roles, use the standard agentAvatarMap
-    return agentAvatarMap[currentSpeakingParticipant as AgentRole] || null;
-  };
-
-  const speakingAgentAvatar = getSpeakingAgentAvatar();
 
   const isMicButtonDisabled = !meetingActive || !browserSupportsSTT || meetingEnded || isTTSSpeaking || isAiThinking;
   const isEndMeetingButtonDisabled = meetingEnded;
@@ -108,7 +132,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     <div className="flex flex-col h-screen max-h-screen bg-background">
       <div className="flex flex-1 overflow-hidden">
         <div className="flex-1 p-4 overflow-y-auto flex flex-col items-center justify-center bg-muted/30 relative">
-           {/* Speaker / Recording Status Banner */}
            <div className="absolute top-4 left-1/2 -translate-x-1/2 w-auto max-w-[90%] z-20">
             {meetingActive && isRecording && !isTTSSpeaking && (
               <div className="bg-primary/80 text-primary-foreground px-4 py-2 rounded-lg shadow-md text-center">
@@ -118,10 +141,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
                 </p>
               </div>
             )}
-            {meetingActive && isTTSSpeaking && currentSpeakingParticipant && currentSpeakingParticipant !== 'User' && (
+            {meetingActive && isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && (
                <div className="bg-secondary/80 text-secondary-foreground px-4 py-2 rounded-lg shadow-md text-center">
                 <p className="text-sm font-semibold animate-pulse">
-                  {getAgentName(currentSpeakingParticipant, scenarioId)} speaking
+                  {getAgentName(currentSpeakingRole, scenarioId)} speaking
                   <span className="animate-ellipsis"></span>
                 </p>
               </div>
@@ -135,38 +158,35 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             )}
           </div>
 
-
-          {/* Central Visual Area */}
           {meetingActive && isRecording ? (
             <SoundWaveAnimation width={512} height={256} isAnimating={true} />
-          ) : meetingActive && speakingAgentAvatar ? (
+          ) : meetingActive && currentDisplayAvatarPath ? (
             <Image
-              key={speakingAgentAvatar.src} // Key ensures re-render if avatar changes
-              src={speakingAgentAvatar.src}
-              alt={speakingAgentAvatar.alt}
+              key={currentDisplayAvatarPath} 
+              src={currentDisplayAvatarPath}
+              alt={currentSpeakingRole ? `${getAgentName(currentSpeakingRole, scenarioId)} avatar` : "Agent avatar"}
               width={256}
               height={256}
               className="rounded-full object-cover animate-breathing shadow-xl"
-              data-ai-hint={speakingAgentAvatar.aiHint}
+              data-ai-hint={getAvatarAiHint()}
               priority
               onError={(e) => {
-                console.warn(`Error loading avatar for ${currentSpeakingParticipant}: ${speakingAgentAvatar.src}`);
-                (e.target as HTMLImageElement).src = "https://placehold.co/256x256.png"; // Fallback placeholder
+                console.warn(`Error loading avatar: ${currentDisplayAvatarPath}`);
+                (e.target as HTMLImageElement).src = neutralAvatarPath; 
                 (e.target as HTMLImageElement).setAttribute('data-ai-hint', 'placeholder avatar');
               }}
             />
-          ) : meetingActive ? ( // Meeting active but no one speaking and not recording
+          ) : meetingActive ? ( 
             <SoundWaveAnimation width={512} height={256} isAnimating={false} />
-          ) : !meetingEnded ? ( // Meeting not active, not ended (waiting for start)
+          ) : !meetingEnded ? ( 
             <div className="flex flex-col items-center text-center">
                 <PlayCircle className="h-32 w-32 text-primary/30 mb-4" />
                 <p className="text-xl text-muted-foreground">Click "Start Meeting" in the chat to begin.</p>
             </div>
-          ) : ( // Meeting ended
+          ) : ( 
              <AlertTriangle className="h-32 w-32 text-destructive/70 mb-4" />
           )}
 
-          {/* Buttons Area */}
           <div className="flex items-center justify-center gap-4 mt-20">
             <Button
               type="button"
