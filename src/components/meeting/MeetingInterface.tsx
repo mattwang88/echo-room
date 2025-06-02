@@ -56,8 +56,8 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     handleToggleRecording,
     isSTTSupported: browserSupportsSTT,
     isTTSSpeaking,
-    currentSpeakingRole, // Renamed from currentSpeakingParticipant
-    currentSpeakingGender, // New state from hook
+    currentSpeakingRole,
+    currentSpeakingGender,
     personas,
     isTTSEnabled,
     toggleTTS,
@@ -76,32 +76,43 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   }, [messages]);
 
   useEffect(() => {
+    console.log('[AvatarDebug] useEffect triggered. isTTSSpeaking:', isTTSSpeaking, 'Role:', currentSpeakingRole, 'Gender:', currentSpeakingGender);
     if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User') {
       let pathList: string[];
-      let aiHint = "professional person";
+      let chosenPath: string | null = null;
+      console.log('[AvatarDebug] Agent speaking. Gender:', currentSpeakingGender);
       switch (currentSpeakingGender) {
         case 'male':
           pathList = maleAvatarPaths;
-          aiHint = "male professional";
+          if (pathList.length > 0) {
+            const randomIndex = Math.floor(Math.random() * pathList.length);
+            chosenPath = pathList[randomIndex];
+            console.log('[AvatarDebug] Selected male avatar:', chosenPath);
+          } else {
+            chosenPath = neutralAvatarPath;
+            console.log('[AvatarDebug] No male avatars, using neutral.');
+          }
           break;
         case 'female':
           pathList = femaleAvatarPaths;
-          aiHint = "female professional";
+          if (pathList.length > 0) {
+            const randomIndex = Math.floor(Math.random() * pathList.length);
+            chosenPath = pathList[randomIndex];
+            console.log('[AvatarDebug] Selected female avatar:', chosenPath);
+          } else {
+            chosenPath = neutralAvatarPath;
+            console.log('[AvatarDebug] No female avatars, using neutral.');
+          }
           break;
-        default: // neutral or System
-          setCurrentDisplayAvatarPath(neutralAvatarPath);
-          // Add data-ai-hint directly for neutral if needed, or handle in Image component
-          return;
+        default: // neutral or System or null/undefined gender
+          chosenPath = neutralAvatarPath;
+          console.log('[AvatarDebug] Gender is neutral/system or undefined, using neutral avatar:', chosenPath);
+          break;
       }
-      if (pathList.length > 0) {
-        const randomIndex = Math.floor(Math.random() * pathList.length);
-        const randomPath = pathList[randomIndex];
-        setCurrentDisplayAvatarPath(randomPath);
-      } else {
-        setCurrentDisplayAvatarPath(neutralAvatarPath); // Fallback if list is empty
-      }
+      setCurrentDisplayAvatarPath(chosenPath);
     } else if (!isTTSSpeaking) {
-      setCurrentDisplayAvatarPath(null); // Clear avatar when no one is speaking
+      console.log('[AvatarDebug] Not TTS speaking, clearing avatar path.');
+      setCurrentDisplayAvatarPath(null);
     }
   }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender]);
 
@@ -131,6 +142,9 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   const isMicButtonDisabled = !meetingActive || !browserSupportsSTT || meetingEnded || isTTSSpeaking || isAiThinking;
   const isEndMeetingButtonDisabled = meetingEnded;
+
+  // Log currentDisplayAvatarPath before rendering
+  // console.log('[AvatarDebug] Rendering. currentDisplayAvatarPath:', currentDisplayAvatarPath);
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
