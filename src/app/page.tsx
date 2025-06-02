@@ -85,7 +85,7 @@ export default function WelcomePage() {
               data-ai-hint="google logo multicolor"
             />
             {/* Echo Text Span directly */}
-            <span className="text-3xl sm:text-4xl font-semibold text-white ml-10">Echo</span>
+            <span className="text-6xl sm:text-7xl font-semibold text-white ml-10 translate-x-32">Echo</span>
           </div>
 
           {/* Enter Button - positioned absolutely near the bottom */}
@@ -93,11 +93,11 @@ export default function WelcomePage() {
             onClick={handleEnterClick}
             variant="ghost"
             size="icon"
-            className="bg-white hover:bg-gray-100 text-primary rounded-full p-4 w-16 h-16 sm:w-20 sm:h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent absolute bottom-[15%] left-1/2 -translate-x-1/2 translate-y-[12.5rem] translate-x-5"
+            className="bg-white hover:bg-gray-100 text-primary rounded-full p-5 w-20 h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent mt-8 translate-y-[12.5rem] translate-x-5"
             disabled={isExitingWelcome}
             aria-label="Enter EchoRoom"
           >
-            <LogIn className="h-7 w-7 sm:h-8 sm:h-8" />
+            <LogIn className="h-8 w-8 sm:h-10 sm:h-10" />
           </Button>
         </div>
 
