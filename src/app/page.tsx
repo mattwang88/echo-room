@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -14,6 +14,11 @@ import {
   DropdownMenuCheckboxItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  Dialog,
+  DialogContent,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 import {
   Bell,
   Settings,
@@ -31,8 +36,10 @@ import {
 import { cn } from '@/lib/utils';
 import { addUserCreatedScenario } from '@/lib/userScenarios';
 import { generateCustomScenarioDetails, type GenerateCustomScenarioInput } from '@/ai/flows/generate-custom-scenario-flow';
-import type { Scenario, AgentRole } from '@/lib/types';
+import type { Scenario, AgentRole, Persona } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
+import { PersonaManager } from '@/components/PersonaManager';
+import { getAllUserPersonas, addUserPersona as saveUserPersona, deleteUserPersona as removeUserPersona } from '@/lib/userPersonas';
 
 
 const scenariosForButtons = [
@@ -50,6 +57,19 @@ export default function HomePage() {
   const [simulationDescription, setSimulationDescription] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<AgentRole[]>([]);
   const [isGenerating, setIsGenerating] = useState(false);
+
+  const [userPersonas, setUserPersonas] = useState<Persona[]>([]);
+  const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
+
+  useEffect(() => {
+    setUserPersonas(getAllUserPersonas());
+  }, []);
+
+  const handlePersonasUpdate = (updatedPersonas: Persona[]) => {
+    setUserPersonas(updatedPersonas);
+    // Note: addUserPersona and deleteUserPersona in userPersonas.ts already handle localStorage.
+    // This function primarily updates the local state for immediate UI refresh.
+  };
 
   const handleRoleSelect = (role: AgentRole) => {
     setSelectedRoles(prevSelectedRoles =>
@@ -80,7 +100,6 @@ export default function HomePage() {
       const newScenarioId = `custom-${uuidv4()}`;
       
       const personaConf: Record<string, string> = {};
-      // Include "Manager" in the list of roles for which persona instructions are generated
       const standardPersonaRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"]; 
       
       standardPersonaRoles.forEach(stdRole => {
@@ -92,7 +111,6 @@ export default function HomePage() {
           }
           personaConf[key] = personaInstruction;
         } else {
-          // Provide a non-participating persona if the role isn't selected for this custom scenario
           personaConf[key] = `You are the ${stdRole}. You are not actively participating in this specific custom scenario titled "${aiGeneratedDetails.scenarioTitle}".`;
         }
       });
@@ -100,7 +118,7 @@ export default function HomePage() {
       const newScenario: Scenario = {
         id: newScenarioId,
         title: aiGeneratedDetails.scenarioTitle,
-        description: simulationDescription, // User's raw description
+        description: simulationDescription,
         objective: aiGeneratedDetails.scenarioObjective,
         initialMessage: {
           participant: 'System',
@@ -108,7 +126,7 @@ export default function HomePage() {
         },
         agentsInvolved: selectedRoles,
         personaConfig: personaConf,
-        maxTurns: 10, // Default max turns for custom scenarios
+        maxTurns: 10, 
       };
 
       addUserCreatedScenario(newScenario);
@@ -161,7 +179,6 @@ export default function HomePage() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center text-center pt-10 pb-4 px-4">
         <div className="w-full max-w-2xl">
-          {/* Animated Sphere Placeholder */}
           <div className="mb-8">
             <Image
               src="/images/front-page.gif"
@@ -174,7 +191,6 @@ export default function HomePage() {
             />
           </div>
 
-          {/* Describe Simulation Input Area */}
           <div className="relative flex items-center w-full p-1 bg-card border border-gray-300 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-primary">
             <Sparkles className="h-5 w-5 text-gray-400 mx-3 flex-shrink-0" />
             <Textarea
@@ -197,7 +213,6 @@ export default function HomePage() {
             </Button>
           </div>
 
-          {/* Action Icons Bar */}
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
@@ -216,7 +231,7 @@ export default function HomePage() {
                     key={role}
                     checked={selectedRoles.includes(role)}
                     onSelect={(event) => {
-                      event.preventDefault(); // Prevent default closing behavior
+                      event.preventDefault(); 
                       handleRoleSelect(role);
                     }}
                   >
@@ -225,7 +240,28 @@ export default function HomePage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            {[Plus, Upload, Package, Layers].map((IconComponent, index) => (
+            
+            <Dialog open={isPersonaManagerOpen} onOpenChange={setIsPersonaManagerOpen}>
+              <DialogTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="icon"
+                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
+                  aria-label="Manage Personas"
+                >
+                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-[600px]">
+                <PersonaManager
+                  personas={userPersonas}
+                  onPersonasUpdate={handlePersonasUpdate}
+                  onFormSubmitSuccess={() => setIsPersonaManagerOpen(false)}
+                />
+              </DialogContent>
+            </Dialog>
+
+            {[Upload, Package, Layers].map((IconComponent, index) => (
               <Button
                 key={index}
                 variant="outline"
@@ -240,7 +276,6 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Signature Scenarios Section */}
       <section className="pb-32 pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
@@ -261,7 +296,6 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Messages Button (Fixed Position) */}
        <div className="fixed bottom-6 left-6 z-50">
         <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
           <MessageCircle className="h-5 w-5 mr-2" />
