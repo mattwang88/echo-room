@@ -11,6 +11,7 @@ import { useToast } from "@/hooks/use-toast";
 import { useSpeechToText } from './useSpeechToText';
 import { useTextToSpeech } from './useTextToSpeech'; // Re-added
 import { getAllUserPersonas } from '@/lib/userPersonas';
+import { getLearningMode, setLearningMode } from '@/lib/userSettings';
 
 const START_MEETING_PROMPT_ID = 'system-start-meeting-prompt';
 
@@ -74,6 +75,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
   useEffect(() => {
     const userPersonas = getAllUserPersonas();
     setPersonas(userPersonas);
+  }, []);
+
+  // Load learning mode state on mount
+  useEffect(() => {
+    setIsLearningMode(getLearningMode());
   }, []);
 
   useEffect(() => {
@@ -234,6 +240,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
     }
 
     const userMsgText = currentUserResponse.trim();
+    
+    // Analyze user's message for uncertainty or confusion
+    const userMessageAnalysis = {
+      containsQuestion: userMsgText.includes('?'),
+      containsUncertainty: /\b(?:not sure|unsure|confused|don't know|don't understand|maybe|perhaps|possibly)\b/i.test(userMsgText),
+      isShort: userMsgText.split(' ').length < 5,
+      containsHesitation: /\b(?:um|uh|er|well|like|kind of|sort of)\b/i.test(userMsgText),
+    };
+
     setMessages(prev => [...prev, { 
       id: Date.now().toString() + 'User' + Math.random(), 
       participant: 'User', 
@@ -261,8 +276,13 @@ export function useMeetingSimulation(scenarioId: string | null) {
         agentPersona = scenario.personaConfig[personaKey] || `You are the ${agentToRespondRole}. Respond from this perspective.`;
         
         if (agentPersona) {
+          // Enhance the user's message with analysis for learning mode
+          const enhancedUserMessage = isLearningMode 
+            ? `${userMsgText}\n\n[User State Analysis: ${JSON.stringify(userMessageAnalysis)}]`
+            : userMsgText;
+
           const singleAgentSimInput: SimulateSingleAgentResponseInput = {
-            userResponse: userMsgText,
+            userResponse: enhancedUserMessage,
             agentRole: agentToRespondRole as AgentRole,
             agentPersona: agentPersona,
             scenarioObjective: scenario.objective,
@@ -431,6 +451,18 @@ export function useMeetingSimulation(scenarioId: string | null) {
     };
   }, [isTTSSpeaking, ttsCancel]);
 
+  // Update learning mode state when it changes
+  const handleSetLearningMode = useCallback((enabled: boolean) => {
+    setIsLearningMode(enabled);
+    setLearningMode(enabled);
+    toast({
+      title: enabled ? "Learning Mode Enabled" : "Learning Mode Disabled",
+      description: enabled 
+        ? "Personas will now act as teachers, providing guidance and education."
+        : "Personas will now act as regular meeting participants.",
+    });
+  }, [toast]);
+
   return {
     scenario,
     messages,
@@ -452,7 +484,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isTTSEnabled,
     toggleTTS,
     isLearningMode,
-    setIsLearningMode,
+    setIsLearningMode: handleSetLearningMode,
   };
 }
 

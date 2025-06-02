@@ -54,6 +54,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PersonaManager } from '@/components/PersonaManager';
 import { getAllUserPersonas, deleteUserPersona } from '@/lib/userPersonas';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
+import { getLearningMode, setLearningMode } from '@/lib/userSettings';
 
 const scenariosForButtons = [
   { id: 'product-pitch', title: 'New Product Pitch' },
@@ -299,13 +300,20 @@ export default function HomePage() {
 
   const [isLearningMode, setIsLearningMode] = useState(false);
 
+  // Load learning mode state on mount
+  useEffect(() => {
+    setIsLearningMode(getLearningMode());
+  }, []);
+
   const handleToggleLearningMode = () => {
-    setIsLearningMode(prev => !prev);
+    const newMode = !isLearningMode;
+    setIsLearningMode(newMode);
+    setLearningMode(newMode);
     toast({
-      title: isLearningMode ? "Learning Mode Disabled" : "Learning Mode Enabled",
-      description: isLearningMode 
-        ? "Personas will now act as regular meeting participants."
-        : "Personas will now act as teachers, providing guidance and education.",
+      title: newMode ? "Learning Mode Enabled" : "Learning Mode Disabled",
+      description: newMode 
+        ? "Personas will now act as teachers, providing guidance and education."
+        : "Personas will now act as regular meeting participants.",
     });
   };
 
