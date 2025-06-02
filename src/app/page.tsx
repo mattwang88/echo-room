@@ -25,9 +25,6 @@ export default function WelcomePage() {
     setTimeout(() => {
       // After animation, we want to effectively be on the "home page"
       // Visually, HomePage component will take over.
-      // If a URL change to /home is strictly needed without page reload,
-      // router.replace('/home', { scroll: false }) could be used here,
-      // but for now, we'll just reveal the HomePage component.
       setShowHomePage(true);
     }, animationDuration);
   };
@@ -80,7 +77,7 @@ export default function WelcomePage() {
             }
           )}
         >
-          <div className="mb-8">
+          <div className="mb-12"> {/* Increased margin-bottom for more space */}
             <Image
               src="/images/logo.png"
               alt="EchoRoom Logo"
@@ -93,12 +90,13 @@ export default function WelcomePage() {
 
           <Button
             onClick={handleEnterClick}
-            size="lg"
-            className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6 rounded-lg shadow-lg transition-transform hover:scale-105"
+            variant="ghost" // Changed variant for more control
+            size="icon" // Using icon size, padding will control actual size
+            className="bg-black/25 hover:bg-black/50 text-white rounded-full p-5 w-20 h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent"
             disabled={isExitingWelcome}
+            aria-label="Enter EchoRoom"
           >
-            <LogIn className="mr-2 h-5 w-5" />
-            Enter EchoRoom
+            <LogIn className="h-8 w-8" />
           </Button>
         </div>
 
@@ -117,5 +115,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
-    
