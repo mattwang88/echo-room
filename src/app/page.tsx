@@ -74,19 +74,17 @@ export default function WelcomePage() {
           )}
         >
           {/* Logo Group */}
-          <div className="flex items-center justify-center mb-auto pt-20 sm:pt-32">
+          <div className="flex items-center justify-center">
             {/* Google G Logo */}
             <Image
               src="/images/google_icon.png"
               alt="Google G Logo"
               width={64}
               height={64}
-              className="object-contain mr-4 sm:mr-6"
+              className="object-contain mr-10"
             />
-            {/* Echo Text Group */}
-            <div className="flex items-center space-x-2 sm:space-x-3">
-              <span className="text-3xl sm:text-4xl font-semibold text-white">Echo</span>
-            </div>
+            {/* Echo Text Span directly */}
+            <span className="text-3xl sm:text-4xl font-semibold text-white ml-10">Echo</span>
           </div>
 
           {/* Enter Button - positioned absolutely near the bottom */}
@@ -117,3 +115,4 @@ export default function WelcomePage() {
     </div>
   );
 }
+
