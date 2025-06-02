@@ -71,10 +71,18 @@ const simulateSingleAgentResponseFlow = ai.defineFlow(
     outputSchema: SimulateSingleAgentResponseOutputSchema,
   },
   async input => {
+    console.log("[simulateSingleAgentResponseFlow] Input received for agent response:");
+    console.log("  Agent Role:", input.agentRole);
+    console.log("  Agent Persona Instruction (first 100 chars):", input.agentPersona?.substring(0, 100) + (input.agentPersona && input.agentPersona.length > 100 ? "..." : ""));
+    // console.log("  User Response (first 50 chars):", input.userResponse?.substring(0, 50) + "..."); // Optional: for more context
+    // console.log("  Scenario Objective (first 50 chars):", input.scenarioObjective?.substring(0, 50) + "..."); // Optional: for more context
+
+
     const {output} = await prompt(input);
     // Fallback if AI generates empty feedback
     const feedback = output?.agentFeedback || "I'm not sure how to respond to that. Can you please rephrase?";
-    console.log("[simulateSingleAgentResponseFlow] Generated plain text:", feedback);
+    // console.log("[simulateSingleAgentResponseFlow] Generated plain text (first 50 chars):", feedback.substring(0,50) + "..."); // Optional: log output
     return { agentFeedback: feedback };
   }
 );
+

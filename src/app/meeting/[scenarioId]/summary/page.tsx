@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -49,7 +50,7 @@ export default function SummaryPage() {
 
               const semanticInput: EvaluateSemanticSkillInput = { responseText: message.text, context: rawSummaryData.objective };
               const semanticResult = await evaluateSemanticSkill(semanticInput);
-              
+
               enrichedMessages.push({
                 ...message,
                 coachingFeedback: coachingResult,
@@ -153,13 +154,13 @@ export default function SummaryPage() {
         <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
         <h1 className="text-2xl font-semibold text-destructive mb-4">No Summary Data Found</h1>
         <p className="text-muted-foreground mb-6">We couldn't find the summary for your last meeting. Please complete a meeting first.</p>
-        <Link href="/" passHref>
+        <Link href="/home" passHref>
           <Button>Return to Scenarios</Button>
         </Link>
       </div>
     );
   }
-  
+
   if (!enrichedSummaryData && !isLoadingFeedback && rawSummaryData) { // If raw data is there but feedback failed or isn't loaded yet
     return (
       <div className="flex flex-col items-center justify-center min-h-screen p-8 bg-background text-center">
@@ -167,7 +168,7 @@ export default function SummaryPage() {
         <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
         <h1 className="text-2xl font-semibold text-destructive mb-4">Feedback Generation Incomplete</h1>
         <p className="text-muted-foreground mb-6">Could not generate all feedback for the report. You can try returning to scenarios.</p>
-        <Link href="/" passHref>
+        <Link href="/home" passHref>
           <Button>Return to Scenarios</Button>
         </Link>
       </div>
@@ -207,7 +208,7 @@ export default function SummaryPage() {
                     {notebookLMDebriefContent.split('\n').map((paragraph, index) => {
                         const isHeading = paragraph.trim().endsWith(':') && !paragraph.trim().startsWith('-');
                         const isListItem = paragraph.trim().startsWith('-') || paragraph.trim().startsWith('•');
-                        
+
                         if (isHeading) {
                           return <h4 key={index} className="text-md font-semibold mt-3 mb-1 text-primary">{paragraph.replace(/\*\*/g, '')}</h4>;
                         } else if (isListItem) {
@@ -234,4 +235,3 @@ export default function SummaryPage() {
     </div>
   );
 }
-

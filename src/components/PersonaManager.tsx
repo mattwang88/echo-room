@@ -1,39 +1,89 @@
+
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
-  Dialog,
-  DialogTrigger,
-  DialogContent,
   DialogHeader,
   DialogTitle,
   DialogDescription,
   DialogFooter,
-  DialogClose,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Pencil, Trash2 } from 'lucide-react';
-import type { Persona } from '@/lib/types';
-import { getAllUserPersonas, addUserPersona, deleteUserPersona } from '@/lib/userPersonas';
+import type { Persona, AgentRole } from '@/lib/types';
+import { addUserPersona, deleteUserPersona, getAllUserPersonas } from '@/lib/userPersonas';
 
 interface PersonaManagerProps {
   personas: Persona[];
-  onPersonasUpdate: (personas: Persona[]) => void;
+  onFormSubmitSuccess?: () => void;
+  personaToEdit?: Persona | null;
+  availableRoles: AgentRole[];
 }
 
-export function PersonaManager({ personas, onPersonasUpdate }: PersonaManagerProps) {
-  const [open, setOpen] = useState(false);
+export function PersonaManager({
+  personas: initialPersonas,
+  onFormSubmitSuccess,
+  personaToEdit,
+  availableRoles,
+}: PersonaManagerProps) {
   const [name, setName] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState<AgentRole>('');
   const [instructionPrompt, setInstructionPrompt] = useState('');
-  const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
+  const [currentEditingId, setCurrentEditingId] = useState<string | null>(null);
 
-  const handleCreatePersona = (e: React.FormEvent) => {
+  const [internalPersonas, setInternalPersonas] = useState<Persona[]>(initialPersonas || []);
+
+  const [isInternalAlertOpen, setIsInternalAlertOpen] = useState(false);
+  const [personaToDeleteInternallyId, setPersonaToDeleteInternallyId] = useState<string | null>(null);
+
+  const resetForm = useCallback(() => {
+    setName('');
+    setRole(availableRoles.length > 0 ? availableRoles[0] : '');
+    setInstructionPrompt('');
+    setCurrentEditingId(null);
+  }, [availableRoles]);
+
+  useEffect(() => {
+    if (personaToEdit) {
+      setName(personaToEdit.name);
+      setRole(personaToEdit.role as AgentRole);
+      setInstructionPrompt(personaToEdit.instructionPrompt);
+      setCurrentEditingId(personaToEdit.id);
+    } else {
+      resetForm();
+    }
+  }, [personaToEdit, resetForm]);
+
+  useEffect(() => {
+    setInternalPersonas(initialPersonas || []);
+  }, [initialPersonas]);
+
+
+  const handleCreateOrUpdatePersona = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !role.trim() || !instructionPrompt.trim()) return;
 
-    const id = editingPersona?.id || uuidv4();
+    const id = currentEditingId || uuidv4();
     const persona: Persona = {
       id,
       name: name.trim(),
@@ -42,143 +92,168 @@ export function PersonaManager({ personas, onPersonasUpdate }: PersonaManagerPro
     };
 
     addUserPersona(persona);
-    const updatedPersonas = editingPersona 
-      ? personas.map(p => p.id === editingPersona.id ? persona : p)
-      : [...personas, persona];
-    onPersonasUpdate(updatedPersonas);
+    const updatedLivePersonas = getAllUserPersonas();
+    setInternalPersonas(updatedLivePersonas);
 
-    setOpen(false);
+
+    if (onFormSubmitSuccess) {
+      onFormSubmitSuccess();
+    }
     resetForm();
   };
 
-  const handleEditPersona = (persona: Persona) => {
-    setEditingPersona(persona);
+  const handleEditInternalPersona = (persona: Persona) => {
     setName(persona.name);
-    setRole(persona.role);
+    setRole(persona.role as AgentRole);
     setInstructionPrompt(persona.instructionPrompt);
-    setOpen(true);
+    setCurrentEditingId(persona.id);
   };
 
-  const handleDeletePersona = (id: string) => {
-    if (window.confirm('Are you sure you want to delete this persona?')) {
-      deleteUserPersona(id);
-      const updatedPersonas = personas.filter(p => p.id !== id);
-      onPersonasUpdate(updatedPersonas);
+  const confirmDeleteInternalPersona = () => {
+    if (personaToDeleteInternallyId) {
+      deleteUserPersona(personaToDeleteInternallyId);
+      const updatedLivePersonas = getAllUserPersonas();
+      setInternalPersonas(updatedLivePersonas);
+
+
+      if (currentEditingId === personaToDeleteInternallyId) {
+        resetForm();
+      }
+      setPersonaToDeleteInternallyId(null);
+      setIsInternalAlertOpen(false);
+      if (onFormSubmitSuccess) {
+        onFormSubmitSuccess();
+      }
     }
   };
 
-  const resetForm = () => {
-    setName('');
-    setRole('');
-    setInstructionPrompt('');
-    setEditingPersona(null);
-  };
-
-  const handleOpenChange = (newOpen: boolean) => {
-    setOpen(newOpen);
-    if (!newOpen) {
-      resetForm();
-    }
+  const openInternalDeleteConfirmation = (id: string) => {
+    setPersonaToDeleteInternallyId(id);
+    setIsInternalAlertOpen(true);
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h3 className="text-lg font-semibold">AI Personas</h3>
-        <Dialog open={open} onOpenChange={handleOpenChange}>
-          <DialogTrigger asChild>
-            <Button variant="outline" size="sm">
-              + Add Persona
+    <>
+      <DialogHeader>
+        <DialogTitle>{currentEditingId ? 'Edit Persona' : 'Create New Persona'}</DialogTitle>
+        <DialogDescription>
+          {currentEditingId ? 'Modify the details of this AI persona.' : 'Define a new AI persona that can participate in your meeting scenarios.'}
+        </DialogDescription>
+      </DialogHeader>
+      <form onSubmit={handleCreateOrUpdatePersona} className="space-y-4 py-4">
+        <div>
+          <label htmlFor="personaName" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
+          <Input
+            id="personaName"
+            type="text"
+            className="w-full border rounded px-3 py-2"
+            placeholder="e.g., Sarah Chen, Cautious Investor"
+            value={name}
+            onChange={e => setName(e.target.value)}
+            required
+          />
+        </div>
+        <div>
+          <label htmlFor="personaRole" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+          <Select value={role} onValueChange={(value) => setRole(value as AgentRole)} required>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableRoles.map((roleOption) => (
+                <SelectItem key={roleOption} value={roleOption}>
+                  {roleOption}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+        <div>
+          <label htmlFor="personaInstruction" className="block text-sm font-medium text-gray-700 mb-1">Instruction Prompt</label>
+          <Textarea
+            id="personaInstruction"
+            className="w-full border rounded px-3 py-2"
+            placeholder="Define how this persona should behave, their key concerns, and typical questions they might ask..."
+            value={instructionPrompt}
+            onChange={e => setInstructionPrompt(e.target.value)}
+            required
+            rows={5}
+          />
+        </div>
+        <DialogFooter className="pt-2">
+          {currentEditingId && (
+            <Button type="button" variant="outline" onClick={() => { resetForm(); if (onFormSubmitSuccess) onFormSubmitSuccess(); }} className="mr-auto">
+              Cancel Edit
             </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px]">
-            <DialogHeader>
-              <DialogTitle>{editingPersona ? 'Edit Persona' : 'Create New Persona'}</DialogTitle>
-              <DialogDescription>
-                Define a new AI persona that can participate in your meeting scenarios.
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleCreatePersona} className="space-y-4">
-              <div>
-                <label className="block font-medium mb-1">Name</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="e.g., Sarah Chen"
-                  value={name}
-                  onChange={e => setName(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Role</label>
-                <input
-                  type="text"
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="e.g., Senior Product Manager"
-                  value={role}
-                  onChange={e => setRole(e.target.value)}
-                  required
-                />
-              </div>
-              <div>
-                <label className="block font-medium mb-1">Instruction Prompt</label>
-                <textarea
-                  className="w-full border rounded px-3 py-2"
-                  placeholder="Define how this persona should behave and respond..."
-                  value={instructionPrompt}
-                  onChange={e => setInstructionPrompt(e.target.value)}
-                  required
-                  rows={4}
-                />
-              </div>
-              <DialogFooter>
-                <Button 
-                  type="submit" 
-                  disabled={!name.trim() || !role.trim() || !instructionPrompt.trim()}
-                >
-                  {editingPersona ? 'Save Changes' : 'Create Persona'}
-                </Button>
-                <DialogClose asChild>
-                  <Button type="button" variant="outline">Cancel</Button>
-                </DialogClose>
-              </DialogFooter>
-            </form>
-          </DialogContent>
-        </Dialog>
-      </div>
+          )}
+          <Button
+            type="submit"
+            disabled={!name.trim() || !role.trim() || !instructionPrompt.trim()}
+          >
+            {currentEditingId ? 'Save Changes' : 'Create Persona'}
+          </Button>
+        </DialogFooter>
+      </form>
 
-      <div className="grid gap-4">
-        {personas.map((persona) => (
-          <div key={persona.id} className="p-4 border rounded-lg relative group">
-            <div className="flex justify-between items-start">
-              <div>
-                <h4 className="font-medium">{persona.name}</h4>
-                <p className="text-sm text-muted-foreground">{persona.role}</p>
-                <p className="mt-2 text-sm">{persona.instructionPrompt}</p>
+      {(internalPersonas || []).length > 0 && !personaToEdit && (
+        <div className="mt-6 pt-4 border-t">
+          <h4 className="text-md font-semibold mb-3">Existing Personas</h4>
+          <div className="max-h-[200px] overflow-y-auto pr-2 space-y-3">
+            {(internalPersonas || []).map((persona) => (
+              <div key={persona.id} className="p-3 border rounded-lg relative group bg-muted/30">
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h5 className="font-medium text-primary">{persona.name}</h5>
+                    <p className="text-xs text-muted-foreground mb-1">{persona.role}</p>
+                    <p className="text-sm text-foreground/80 whitespace-pre-wrap text-xs">
+                      {persona.instructionPrompt.length > 100
+                        ? `${persona.instructionPrompt.substring(0, 100)}...`
+                        : persona.instructionPrompt}
+                    </p>
+                  </div>
+                  <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity absolute top-2 right-2 sm:relative sm:top-0 sm:right-0">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => handleEditInternalPersona(persona)}
+                      className="h-7 w-7"
+                      title="Edit Persona from list"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      onClick={() => openInternalDeleteConfirmation(persona.id)}
+                      className="h-7 w-7 hover:bg-destructive hover:text-destructive-foreground"
+                      title="Delete Persona from list"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
               </div>
-              <div className="flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleEditPersona(persona)}
-                  className="h-8 w-8"
-                >
-                  <Pencil className="h-4 w-4" />
-                </Button>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  onClick={() => handleDeletePersona(persona.id)}
-                  className="h-8 w-8 hover:bg-destructive hover:text-destructive-foreground"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </Button>
-              </div>
-            </div>
+            ))}
           </div>
-        ))}
-      </div>
-    </div>
+        </div>
+      )}
+
+      <AlertDialog open={isInternalAlertOpen} onOpenChange={setIsInternalAlertOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the persona.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPersonaToDeleteInternallyId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteInternalPersona} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
-} 
+}

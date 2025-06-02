@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -105,9 +106,14 @@ const DropdownMenuCheckboxItem = React.forwardRef<
     checked={checked}
     {...props}
   >
-    <span className="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
+    <span
+      className={cn(
+        "absolute left-2 flex h-4 w-4 items-center justify-center rounded-sm border border-primary",
+        checked && "bg-primary"
+      )}
+    >
       <DropdownMenuPrimitive.ItemIndicator>
-        <Check className="h-4 w-4" />
+        <Check className={cn("h-4 w-4", checked && "text-primary-foreground")} />
       </DropdownMenuPrimitive.ItemIndicator>
     </span>
     {children}

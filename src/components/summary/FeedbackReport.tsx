@@ -47,7 +47,7 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
         <p className="text-muted-foreground mb-6">
           It seems the meeting data is unavailable. This might happen if the meeting wasn't completed or if there was an issue saving the summary.
         </p>
-        <Link href="/" passHref>
+        <Link href="/home" passHref>
           <Button>Back to Scenarios</Button>
         </Link>
       </div>
@@ -56,7 +56,7 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
 
   const { scenarioTitle, objective, messages } = summaryData;
   const averageScore = calculateAverageSemanticScore(messages);
-  
+
   const userMessagesWithFeedback = messages.filter(msg => msg.participant === 'User' && (msg.coachingFeedback || msg.semanticEvaluation));
 
   return (
@@ -79,7 +79,7 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
             </p>
           </div>
         )}
-        
+
         <Separator className="my-6" />
 
         <h3 className="text-xl font-semibold mb-4 text-primary">Detailed Feedback on Your Responses:</h3>
@@ -92,7 +92,7 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
                     <div className="flex flex-col text-left w-full">
                        <p className="font-medium truncate max-w-md">Your response #{index + 1}: "{msg.text}"</p>
                        {msg.semanticEvaluation?.score !== undefined && (
-                           <Badge variant={msg.semanticEvaluation.score > 0.7 ? "default" : (msg.semanticEvaluation.score > 0.4 ? "secondary" : "destructive")} 
+                           <Badge variant={msg.semanticEvaluation.score > 0.7 ? "default" : (msg.semanticEvaluation.score > 0.4 ? "secondary" : "destructive")}
                                   className="w-fit mt-1 bg-accent text-accent-foreground">
                              Score: {(msg.semanticEvaluation.score * 100).toFixed(0)}%
                            </Badge>
@@ -108,7 +108,7 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
                         <FeedbackItem title="Technical Soundness" content={msg.coachingFeedback.technicalSoundness} icon={<BarChartBig className="h-5 w-5" />} />
                         <FeedbackItem title="Domain Knowledge" content={msg.coachingFeedback.domainKnowledgeFeedback} icon={<Brain className="h-5 w-5" />} />
                         <FeedbackItem title="Suggested Learning Materials" content={msg.coachingFeedback.suggestedLearningMaterials} icon={<BookOpen className="h-5 w-5" />} />
-            
+
                         <div className="mt-4 pt-3 border-t">
                           <h5 className="text-md font-semibold mb-1 text-primary flex items-center">
                             <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="lucide lucide-thumbs-up"><path d="M7 10v12"/><path d="M15 5.88 14 10h5.83a2 2 0 0 1 1.92 2.56l-2.33 8A2 2 0 0 1 17.5 22H4a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h2.76a2 2 0 0 0 1.79-1.11L12 2h0a2 2 0 0 1 1.79 1.11L15 5.88Z"/><path d="M12 2v7.12"/></svg>
@@ -139,7 +139,7 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
         )}
       </CardContent>
       <CardFooter className="p-6 border-t flex justify-center">
-        <Link href="/" passHref>
+        <Link href="/home" passHref>
           <Button size="lg">
             <CheckCircle className="mr-2 h-5 w-5" /> Back to Scenarios
           </Button>
@@ -148,4 +148,3 @@ export function FeedbackReport({ summaryData }: FeedbackReportProps) {
     </Card>
   );
 }
-
