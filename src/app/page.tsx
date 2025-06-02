@@ -101,7 +101,7 @@ export default function HomePage() {
   const handleClosePersonaManager = () => {
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas(); // Refresh persona list on homepage
+    loadPersonas(); 
   };
 
   const handleDeletePersonaRequest = (id: string) => {
@@ -112,7 +112,7 @@ export default function HomePage() {
   const confirmDeleteHomepagePersona = () => {
     if (personaToDeleteId) {
       deleteUserPersona(personaToDeleteId);
-      loadPersonas(); // Refresh persona list
+      loadPersonas(); 
       toast({ title: "Persona Deleted", description: "The persona has been successfully removed." });
     }
     setPersonaToDeleteId(null);
@@ -147,15 +147,10 @@ export default function HomePage() {
         if (selectedRoles.includes(stdRole)) {
           let personaInstruction = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
           
-          // Check if a custom persona for this role exists and is selected
-          const customPersonaForRole = userPersonas.find(p => p.role === stdRole /* && is this persona selected for this role in the simulation? needs UI for this selection */);
+          const customPersonaForRole = userPersonas.find(p => p.role === stdRole);
           if (customPersonaForRole) {
-             // This part needs further UI to allow selecting a *specific* custom persona for a role in the simulation.
-             // For now, we'll use the custom persona's instruction if *any* custom persona matches the role.
-             // A more robust solution would involve letting the user pick which custom persona to use for each role.
-             console.warn(`Using custom persona "${customPersonaForRole.name}" for role ${stdRole}. If multiple custom personas exist for this role, the first one found is used. Consider adding UI to select specific custom personas for roles.`);
              personaInstruction = customPersonaForRole.instructionPrompt;
-          } else if (stdRole === "Manager") { // Default if no custom manager persona
+          } else if (stdRole === "Manager") { 
             personaInstruction = `You are the Manager. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively, providing guidance, feedback, and asking relevant questions from a managerial perspective.`;
           }
           personaConf[key] = personaInstruction;
@@ -193,6 +188,7 @@ export default function HomePage() {
     }
   };
 
+  const displayedRolesFromCustomPersonas = userPersonas.map(p => p.role);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -304,8 +300,6 @@ export default function HomePage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                  <PersonaManager
-                  personas={userPersonas} // Pass all personas for the list within manager
-                  onPersonasUpdate={loadPersonas} // To refresh its internal list if needed
                   onFormSubmitSuccess={handleClosePersonaManager}
                   personaToEdit={editingPersona}
                 />
@@ -327,19 +321,21 @@ export default function HomePage() {
         </div>
       </main>
 
-      {userPersonas.length > 0 && (
-        <section className="pt-6 px-4">
-          <div className="w-full max-w-3xl mx-auto">
-            <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
-              Your Custom Personas
-            </h2>
+      {/* Section for People in the meeting room */}
+      <section className="pt-6 px-4">
+        <div className="w-full max-w-3xl mx-auto">
+          <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
+            People in the meeting room
+          </h2>
+          {userPersonas.length > 0 || selectedRoles.length > 0 ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
+              {/* Display all user-created custom personas */}
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
                   <Button
                     variant="outline"
-                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-10" // Add padding for icons
-                    onClick={() => handleOpenPersonaManager(persona)} // Click button to edit
+                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-10"
+                    onClick={() => handleOpenPersonaManager(persona)}
                   >
                     {persona.name} <span className="text-xs text-gray-500 ml-1">({persona.role})</span>
                   </Button>
@@ -365,10 +361,28 @@ export default function HomePage() {
                   </div>
                 </div>
               ))}
+
+              {/* Display selected standard roles that don't have a custom persona */}
+              {selectedRoles
+                .filter(role => !displayedRolesFromCustomPersonas.includes(role))
+                .map((role) => (
+                  <Button
+                    key={role}
+                    variant="outline"
+                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
+                    disabled 
+                  >
+                    {role} (Standard)
+                  </Button>
+                ))}
             </div>
-          </div>
-        </section>
-      )}
+          ) : (
+            <p className="text-sm text-gray-500 text-left ml-1">
+              Create custom personas or select roles to see participants here.
+            </p>
+          )}
+        </div>
+      </section>
 
       <section className="pb-32 pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
@@ -390,7 +404,7 @@ export default function HomePage() {
         </div>
       </section>
 
-       <div className="fixed bottom-6 left-6 z-50">
+      <div className="fixed bottom-6 left-6 z-50">
         <Button variant="outline" className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100">
           <MessageCircle className="h-5 w-5 mr-2" />
           Messages
