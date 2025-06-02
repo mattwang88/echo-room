@@ -61,7 +61,7 @@ const scenariosForButtons = [
   { id: 'job-resignation', title: 'Practice Resignation' },
 ];
 
-const participantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
+const availableParticipantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
 
 export default function HomePage() {
   const router = useRouter();
@@ -188,7 +188,8 @@ export default function HomePage() {
     }
   };
   
-  const customPersonaRolesDisplayed = userPersonas.map(p => p.role);
+  const customPersonaRoles = userPersonas.map(p => p.role);
+  const standardRolesToDisplay = selectedRoles.filter(role => !customPersonaRoles.includes(role));
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -269,7 +270,7 @@ export default function HomePage() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent>
-                {participantRoles.map((role) => (
+                {availableParticipantRoles.map((role) => (
                   <DropdownMenuCheckboxItem
                     key={role}
                     checked={selectedRoles.includes(role)}
@@ -325,13 +326,13 @@ export default function HomePage() {
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Meeting Participants
           </h2>
-          {userPersonas.length > 0 || selectedRoles.length > 0 ? (
+          {(userPersonas.length > 0 || standardRolesToDisplay.length > 0) ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
                   <Button
                     variant="outline"
-                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-10"
+                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-14"
                     onClick={() => handleOpenPersonaManager(persona)} 
                   >
                     {persona.name}
@@ -359,9 +360,7 @@ export default function HomePage() {
                 </div>
               ))}
 
-              {selectedRoles
-                .filter(role => !customPersonaRolesDisplayed.includes(role))
-                .map((role) => (
+              {standardRolesToDisplay.map((role) => (
                   <Button
                     key={role}
                     variant="outline"
@@ -374,7 +373,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-left ml-1">
-              Create or select participants to see them here.
+              Select participants or create custom personas to see them here.
             </p>
           )}
         </div>
