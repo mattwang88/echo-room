@@ -3,7 +3,6 @@
 
 import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
-import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
 import { Button } from '@/components/ui/button';
@@ -65,21 +64,22 @@ const scenariosForButtons = [
 const availableParticipantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
 
 const randomMeetingTopics = [
-  "Discuss Q3 marketing strategy.",
-  "Review progress on Project Phoenix.",
-  "Brainstorm ideas for the new website design.",
-  "Plan the upcoming team offsite event.",
-  "Resolve customer feedback on the latest feature.",
-  "Prepare for the client presentation next week.",
-  "Align on sales targets for the next month.",
-  "Improve our internal communication workflow.",
-  "Debrief on the recent product launch success.",
-  "Address technical debt in the payment module.",
-  "Finalize the agenda for the all-hands meeting.",
-  "Explore new tools for project management.",
-  "Update on competitor analysis findings.",
-  "Training session for the new CRM system.",
-  "Discuss employee engagement survey results.",
+  "Pitch Q3 marketing strategy.",
+  "Review Project Phoenix progress.",
+  "Brainstorm new website design.",
+  "Plan team offsite event details.",
+  "Resolve customer feedback issue.",
+  "Resolve customer feedback issue.",
+  "Prepare client presentation draft.",
+  "Align on next month's sales targets.",
+  "Improve internal communication flow.",
+  "Debrief recent product launch success.",
+  "Address payment module tech debt.",
+  "Finalize all-hands meeting agenda.",
+  "Explore new project management tools.",
+  "Update competitor analysis findings.",
+  "Conduct CRM system training session.",
+  "Discuss employee engagement results.",
 ];
 
 export default function HomePage() {
@@ -88,6 +88,7 @@ export default function HomePage() {
   const [simulationDescription, setSimulationDescription] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<AgentRole[]>([]);
   const [isGeneratingScenario, setIsGeneratingScenario] = useState(false);
+  const [showMeetingLoadingOverlay, setShowMeetingLoadingOverlay] = useState(false);
 
   const [userPersonas, setUserPersonas] = useState<Persona[]>([]);
   const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
@@ -195,7 +196,7 @@ export default function HomePage() {
     const randomIndex = Math.floor(Math.random() * randomMeetingTopics.length);
     const randomTopic = randomMeetingTopics[randomIndex];
     setSimulationDescription(randomTopic);
-    baseTextForSTT.current = randomTopic; // Keep STT base in sync
+    baseTextForSTT.current = randomTopic;
   };
 
   const handleGenerateScenario = async () => {
@@ -253,6 +254,7 @@ export default function HomePage() {
       };
 
       addUserCreatedScenario(newScenario);
+      setShowMeetingLoadingOverlay(true);
       router.push(`/meeting/${newScenarioId}`);
 
     } catch (error) {
@@ -262,14 +264,29 @@ export default function HomePage() {
         description: error instanceof Error ? error.message : "Could not generate the scenario. Please try again.",
         variant: "destructive",
       });
-    } finally {
       setIsGeneratingScenario(false);
     }
+    // No finally block to set isGeneratingScenario to false here, as navigation will unmount.
+    // It's reset in the catch block.
+  };
+  
+  const handleNavigateToSignatureScenario = (scenarioId: string) => {
+    setShowMeetingLoadingOverlay(true);
+    router.push(`/meeting/${scenarioId}`);
   };
 
   const displayedParticipantRoles = selectedRoles.filter(
     role => !userPersonas.some(p => p.role === role)
   );
+
+  if (showMeetingLoadingOverlay) {
+    return (
+      <div className="fixed inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
+        <Loader2 className="h-16 w-16 animate-spin text-primary mb-6" />
+        <p className="text-2xl text-foreground font-medium">Meeting Loading...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -481,14 +498,14 @@ export default function HomePage() {
           </h2>
           <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
             {scenariosForButtons.map((challenge) => (
-              <Link key={challenge.id} href={`/meeting/${challenge.id}`} passHref legacyBehavior>
                 <Button
+                  key={challenge.id}
                   variant="outline"
+                  onClick={() => handleNavigateToSignatureScenario(challenge.id)}
                   className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto"
                 >
                   {challenge.title}
                 </Button>
-              </Link>
             ))}
           </div>
         </div>
