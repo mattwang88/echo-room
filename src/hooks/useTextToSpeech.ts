@@ -10,17 +10,17 @@ const maleVoices: VoiceConfig[] = [
   { voiceName: 'en-US-Neural2-D', languageCode: 'en-US', gender: 'male' },
   { voiceName: 'en-US-Neural2-A', languageCode: 'en-US', gender: 'male' },
   { voiceName: 'en-US-Neural2-J', languageCode: 'en-US', gender: 'male' },
-  { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'male' },
+  // { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'male' }, // Removed Wavenet
 ];
 
 const femaleVoices: VoiceConfig[] = [
   { voiceName: 'en-US-Neural2-C', languageCode: 'en-US', gender: 'female' },
   { voiceName: 'en-US-Neural2-E', languageCode: 'en-US', gender: 'female' },
   { voiceName: 'en-US-Neural2-F', languageCode: 'en-US', gender: 'female' },
-  { voiceName: 'en-US-Wavenet-F', languageCode: 'en-US', gender: 'female' },
+  // { voiceName: 'en-US-Wavenet-F', languageCode: 'en-US', gender: 'female' }, // Removed Wavenet
 ];
 
-const systemVoice: VoiceConfig = { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'neutral' };
+const systemVoice: VoiceConfig = { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'neutral' }; // System can keep Wavenet or be Neural2 if preferred
 
 const specificRoleVoiceMap: Partial<Record<AgentRole, VoiceConfig>> = {
   // Example: Manager: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US', gender: 'male' },
@@ -45,17 +45,20 @@ export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps = { session
   const sessionVoiceAssignmentsRef = useRef<Record<ParticipantRole, VoiceConfig>>({});
   const currentSessionKeyRef = useRef<string | null>(null);
 
+  // Stable reference for memoizedCancel
+  const memoizedCancelRef = useRef<() => void>(() => {});
+
+
   useEffect(() => {
     if (sessionKey !== currentSessionKeyRef.current) {
       console.log(`[useTextToSpeech] Session key changed from ${currentSessionKeyRef.current} to ${sessionKey}. Resetting voice assignments.`);
       sessionVoiceAssignmentsRef.current = {};
       currentSessionKeyRef.current = sessionKey;
-      // If speaking during session change, cancel it
       if (isSpeakingStateRef.current) {
-        memoizedCancel();
+        memoizedCancelRef.current();
       }
     }
-  }, [sessionKey]); // Removed memoizedCancel from deps as it's stable
+  }, [sessionKey]);
 
   useEffect(() => {
     isSpeakingStateRef.current = isSpeakingState;
@@ -201,6 +204,10 @@ export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps = { session
     currentParticipantRef.current = null;
   }, [setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
 
+  useEffect(() => {
+    memoizedCancelRef.current = memoizedCancel;
+  }, [memoizedCancel]);
+
 
   const memoizedSpeak = useCallback(async (text: string, participant: ParticipantRole = 'System') => {
     if (!text.trim() || participant === 'User') {
@@ -212,7 +219,7 @@ export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps = { session
     }
 
     if (isSpeakingStateRef.current) {
-      memoizedCancel();
+      memoizedCancelRef.current(); // Use the ref
       await new Promise(resolve => setTimeout(resolve, 100)); 
     }
     
@@ -233,16 +240,21 @@ export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps = { session
         selectedVoiceConfig = sessionVoiceAssignmentsRef.current[participant]!;
         console.log(`[useTextToSpeech] Reusing voice for ${participant}: ${selectedVoiceConfig.voiceName} (Gender: ${selectedVoiceConfig.gender})`);
     } else {
-        // First time this role speaks in this session, or not 'System'
         if (specificRoleVoiceMap[participant as AgentRole]) {
             selectedVoiceConfig = specificRoleVoiceMap[participant as AgentRole]!;
         } else {
             const randomGender = Math.random() < 0.5 ? 'male' : 'female';
-            const voiceList = randomGender === 'male' ? maleVoices : femaleVoices;
-            if (voiceList.length > 0) {
-                selectedVoiceConfig = voiceList[Math.floor(Math.random() * voiceList.length)];
+            let voiceListToUse = randomGender === 'male' ? maleVoices : femaleVoices;
+            // Fallback if a list is empty (e.g., only male voices left after filtering)
+            if (voiceListToUse.length === 0) {
+                voiceListToUse = randomGender === 'male' ? femaleVoices : maleVoices; // Try the other list
+                if (voiceListToUse.length === 0) { // If both are empty (highly unlikely with current setup)
+                    selectedVoiceConfig = systemVoice; // Ultimate fallback
+                } else {
+                    selectedVoiceConfig = voiceListToUse[Math.floor(Math.random() * voiceListToUse.length)];
+                }
             } else {
-                selectedVoiceConfig = systemVoice; // Fallback
+                 selectedVoiceConfig = voiceListToUse[Math.floor(Math.random() * voiceListToUse.length)];
             }
         }
         sessionVoiceAssignmentsRef.current[participant] = selectedVoiceConfig;
@@ -303,24 +315,22 @@ export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps = { session
       currentSpeechTextRef.current = null;
       currentParticipantRef.current = null;
     }
-  }, [toast, memoizedCancel, setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
+  }, [toast, setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
   
-  // Re-add the useEffect that was removed related to memoizedCancel dependency for sessionKey
   useEffect(() => {
     if (sessionKey !== currentSessionKeyRef.current) {
-      // ... (existing logic for session key change)
       if (isSpeakingStateRef.current) {
-        memoizedCancel(); // Ensure this is called if speaking during session change
+        memoizedCancelRef.current();
       }
     }
-  }, [sessionKey, memoizedCancel]);
+  }, [sessionKey]);
 
 
   const isTTSSupported = typeof Audio !== 'undefined'; 
 
   return {
     speak: memoizedSpeak,
-    cancel: memoizedCancel,
+    cancel: memoizedCancelRef.current, // Return the ref's current value
     isSpeaking: isSpeakingState,
     isTTSSupported,
     currentSpeakingRole,
