@@ -68,7 +68,7 @@ export default function WelcomePage() {
           />
         </div>
 
-        {/* Content: Logo and Button for Welcome - these will fade out */}
+        {/* Content: Button for Welcome - this will fade out */}
         <div
           className={cn(
             "relative z-20 flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out",
@@ -77,16 +77,7 @@ export default function WelcomePage() {
             }
           )}
         >
-          <div className="mb-12"> {/* Increased margin-bottom for more space */}
-            <Image
-              src="/images/logo.png"
-              alt="EchoRoom Logo"
-              width={280}
-              height={80}
-              data-ai-hint="company logo white"
-              className="mx-auto"
-            />
-          </div>
+          {/* Logo image removed from here */}
 
           <Button
             onClick={handleEnterClick}
