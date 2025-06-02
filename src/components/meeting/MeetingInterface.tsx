@@ -22,20 +22,20 @@ interface MeetingInterfaceProps {
   scenarioId: string;
 }
 
-// Predefined lists of avatar image paths
+// Updated avatar paths based on user's new filenames and format
 const maleAvatarPaths = [
-    '/images/males/avatar1.png',
-    '/images/males/avatar2.png',
-    '/images/males/avatar3.png',
-    '/images/males/avatar4.png',
-    '/images/males/avatar5.png',
+    '/images/males/M-1.jpg',
+    '/images/males/M-2.jpg',
+    '/images/males/M-3.jpg',
+    '/images/males/M-4.jpg',
+    '/images/males/M-5.jpg',
 ];
 const femaleAvatarPaths = [
-    '/images/females/avatar1.png',
-    '/images/females/avatar2.png',
-    '/images/females/avatar3.png',
-    '/images/females/avatar4.png',
-    '/images/females/avatar5.png',
+    '/images/females/F-1.jpg',
+    '/images/females/F-2.jpg',
+    '/images/females/F-3.jpg',
+    '/images/females/F-4.jpg',
+    '/images/females/F-5.jpg',
 ];
 const neutralAvatarPath = 'https://placehold.co/256x256/cccccc/e0e0e0.png';
 
@@ -78,31 +78,24 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
   useEffect(() => {
     console.log(`[AvatarDebug] Effect triggered. isTTSSpeaking: ${isTTSSpeaking}, currentSpeakingRole: ${currentSpeakingRole}, currentSpeakingGender: ${currentSpeakingGender}`);
     if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && currentSpeakingRole !== 'System') {
-      // --- SIMPLIFIED LOGIC FOR TESTING ---
-      const testAvatarPath = '/images/males/avatar1.png'; // Hardcode to test one specific avatar
-      setCurrentDisplayAvatarPath(testAvatarPath);
-      console.log(`[AvatarDebug] TESTING: Hardcoded avatar path for AI agent: ${testAvatarPath}`);
-      // --- END OF SIMPLIFIED LOGIC ---
-
-      // Original logic (commented out for now):
-      // let chosenPath: string | null = null;
-      // if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
-      //   const randomIndex = Math.floor(Math.random() * maleAvatarPaths.length);
-      //   chosenPath = maleAvatarPaths[randomIndex];
-      //   console.log(`[AvatarDebug] Male avatar selected. List length: ${maleAvatarPaths.length}, Chosen: ${chosenPath}`);
-      // } else if (currentSpeakingGender === 'female' && femaleAvatarPaths.length > 0) {
-      //   const randomIndex = Math.floor(Math.random() * femaleAvatarPaths.length);
-      //   chosenPath = femaleAvatarPaths[randomIndex];
-      //   console.log(`[AvatarDebug] Female avatar selected. List length: ${femaleAvatarPaths.length}, Chosen: ${chosenPath}`);
-      // } else {
-      //   chosenPath = neutralAvatarPath; // Fallback if gender is not male/female or lists are empty
-      //   console.log(`[AvatarDebug] Neutral/default avatar selected for gender '${currentSpeakingGender}' or empty list: ${chosenPath}`);
-      // }
-      // setCurrentDisplayAvatarPath(chosenPath);
-      // console.log(`[AvatarDebug] setCurrentDisplayAvatarPath called with: ${chosenPath}`);
+      let chosenPath: string | null = null;
+      if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
+        const randomIndex = Math.floor(Math.random() * maleAvatarPaths.length);
+        chosenPath = maleAvatarPaths[randomIndex];
+        console.log(`[AvatarDebug] Male avatar selected. List length: ${maleAvatarPaths.length}, Chosen: ${chosenPath}`);
+      } else if (currentSpeakingGender === 'female' && femaleAvatarPaths.length > 0) {
+        const randomIndex = Math.floor(Math.random() * femaleAvatarPaths.length);
+        chosenPath = femaleAvatarPaths[randomIndex];
+        console.log(`[AvatarDebug] Female avatar selected. List length: ${femaleAvatarPaths.length}, Chosen: ${chosenPath}`);
+      } else {
+        chosenPath = neutralAvatarPath; 
+        console.log(`[AvatarDebug] Neutral/default avatar selected for gender '${currentSpeakingGender}' or empty list: ${chosenPath}`);
+      }
+      setCurrentDisplayAvatarPath(chosenPath);
+      console.log(`[AvatarDebug] setCurrentDisplayAvatarPath called with: ${chosenPath}`);
 
     } else if (isTTSSpeaking && currentSpeakingRole === 'System') {
-      setCurrentDisplayAvatarPath(neutralAvatarPath); // System always uses neutral
+      setCurrentDisplayAvatarPath(neutralAvatarPath); 
       console.log(`[AvatarDebug] System speaking, using neutral avatar: ${neutralAvatarPath}`);
     } else if (!isTTSSpeaking) {
       setCurrentDisplayAvatarPath(null);
@@ -180,7 +173,6 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
               data-ai-hint={getAvatarAiHint()}
               onError={(e) => {
                 console.error(`[AvatarDebug] Error loading avatar. Attempted src: ${(e.target as HTMLImageElement).src}. Event:`, e);
-                // Don't set to neutralAvatarPath here as it might trigger loops if that also fails
               }}
             />
           ) : meetingActive ? (
