@@ -101,7 +101,7 @@ export default function HomePage() {
   const handleClosePersonaManager = () => {
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas(); 
+    loadPersonas();
   };
 
   const handleDeletePersonaRequest = (id: string) => {
@@ -112,7 +112,7 @@ export default function HomePage() {
   const confirmDeleteHomepagePersona = () => {
     if (personaToDeleteId) {
       deleteUserPersona(personaToDeleteId);
-      loadPersonas(); 
+      loadPersonas();
       toast({ title: "Persona Deleted", description: "The persona has been successfully removed." });
     }
     setPersonaToDeleteId(null);
@@ -138,19 +138,19 @@ export default function HomePage() {
       const aiGeneratedDetails = await generateCustomScenarioDetails(aiInput);
 
       const newScenarioId = `custom-${uuidv4()}`;
-      
+
       const personaConf: Record<string, string> = {};
-      const standardPersonaRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"]; 
-      
+      const standardPersonaRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
+
       standardPersonaRoles.forEach(stdRole => {
         const key = `${stdRole.toLowerCase()}Persona`;
         if (selectedRoles.includes(stdRole)) {
           let personaInstruction = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
-          
+
           const customPersonaForRole = userPersonas.find(p => p.role === stdRole);
           if (customPersonaForRole) {
              personaInstruction = customPersonaForRole.instructionPrompt;
-          } else if (stdRole === "Manager") { 
+          } else if (stdRole === "Manager") {
             personaInstruction = `You are the Manager. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively, providing guidance, feedback, and asking relevant questions from a managerial perspective.`;
           }
           personaConf[key] = personaInstruction;
@@ -170,7 +170,7 @@ export default function HomePage() {
         },
         agentsInvolved: selectedRoles,
         personaConfig: personaConf,
-        maxTurns: 10, 
+        maxTurns: 10,
       };
 
       addUserCreatedScenario(newScenario);
@@ -188,7 +188,7 @@ export default function HomePage() {
     }
   };
 
-  const displayedRolesFromCustomPersonas = userPersonas.map(p => p.role);
+  const customPersonaRolesDisplayed = userPersonas.map(p => p.role);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -232,7 +232,7 @@ export default function HomePage() {
               height={200}
               className="mx-auto rounded-lg"
               data-ai-hint="abstract sphere animation"
-              unoptimized 
+              unoptimized
             />
           </div>
 
@@ -249,7 +249,7 @@ export default function HomePage() {
               <Mic className="h-5 w-5" />
               <span className="sr-only">Use microphone</span>
             </Button>
-             <Button 
+             <Button
                 onClick={handleGenerateScenario}
                 disabled={!simulationDescription.trim() || isGenerating}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0"
@@ -276,7 +276,7 @@ export default function HomePage() {
                     key={role}
                     checked={selectedRoles.includes(role)}
                     onSelect={(event) => {
-                      event.preventDefault(); 
+                      event.preventDefault();
                       handleRoleSelect(role);
                     }}
                   >
@@ -285,7 +285,7 @@ export default function HomePage() {
                 ))}
               </DropdownMenuContent>
             </DropdownMenu>
-            
+
             <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
                 <Button
@@ -321,11 +321,11 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Section for People in the meeting room */}
+      {/* Section for Meeting Participants */}
       <section className="pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
-            People in the meeting room
+            Meeting Participants
           </h2>
           {userPersonas.length > 0 || selectedRoles.length > 0 ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
@@ -337,7 +337,7 @@ export default function HomePage() {
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-10"
                     onClick={() => handleOpenPersonaManager(persona)}
                   >
-                    {persona.name} <span className="text-xs text-gray-500 ml-1">({persona.role})</span>
+                    {persona.name}
                   </Button>
                   <div className="absolute top-0 right-0 h-full flex items-center opacity-0 group-hover:opacity-100 transition-opacity mr-1">
                     <Button
@@ -364,15 +364,15 @@ export default function HomePage() {
 
               {/* Display selected standard roles that don't have a custom persona */}
               {selectedRoles
-                .filter(role => !displayedRolesFromCustomPersonas.includes(role))
+                .filter(role => !customPersonaRolesDisplayed.includes(role))
                 .map((role) => (
                   <Button
                     key={role}
                     variant="outline"
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
-                    disabled 
+                    disabled
                   >
-                    {role} (Standard)
+                    {role}
                   </Button>
                 ))}
             </div>
