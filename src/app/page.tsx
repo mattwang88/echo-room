@@ -35,7 +35,7 @@ import {
   UserCircle2,
   Sparkles,
   Mic,
-  MicOff, // Added
+  MicOff,
   Users,
   Plus,
   Upload,
@@ -53,7 +53,7 @@ import type { Scenario, AgentRole, Persona } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { PersonaManager } from '@/components/PersonaManager';
 import { getAllUserPersonas, deleteUserPersona } from '@/lib/userPersonas';
-import { useSpeechToText } from '@/hooks/useSpeechToText'; // Added
+import { useSpeechToText } from '@/hooks/useSpeechToText';
 
 const scenariosForButtons = [
   { id: 'product-pitch', title: 'New Product Pitch' },
@@ -69,7 +69,7 @@ export default function HomePage() {
   const { toast } = useToast();
   const [simulationDescription, setSimulationDescription] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<AgentRole[]>([]);
-  const [isGeneratingScenario, setIsGeneratingScenario] = useState(false); // Renamed from isGenerating
+  const [isGeneratingScenario, setIsGeneratingScenario] = useState(false);
 
   const [userPersonas, setUserPersonas] = useState<Persona[]>([]);
   const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
@@ -78,12 +78,17 @@ export default function HomePage() {
   const [personaToDeleteId, setPersonaToDeleteId] = useState<string | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
 
+  const [clientHasMounted, setClientHasMounted] = useState(false);
+  useEffect(() => {
+    setClientHasMounted(true);
+  }, []);
+
   // --- Speech-to-Text State and Logic for Homepage ---
   const [isRecordingHomepage, setIsRecordingHomepage] = useState(false);
-  const baseTextForSTT = useRef<string>(""); // Stores textarea content before STT starts for current session
+  const baseTextForSTT = useRef<string>("");
 
   const {
-    isListening: sttIsListeningHomepageHook, // Renamed to avoid conflict if STT is used elsewhere
+    isListening: sttIsListeningHomepageHook,
     startListening: startSttListeningHomepage,
     stopListening: stopSttListeningHomepage,
     sttError: sttErrorHomepage,
@@ -91,10 +96,9 @@ export default function HomePage() {
     clearSTTError: clearSTTErrorHomepage,
   } = useSpeechToText({
     onTranscript: (finalTranscriptSegment: string) => {
-      // This segment is the newly finalized part of speech
       const newTextWithFinalSegment = baseTextForSTT.current + (baseTextForSTT.current ? " " : "") + finalTranscriptSegment.trim();
       setSimulationDescription(newTextWithFinalSegment);
-      baseTextForSTT.current = newTextWithFinalSegment; // Update base for continuous speech
+      baseTextForSTT.current = newTextWithFinalSegment;
     },
     onInterimTranscript: (interimTranscriptSegment: string) => {
       setSimulationDescription(baseTextForSTT.current + (baseTextForSTT.current ? " " : "") + interimTranscriptSegment.trim());
@@ -123,7 +127,7 @@ export default function HomePage() {
     if (isRecordingHomepage) {
       stopSttListeningHomepage();
     } else {
-      baseTextForSTT.current = simulationDescription; // Capture current content
+      baseTextForSTT.current = simulationDescription;
       startSttListeningHomepage();
     }
   };
@@ -153,7 +157,7 @@ export default function HomePage() {
   const handleClosePersonaManager = () => {
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas(); // Reload personas when dialog closes
+    loadPersonas();
   };
 
   const handleDeletePersonaRequest = (id: string) => {
@@ -172,7 +176,7 @@ export default function HomePage() {
   };
 
   const handleGenerateScenario = async () => {
-    if (!simulationDescription.trim() || isRecordingHomepage) { // Prevent generation if recording
+    if (!simulationDescription.trim() || isRecordingHomepage) {
       toast({
         title: "Input Issue",
         description: isRecordingHomepage ? "Please stop voice input before generating." : "Please describe the simulation topic.",
@@ -240,11 +244,8 @@ export default function HomePage() {
     }
   };
 
-  // Filter selected roles that don't have a custom persona already displayed
-  const displayedStandardRoles = selectedRoles.filter(
-    (role) => !userPersonas.some((persona) => persona.role === role)
-  );
-
+  const rolesWithCustomPersonas = userPersonas.map(p => p.role);
+  const displayedStandardRoles = selectedRoles.filter(role => !rolesWithCustomPersonas.includes(role));
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -298,13 +299,13 @@ export default function HomePage() {
               onChange={(e) => setSimulationDescription(e.target.value)}
               className="flex-grow !p-3 !border-0 !shadow-none !ring-0 resize-none min-h-[50px] bg-transparent focus:outline-none placeholder-gray-500"
               rows={1}
-              disabled={isRecordingHomepage} // Disable textarea while recording
+              disabled={isRecordingHomepage}
             />
             <Button
               variant="ghost"
               size="icon"
               onClick={handleHomepageMicClick}
-              disabled={!isSTTSupportedHomepage || isGeneratingScenario}
+              disabled={!clientHasMounted || !isSTTSupportedHomepage || isGeneratingScenario}
               className="text-gray-500 hover:text-gray-700 mx-2"
               title={isRecordingHomepage ? "Stop voice input" : "Use microphone"}
             >
@@ -335,7 +336,7 @@ export default function HomePage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                  <PersonaManager
-                  personas={userPersonas} // Pass current personas
+                  personas={userPersonas}
                   onFormSubmitSuccess={handleClosePersonaManager}
                   personaToEdit={editingPersona}
                 />
@@ -434,7 +435,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-left ml-1">
-              Create or select participants using the icons above to see them here.
+              No custom personas created or participants selected.
             </p>
           )}
         </div>
