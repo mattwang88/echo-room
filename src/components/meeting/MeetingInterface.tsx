@@ -24,18 +24,18 @@ interface MeetingInterfaceProps {
 
 // Predefined lists of avatar image paths
 const maleAvatarPaths = [
-    '/images/males/avatar1.jpg',
-    '/images/males/avatar2.jpg',
-    '/images/males/avatar3.jpg',
-    '/images/males/avatar4.jpg',
-    '/images/males/avatar5.jpg',
+    '/images/males/avatar1.png',
+    '/images/males/avatar2.png',
+    '/images/males/avatar3.png',
+    '/images/males/avatar4.png',
+    '/images/males/avatar5.png',
 ];
 const femaleAvatarPaths = [
-    '/images/females/avatar1.jpg',
-    '/images/females/avatar2.jpg',
-    '/images/females/avatar3.jpg',
-    '/images/females/avatar4.jpg',
-    '/images/females/avatar5.jpg',
+    '/images/females/avatar1.png',
+    '/images/females/avatar2.png',
+    '/images/females/avatar3.png',
+    '/images/females/avatar4.png',
+    '/images/females/avatar5.png',
 ];
 const neutralAvatarPath = 'https://placehold.co/256x256/cccccc/e0e0e0.png'; // A generic placeholder for neutral/System
 
