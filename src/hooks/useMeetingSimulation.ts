@@ -40,9 +40,9 @@ export function useMeetingSimulation(scenarioId: string | null) {
     speak: ttsSpeak, 
     cancel: ttsCancel, 
     isSpeaking: isTTSSpeaking, 
-    currentSpeakingRole: ttsCurrentSpeakingRole, // Renamed from ttsCurrentSpeaker
+    currentSpeakingRole: ttsCurrentSpeakingRole,
     currentSpeakingGender: ttsCurrentSpeakingGender 
-  } = useTextToSpeech();
+  } = useTextToSpeech({ sessionKey: scenarioId }); // Pass scenarioId as sessionKey
 
   const handleSttListeningChange = useCallback((listening: boolean) => {
     if (!isMountedRef.current) return;
@@ -345,7 +345,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
 
   useEffect(() => {
-    const userPersonas = getAllUserPersonas(); // Moved here, as it only needs to run once for this effect's purpose
+    const userPersonas = getAllUserPersonas(); 
     setPersonas(userPersonas);
     
     if (!isRecording && intentToSubmitAfterStop) {
@@ -360,9 +360,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
         setIntentToSubmitAfterStop(false); 
       }
     }
-  // submitUserResponse is a dependency because it's called. currentUserResponse and meetingActive guard its call.
   // eslint-disable-next-line react-hooks/exhaustive-deps 
-  }, [isRecording, intentToSubmitAfterStop]); // Removed currentUserResponse and meetingActive as they are handled inside
+  }, [isRecording, intentToSubmitAfterStop]); 
 
   const toggleTTS = useCallback(() => {
     if (isTTSSpeaking) {
@@ -403,10 +402,11 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isSTTSupported: browserSupportsSTT,
     sttInternalIsListening, 
     isTTSSpeaking, 
-    currentSpeakingRole: ttsCurrentSpeakingRole, // Use the role from TTS hook
-    currentSpeakingGender: ttsCurrentSpeakingGender, // Use the gender from TTS hook
+    currentSpeakingRole: ttsCurrentSpeakingRole, 
+    currentSpeakingGender: ttsCurrentSpeakingGender, 
     personas,
     isTTSEnabled,
     toggleTTS,
   };
 }
+

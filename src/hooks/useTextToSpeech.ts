@@ -20,15 +20,17 @@ const femaleVoices: VoiceConfig[] = [
   { voiceName: 'en-US-Wavenet-F', languageCode: 'en-US', gender: 'female' },
 ];
 
-const systemVoice: VoiceConfig = { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'neutral' }; // Wavenet-D is often perceived as male, but we'll mark neutral for System
+const systemVoice: VoiceConfig = { voiceName: 'en-US-Wavenet-D', languageCode: 'en-US', gender: 'neutral' };
 
-// VoiceMap for specific non-random roles if ever needed, currently unused for AI agents
 const specificRoleVoiceMap: Partial<Record<AgentRole, VoiceConfig>> = {
   // Example: Manager: { voiceName: 'en-US-Neural2-A', languageCode: 'en-US', gender: 'male' },
 };
 
+interface UseTextToSpeechProps {
+  sessionKey: string | null; // To reset voice assignments when the session/scenario changes
+}
 
-export function useTextToSpeech() {
+export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps) {
   const { toast } = useToast();
   const [isSpeakingState, setIsSpeakingState] = useState(false);
   const [currentSpeakingRole, setCurrentSpeakingRole] = useState<ParticipantRole | null>(null);
@@ -39,6 +41,21 @@ export function useTextToSpeech() {
   const isSpeakingStateRef = useRef(isSpeakingState);
   const currentSpeechTextRef = useRef<string | null>(null);
   const currentParticipantRef = useRef<ParticipantRole | null>(null);
+
+  const sessionVoiceAssignmentsRef = useRef<Record<ParticipantRole, VoiceConfig>>({});
+  const currentSessionKeyRef = useRef<string | null>(null);
+
+  useEffect(() => {
+    if (sessionKey !== currentSessionKeyRef.current) {
+      console.log(`[useTextToSpeech] Session key changed from ${currentSessionKeyRef.current} to ${sessionKey}. Resetting voice assignments.`);
+      sessionVoiceAssignmentsRef.current = {};
+      currentSessionKeyRef.current = sessionKey;
+      // If speaking during session change, cancel it
+      if (isSpeakingStateRef.current) {
+        memoizedCancel();
+      }
+    }
+  }, [sessionKey]); // Removed memoizedCancel from deps as it's stable
 
   useEffect(() => {
     isSpeakingStateRef.current = isSpeakingState;
@@ -212,17 +229,24 @@ export function useTextToSpeech() {
 
     if (participant === 'System') {
         selectedVoiceConfig = systemVoice;
-    } else if (specificRoleVoiceMap[participant as AgentRole]) {
-        selectedVoiceConfig = specificRoleVoiceMap[participant as AgentRole]!;
+    } else if (sessionVoiceAssignmentsRef.current[participant]) {
+        selectedVoiceConfig = sessionVoiceAssignmentsRef.current[participant]!;
+        console.log(`[useTextToSpeech] Reusing voice for ${participant}: ${selectedVoiceConfig.voiceName} (Gender: ${selectedVoiceConfig.gender})`);
     } else {
-        // Random selection for other AI agents
-        const randomGender = Math.random() < 0.5 ? 'male' : 'female';
-        const voiceList = randomGender === 'male' ? maleVoices : femaleVoices;
-        if (voiceList.length > 0) {
-            selectedVoiceConfig = voiceList[Math.floor(Math.random() * voiceList.length)];
-        } else { // Fallback if a gender list is empty
-            selectedVoiceConfig = systemVoice; 
+        // First time this role speaks in this session, or not 'System'
+        if (specificRoleVoiceMap[participant as AgentRole]) {
+            selectedVoiceConfig = specificRoleVoiceMap[participant as AgentRole]!;
+        } else {
+            const randomGender = Math.random() < 0.5 ? 'male' : 'female';
+            const voiceList = randomGender === 'male' ? maleVoices : femaleVoices;
+            if (voiceList.length > 0) {
+                selectedVoiceConfig = voiceList[Math.floor(Math.random() * voiceList.length)];
+            } else {
+                selectedVoiceConfig = systemVoice; // Fallback
+            }
         }
+        sessionVoiceAssignmentsRef.current[participant] = selectedVoiceConfig;
+        console.log(`[useTextToSpeech] Assigned new voice for ${participant} for this session: ${selectedVoiceConfig.voiceName} (Gender: ${selectedVoiceConfig.gender})`);
     }
     
     if(isMountedRef.current) {
@@ -280,6 +304,17 @@ export function useTextToSpeech() {
       currentParticipantRef.current = null;
     }
   }, [toast, memoizedCancel, setIsSpeakingState, setCurrentSpeakingRole, setCurrentSpeakingGender]);
+  
+  // Re-add the useEffect that was removed related to memoizedCancel dependency for sessionKey
+  useEffect(() => {
+    if (sessionKey !== currentSessionKeyRef.current) {
+      // ... (existing logic for session key change)
+      if (isSpeakingStateRef.current) {
+        memoizedCancel(); // Ensure this is called if speaking during session change
+      }
+    }
+  }, [sessionKey, memoizedCancel]);
+
 
   const isTTSSupported = typeof Audio !== 'undefined'; 
 
@@ -292,3 +327,4 @@ export function useTextToSpeech() {
     currentSpeakingGender,
   };
 }
+
