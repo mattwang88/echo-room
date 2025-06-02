@@ -9,65 +9,50 @@ import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
 export default function WelcomePage() {
-  const [animationStep, setAnimationStep] = useState<'idle' | 'closing' | 'opening'>('idle');
+  const [isExiting, setIsExiting] = useState(false);
   const router = useRouter();
 
   const handleEnterClick = () => {
-    if (animationStep !== 'idle') return; // Prevent multiple clicks
+    if (isExiting) return; 
 
-    setAnimationStep('closing'); // Start closing animation
+    setIsExiting(true);
 
     setTimeout(() => {
-      setAnimationStep('opening'); // Start opening animation
-
-      setTimeout(() => {
-        router.push('/home');
-      }, 800); // Opening duration: matches curtain open animation
-    }, 500); // Closing duration: matches curtain close animation
+      router.push('/home');
+    }, 1000); // Match the longest animation duration (image slide up)
   };
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center text-center p-4 overflow-hidden">
-      <Image
-        src="/images/welcome.png"
-        alt="Welcome background"
-        layout="fill"
-        objectFit="cover"
-        quality={100}
-        className="-z-10"
-        data-ai-hint="office meeting abstract"
-        priority // Good for LCP if this is the main visual
-      />
-
-      {/* Left Curtain */}
+      {/* Background Image Container */}
       <div
         className={cn(
-          "fixed top-0 left-0 bottom-0 w-1/2 bg-gray-800 z-50 transition-transform ease-in-out",
+          "absolute inset-0 w-full h-full transition-transform duration-1000 ease-in-out z-0",
           {
-            "-translate-x-full": animationStep === 'idle' || animationStep === 'opening',
-            "translate-x-0": animationStep === 'closing',
-            "duration-500": animationStep === 'closing',
-            "duration-800": animationStep === 'opening',
-            "duration-0": animationStep === 'idle',
+            "-translate-y-full": isExiting, // Slide up
           }
         )}
-      />
-      {/* Right Curtain */}
+      >
+        <Image
+          src="/images/welcome.png"
+          alt="Welcome background"
+          layout="fill"
+          objectFit="cover"
+          quality={100}
+          data-ai-hint="office meeting abstract"
+          priority
+        />
+      </div>
+
+      {/* Content: Logo and Button */}
       <div
         className={cn(
-          "fixed top-0 right-0 bottom-0 w-1/2 bg-gray-800 z-50 transition-transform ease-in-out",
+          "relative z-20 flex flex-col items-center justify-center transition-opacity duration-500 ease-in-out",
           {
-            "translate-x-full": animationStep === 'idle' || animationStep === 'opening',
-            "translate-x-0": animationStep === 'closing',
-            "duration-500": animationStep === 'closing',
-            "duration-800": animationStep === 'opening',
-            "duration-0": animationStep === 'idle',
+            "opacity-0": isExiting, // Fade out
           }
         )}
-      />
-
-      {/* Content: Logo and Button - above background, below curtains when closed */}
-      <div className="relative z-20 flex flex-col items-center justify-center">
+      >
         <div className="mb-8">
           <Image
             src="/images/logo.png"
@@ -83,15 +68,22 @@ export default function WelcomePage() {
           onClick={handleEnterClick}
           size="lg"
           className="bg-primary hover:bg-primary/90 text-primary-foreground text-lg px-8 py-6 rounded-lg shadow-lg transition-transform hover:scale-105"
-          disabled={animationStep !== 'idle'}
+          disabled={isExiting}
         >
           <LogIn className="mr-2 h-5 w-5" />
           Enter EchoRoom
         </Button>
       </div>
 
-      {/* Footer - above background, below curtains when closed */}
-      <footer className="absolute bottom-4 left-0 right-0 text-center text-white/80 text-sm z-10">
+      {/* Footer */}
+      <footer
+        className={cn(
+          "absolute bottom-4 left-0 right-0 text-center text-white/80 text-sm z-10 transition-opacity duration-500 ease-in-out",
+           {
+            "opacity-0": isExiting, // Fade out
+          }
+        )}
+      >
         &copy; {new Date().getFullYear()} EchoRoom. Your space to master communication.
       </footer>
     </div>
