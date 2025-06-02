@@ -64,6 +64,24 @@ const scenariosForButtons = [
 
 const availableParticipantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
 
+const randomMeetingTopics = [
+  "Discuss Q3 marketing strategy.",
+  "Review progress on Project Phoenix.",
+  "Brainstorm ideas for the new website design.",
+  "Plan the upcoming team offsite event.",
+  "Resolve customer feedback on the latest feature.",
+  "Prepare for the client presentation next week.",
+  "Align on sales targets for the next month.",
+  "Improve our internal communication workflow.",
+  "Debrief on the recent product launch success.",
+  "Address technical debt in the payment module.",
+  "Finalize the agenda for the all-hands meeting.",
+  "Explore new tools for project management.",
+  "Update on competitor analysis findings.",
+  "Training session for the new CRM system.",
+  "Discuss employee engagement survey results.",
+];
+
 export default function HomePage() {
   const router = useRouter();
   const { toast } = useToast();
@@ -83,7 +101,6 @@ export default function HomePage() {
     setClientHasMounted(true);
   }, []);
 
-  // --- Speech-to-Text State and Logic for Homepage ---
   const [isRecordingHomepage, setIsRecordingHomepage] = useState(false);
   const baseTextForSTT = useRef<string>("");
 
@@ -131,7 +148,6 @@ export default function HomePage() {
       startSttListeningHomepage();
     }
   };
-  // --- End Speech-to-Text Logic ---
 
   const loadPersonas = () => {
     setUserPersonas(getAllUserPersonas());
@@ -173,6 +189,13 @@ export default function HomePage() {
     }
     setPersonaToDeleteId(null);
     setIsDeleteConfirmOpen(false);
+  };
+
+  const handleGenerateRandomTopic = () => {
+    const randomIndex = Math.floor(Math.random() * randomMeetingTopics.length);
+    const randomTopic = randomMeetingTopics[randomIndex];
+    setSimulationDescription(randomTopic);
+    baseTextForSTT.current = randomTopic; // Keep STT base in sync
   };
 
   const handleGenerateScenario = async () => {
@@ -244,7 +267,7 @@ export default function HomePage() {
     }
   };
 
-  const standardRolesToDisplay = selectedRoles.filter(
+  const displayedParticipantRoles = selectedRoles.filter(
     role => !userPersonas.some(p => p.role === role)
   );
 
@@ -293,7 +316,16 @@ export default function HomePage() {
           </div>
 
           <div className="relative flex items-center w-full p-1 bg-card border border-gray-300 rounded-lg shadow-sm">
-            <Sparkles className="h-5 w-5 text-gray-400 mx-3 flex-shrink-0" />
+            <button
+              onClick={handleGenerateRandomTopic}
+              className="p-2 text-gray-400 hover:text-yellow-500 transition-colors duration-150 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 flex-shrink-0 mx-1"
+              title="Generate random topic"
+              type="button"
+              disabled={isGeneratingScenario || isRecordingHomepage}
+            >
+              <Sparkles className="h-5 w-5" />
+              <span className="sr-only">Generate random topic</span>
+            </button>
             <Textarea
               placeholder={isRecordingHomepage ? "Listening..." : "Describe the meeting topic or scenario you want to practice..."}
               value={simulationDescription}
@@ -391,7 +423,7 @@ export default function HomePage() {
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Meeting Participants
           </h2>
-          {userPersonas.length > 0 || standardRolesToDisplay.length > 0 ? (
+          {userPersonas.length > 0 || displayedParticipantRoles.length > 0 ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
@@ -402,7 +434,7 @@ export default function HomePage() {
                   >
                     {persona.name}
                   </Button>
-                  <Button
+                   <Button
                       variant="ghost"
                       size="icon"
                       className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
@@ -423,7 +455,7 @@ export default function HomePage() {
                 </div>
               ))}
 
-              {standardRolesToDisplay.map((role) => (
+              {displayedParticipantRoles.map((role) => (
                   <Button
                     key={role}
                     variant="outline"
