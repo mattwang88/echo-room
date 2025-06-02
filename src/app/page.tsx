@@ -64,7 +64,7 @@ const scenariosForButtons = [
 const availableParticipantRoles: AgentRole[] = [
   "CEO", "COO", "CFO", "CMO", "CIO", "Chief Sales Officer",
   "General Counsel", "VP Engineering", "VP Marketing", "VP Sales", "VP Product",
-  "CTO", "Product", "Finance", "HR", "Manager", // Existing
+  "CTO", "Product", "Finance", "HR", "Manager",
   "Engineering Manager", "Senior Software Engineer", "Software Engineer", "DevOps Engineer", "QA Engineer",
   "Product Manager", "UX Designer", "UI Designer",
   "Data Scientist", "Data Analyst", "Business Analyst",
@@ -181,11 +181,11 @@ export default function HomePage() {
   };
 
   const handleClosePersonaManager = () => {
-    const rolesBeforeLoad = [...selectedRoles]; // Snapshot selectedRoles
+    const rolesBeforeLoad = [...selectedRoles];
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas(); // This updates userPersonas and might trigger re-renders
-    setSelectedRoles(rolesBeforeLoad); // Restore selectedRoles
+    loadPersonas();
+    setSelectedRoles(rolesBeforeLoad);
   };
 
 
@@ -493,13 +493,23 @@ export default function HomePage() {
                 ))}
 
                 {displayedParticipantRoles.map((role) => (
+                  <div key={role} className="relative group">
                     <Button
-                      key={role}
                       variant="outline"
-                      className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default"
+                      className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto"
                     >
                       {role}
                     </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                        onClick={(e) => { e.stopPropagation(); handleRoleSelect(role); }}
+                        title={`Remove ${role}`}
+                      >
+                        <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                   ))}
               </div>
             </>
