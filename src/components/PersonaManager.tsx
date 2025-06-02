@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { v4 as uuidv4 } from 'uuid';
 import {
   DialogHeader,
@@ -18,48 +18,67 @@ import {
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
-  AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Pencil, Trash2 } from 'lucide-react';
 import type { Persona } from '@/lib/types';
-import { addUserPersona, deleteUserPersona } from '@/lib/userPersonas';
+import { addUserPersona, deleteUserPersona, getAllUserPersonas } from '@/lib/userPersonas'; // Added getAllUserPersonas
 
 interface PersonaManagerProps {
-  personas: Persona[];
-  onPersonasUpdate: (personas: Persona[]) => void;
-  onFormSubmitSuccess?: () => void;
+  personas: Persona[]; // Personas to display in its internal list
+  onPersonasUpdate: (personas: Persona[]) => void; // To update its internal list
+  onFormSubmitSuccess?: () => void; // To close the dialog from homepage
+  personaToEdit?: Persona | null; // Persona being edited, passed from homepage
 }
 
-export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess }: PersonaManagerProps) {
+export function PersonaManager({ 
+  personas: initialPersonas, // Renamed to avoid conflict with internal state
+  onPersonasUpdate, 
+  onFormSubmitSuccess, 
+  personaToEdit 
+}: PersonaManagerProps) {
   const [name, setName] = useState('');
   const [role, setRole] = useState('');
   const [instructionPrompt, setInstructionPrompt] = useState('');
-  const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
-  const [isAlertOpen, setIsAlertOpen] = useState(false);
-  const [personaToDeleteId, setPersonaToDeleteId] = useState<string | null>(null);
+  const [currentEditingId, setCurrentEditingId] = useState<string | null>(null);
+  
+  // Internal list of personas for display *within* this component's UI (if needed)
+  const [internalPersonas, setInternalPersonas] = useState<Persona[]>(initialPersonas);
 
-  const resetForm = () => {
+  const [isInternalAlertOpen, setIsInternalAlertOpen] = useState(false);
+  const [personaToDeleteInternallyId, setPersonaToDeleteInternallyId] = useState<string | null>(null);
+
+  const resetForm = useCallback(() => {
     setName('');
     setRole('');
     setInstructionPrompt('');
-    setEditingPersona(null);
-  };
+    setCurrentEditingId(null);
+  }, []);
   
   useEffect(() => {
-    if (!editingPersona && (name || role || instructionPrompt)) {
-      // This primarily handles deselecting an edit.
+    if (personaToEdit) {
+      setName(personaToEdit.name);
+      setRole(personaToEdit.role);
+      setInstructionPrompt(personaToEdit.instructionPrompt);
+      setCurrentEditingId(personaToEdit.id);
+    } else {
+      resetForm();
     }
-  }, [editingPersona, name, role, instructionPrompt]);
+  }, [personaToEdit, resetForm]);
+
+  // Effect to keep internalPersonas in sync with the prop if it changes
+  useEffect(() => {
+    setInternalPersonas(initialPersonas);
+  }, [initialPersonas]);
 
 
   const handleCreateOrUpdatePersona = (e: React.FormEvent) => {
     e.preventDefault();
     if (!name.trim() || !role.trim() || !instructionPrompt.trim()) return;
 
-    const id = editingPersona?.id || uuidv4();
+    const id = currentEditingId || uuidv4();
     const persona: Persona = {
       id,
       name: name.trim(),
@@ -68,49 +87,55 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
     };
 
     addUserPersona(persona); 
-    const updatedPersonas = editingPersona 
-      ? personas.map(p => p.id === editingPersona.id ? persona : p)
-      : [...personas, persona];
-    onPersonasUpdate(updatedPersonas); 
+    
+    // Refresh the internal list if this component displays one
+    const updatedInternalPersonas = getAllUserPersonas();
+    setInternalPersonas(updatedInternalPersonas);
+    onPersonasUpdate(updatedInternalPersonas); // Notify parent of changes if needed for its own display
 
     if (onFormSubmitSuccess) {
-      onFormSubmitSuccess();
+      onFormSubmitSuccess(); // This will close the dialog and trigger homepage refresh
     }
     resetForm();
   };
 
-  const handleEditPersona = (persona: Persona) => {
-    setEditingPersona(persona);
+  const handleEditInternalPersona = (persona: Persona) => {
+    // This function is for editing personas from the list *within* this dialog
+    // If called, it means we are not using the personaToEdit prop from parent
+    // but rather picking one from the internal list.
+    // This might be redundant if editing is always initiated from homepage buttons.
     setName(persona.name);
     setRole(persona.role);
     setInstructionPrompt(persona.instructionPrompt);
+    setCurrentEditingId(persona.id);
   };
 
-  const confirmDeletePersona = () => {
-    if (personaToDeleteId) {
-      deleteUserPersona(personaToDeleteId); 
-      const updatedPersonas = personas.filter(p => p.id !== personaToDeleteId);
-      onPersonasUpdate(updatedPersonas); 
-      if (editingPersona?.id === personaToDeleteId) { 
+  const confirmDeleteInternalPersona = () => {
+    if (personaToDeleteInternallyId) {
+      deleteUserPersona(personaToDeleteInternallyId); 
+      const updatedInternalPersonas = internalPersonas.filter(p => p.id !== personaToDeleteInternallyId);
+      setInternalPersonas(updatedInternalPersonas);
+      onPersonasUpdate(updatedInternalPersonas); 
+      
+      if (currentEditingId === personaToDeleteInternallyId) { 
         resetForm();
       }
-      setPersonaToDeleteId(null);
-      setIsAlertOpen(false);
+      setPersonaToDeleteInternallyId(null);
+      setIsInternalAlertOpen(false);
     }
   };
 
-  const openDeleteConfirmation = (id: string) => {
-    console.log('Attempting to open delete confirmation for ID:', id);
-    setPersonaToDeleteId(id);
-    setIsAlertOpen(true);
+  const openInternalDeleteConfirmation = (id: string) => {
+    setPersonaToDeleteInternallyId(id);
+    setIsInternalAlertOpen(true);
   };
 
   return (
     <>
       <DialogHeader>
-        <DialogTitle>{editingPersona ? 'Edit Persona' : 'Create New Persona'}</DialogTitle>
+        <DialogTitle>{currentEditingId ? 'Edit Persona' : 'Create New Persona'}</DialogTitle>
         <DialogDescription>
-          {editingPersona ? 'Modify the details of this AI persona.' : 'Define a new AI persona that can participate in your meeting scenarios.'}
+          {currentEditingId ? 'Modify the details of this AI persona.' : 'Define a new AI persona that can participate in your meeting scenarios.'}
         </DialogDescription>
       </DialogHeader>
       <form onSubmit={handleCreateOrUpdatePersona} className="space-y-4 py-4">
@@ -151,25 +176,26 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
           />
         </div>
         <DialogFooter className="pt-2">
-          {editingPersona && (
-            <Button type="button" variant="outline" onClick={resetForm} className="mr-auto">
-              Cancel Edit
+          {currentEditingId && (
+            <Button type="button" variant="outline" onClick={() => { resetForm(); if (onFormSubmitSuccess) onFormSubmitSuccess(); }} className="mr-auto">
+              Cancel
             </Button>
           )}
           <Button 
             type="submit" 
             disabled={!name.trim() || !role.trim() || !instructionPrompt.trim()}
           >
-            {editingPersona ? 'Save Changes' : 'Create Persona'}
+            {currentEditingId ? 'Save Changes' : 'Create Persona'}
           </Button>
         </DialogFooter>
       </form>
 
-      {personas.length > 0 && (
+      {/* List of personas *within* this dialog - can be kept or removed if homepage buttons are primary */}
+      {internalPersonas.length > 0 && !personaToEdit && ( // Show list only if not in edit mode from homepage
         <div className="mt-6 pt-4 border-t">
-          <h4 className="text-md font-semibold mb-3">Existing Personas</h4>
-          <div className="max-h-[250px] overflow-y-auto pr-2 space-y-3">
-            {personas.map((persona) => (
+          <h4 className="text-md font-semibold mb-3">Existing Personas (Internal List)</h4>
+          <div className="max-h-[200px] overflow-y-auto pr-2 space-y-3">
+            {internalPersonas.map((persona) => (
               <div key={persona.id} className="p-3 border rounded-lg relative group bg-muted/30">
                 <div className="flex justify-between items-start">
                   <div>
@@ -181,22 +207,22 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
                         : persona.instructionPrompt}
                     </p>
                   </div>
-                  <div className="flex flex-col sm:flex-row gap-1 sm:gap-2  opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity absolute top-2 right-2 sm:relative sm:top-0 sm:right-0">
+                  <div className="flex flex-col sm:flex-row gap-1 sm:gap-2 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity absolute top-2 right-2 sm:relative sm:top-0 sm:right-0">
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleEditPersona(persona)}
+                      onClick={() => handleEditInternalPersona(persona)} // Uses internal edit
                       className="h-7 w-7"
-                      title="Edit Persona"
+                      title="Edit Persona from list"
                     >
                       <Pencil className="h-3.5 w-3.5" />
                     </Button>
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => openDeleteConfirmation(persona.id)}
+                      onClick={() => openInternalDeleteConfirmation(persona.id)}
                       className="h-7 w-7 hover:bg-destructive hover:text-destructive-foreground"
-                      title="Delete Persona"
+                      title="Delete Persona from list"
                     >
                       <Trash2 className="h-3.5 w-3.5" />
                     </Button>
@@ -208,17 +234,17 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
         </div>
       )}
 
-      <AlertDialog open={isAlertOpen} onOpenChange={setIsAlertOpen}>
+      <AlertDialog open={isInternalAlertOpen} onOpenChange={setIsInternalAlertOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the persona.
+              This action cannot be undone. This will permanently delete the persona from this list.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setPersonaToDeleteId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeletePersona} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+            <AlertDialogCancel onClick={() => setPersonaToDeleteInternallyId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteInternalPersona} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
               Delete
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -227,3 +253,4 @@ export function PersonaManager({ personas, onPersonasUpdate, onFormSubmitSuccess
     </>
   );
 }
+    

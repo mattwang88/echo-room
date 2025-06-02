@@ -20,6 +20,16 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   Bell,
   Settings,
   UserCircle2,
@@ -31,7 +41,9 @@ import {
   Package,
   Layers,
   MessageCircle,
-  Loader2
+  Loader2,
+  Pencil,
+  Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addUserCreatedScenario } from '@/lib/userScenarios';
@@ -39,7 +51,7 @@ import { generateCustomScenarioDetails, type GenerateCustomScenarioInput } from 
 import type { Scenario, AgentRole, Persona } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { PersonaManager } from '@/components/PersonaManager';
-import { getAllUserPersonas, addUserPersona as saveUserPersona, deleteUserPersona as removeUserPersona } from '@/lib/userPersonas';
+import { getAllUserPersonas, deleteUserPersona } from '@/lib/userPersonas';
 
 
 const scenariosForButtons = [
@@ -60,16 +72,18 @@ export default function HomePage() {
 
   const [userPersonas, setUserPersonas] = useState<Persona[]>([]);
   const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
+  const [editingPersona, setEditingPersona] = useState<Persona | null>(null);
+
+  const [personaToDeleteId, setPersonaToDeleteId] = useState<string | null>(null);
+  const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  const loadPersonas = () => {
+    setUserPersonas(getAllUserPersonas());
+  };
 
   useEffect(() => {
-    setUserPersonas(getAllUserPersonas());
+    loadPersonas();
   }, []);
-
-  const handlePersonasUpdate = (updatedPersonas: Persona[]) => {
-    setUserPersonas(updatedPersonas);
-    // Note: addUserPersona and deleteUserPersona in userPersonas.ts already handle localStorage.
-    // This function primarily updates the local state for immediate UI refresh.
-  };
 
   const handleRoleSelect = (role: AgentRole) => {
     setSelectedRoles(prevSelectedRoles =>
@@ -77,6 +91,32 @@ export default function HomePage() {
         ? prevSelectedRoles.filter(r => r !== role)
         : [...prevSelectedRoles, role]
     );
+  };
+
+  const handleOpenPersonaManager = (persona?: Persona) => {
+    setEditingPersona(persona || null);
+    setIsPersonaManagerOpen(true);
+  };
+
+  const handleClosePersonaManager = () => {
+    setIsPersonaManagerOpen(false);
+    setEditingPersona(null);
+    loadPersonas(); // Refresh persona list on homepage
+  };
+
+  const handleDeletePersonaRequest = (id: string) => {
+    setPersonaToDeleteId(id);
+    setIsDeleteConfirmOpen(true);
+  };
+
+  const confirmDeleteHomepagePersona = () => {
+    if (personaToDeleteId) {
+      deleteUserPersona(personaToDeleteId);
+      loadPersonas(); // Refresh persona list
+      toast({ title: "Persona Deleted", description: "The persona has been successfully removed." });
+    }
+    setPersonaToDeleteId(null);
+    setIsDeleteConfirmOpen(false);
   };
 
   const handleGenerateScenario = async () => {
@@ -106,7 +146,16 @@ export default function HomePage() {
         const key = `${stdRole.toLowerCase()}Persona`;
         if (selectedRoles.includes(stdRole)) {
           let personaInstruction = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
-          if (stdRole === "Manager") {
+          
+          // Check if a custom persona for this role exists and is selected
+          const customPersonaForRole = userPersonas.find(p => p.role === stdRole /* && is this persona selected for this role in the simulation? needs UI for this selection */);
+          if (customPersonaForRole) {
+             // This part needs further UI to allow selecting a *specific* custom persona for a role in the simulation.
+             // For now, we'll use the custom persona's instruction if *any* custom persona matches the role.
+             // A more robust solution would involve letting the user pick which custom persona to use for each role.
+             console.warn(`Using custom persona "${customPersonaForRole.name}" for role ${stdRole}. If multiple custom personas exist for this role, the first one found is used. Consider adding UI to select specific custom personas for roles.`);
+             personaInstruction = customPersonaForRole.instructionPrompt;
+          } else if (stdRole === "Manager") { // Default if no custom manager persona
             personaInstruction = `You are the Manager. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively, providing guidance, feedback, and asking relevant questions from a managerial perspective.`;
           }
           personaConf[key] = personaInstruction;
@@ -241,22 +290,24 @@ export default function HomePage() {
               </DropdownMenuContent>
             </DropdownMenu>
             
-            <Dialog open={isPersonaManagerOpen} onOpenChange={setIsPersonaManagerOpen}>
+            <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
                 <Button
                   variant="outline"
                   size="icon"
                   className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
                   aria-label="Manage Personas"
+                  onClick={() => handleOpenPersonaManager()}
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
-                <PersonaManager
-                  personas={userPersonas}
-                  onPersonasUpdate={handlePersonasUpdate}
-                  onFormSubmitSuccess={() => setIsPersonaManagerOpen(false)}
+                 <PersonaManager
+                  personas={userPersonas} // Pass all personas for the list within manager
+                  onPersonasUpdate={loadPersonas} // To refresh its internal list if needed
+                  onFormSubmitSuccess={handleClosePersonaManager}
+                  personaToEdit={editingPersona}
                 />
               </DialogContent>
             </Dialog>
@@ -275,6 +326,49 @@ export default function HomePage() {
           </div>
         </div>
       </main>
+
+      {userPersonas.length > 0 && (
+        <section className="pt-6 px-4">
+          <div className="w-full max-w-3xl mx-auto">
+            <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
+              Your Custom Personas
+            </h2>
+            <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
+              {userPersonas.map((persona) => (
+                <div key={persona.id} className="relative group">
+                  <Button
+                    variant="outline"
+                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-10" // Add padding for icons
+                    onClick={() => handleOpenPersonaManager(persona)} // Click button to edit
+                  >
+                    {persona.name} <span className="text-xs text-gray-500 ml-1">({persona.role})</span>
+                  </Button>
+                  <div className="absolute top-0 right-0 h-full flex items-center opacity-0 group-hover:opacity-100 transition-opacity mr-1">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-gray-500 hover:text-gray-700"
+                      onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
+                      title="Edit Persona"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-6 w-6 text-destructive hover:text-destructive/80"
+                      onClick={(e) => { e.stopPropagation(); handleDeletePersonaRequest(persona.id); }}
+                      title="Delete Persona"
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       <section className="pb-32 pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
@@ -303,7 +397,24 @@ export default function HomePage() {
           <span className="ml-2 bg-green-500 text-white text-xs font-bold px-1.5 py-0.5 rounded-full">1</span>
         </Button>
       </div>
+
+      <AlertDialog open={isDeleteConfirmOpen} onOpenChange={setIsDeleteConfirmOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to delete this persona?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. The persona "{userPersonas.find(p => p.id === personaToDeleteId)?.name}" will be permanently removed.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setPersonaToDeleteId(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={confirmDeleteHomepagePersona} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
+              Delete Persona
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
-
+    
