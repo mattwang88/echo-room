@@ -3,7 +3,7 @@
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { LogIn, MessageSquareText } from 'lucide-react'; // Added MessageSquareText
+import { LogIn } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -18,7 +18,7 @@ export default function WelcomePage() {
     if (isExitingWelcome) return;
 
     setIsExitingWelcome(true);
-    const animationDuration = 1000;
+    const animationDuration = 1000; 
 
     setTimeout(() => {
       setShowHomePage(true);
@@ -40,7 +40,7 @@ export default function WelcomePage() {
       <div
         className={cn(
           "absolute inset-0 z-10 flex flex-col items-center justify-center transition-opacity duration-300",
-          isExitingWelcome ? "opacity-100" : "opacity-100"
+          isExitingWelcome ? "opacity-100" : "opacity-100" 
         )}
       >
         {/* Background Image Container for Welcome */}
@@ -74,17 +74,23 @@ export default function WelcomePage() {
           )}
         >
           {/* Logo Group */}
-          <div className="flex items-center justify-center mb-auto pt-20 sm:pt-32"> {/* Pushes logo towards top, mb-auto pushes button down */}
+          <div className="flex items-center justify-center mb-auto pt-20 sm:pt-32">
             <Image
-              src="https://placehold.co/64x64.png" // Placeholder for Google G
+              src="/images/google_icon.png" 
               alt="Google G Logo"
               width={64}
               height={64}
-              data-ai-hint="Google G logo multicolor"
               className="object-contain mr-4 sm:mr-6"
             />
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <MessageSquareText className="h-14 w-14 sm:h-16 sm:w-16 text-white" strokeWidth={1.5} />
+              <Image
+                src="/images/echo_icon.png"
+                alt="Echo Icon"
+                width={56} // Adjust size as needed
+                height={56} // Adjust size as needed
+                className="object-contain" // h-14 w-14 sm:h-16 sm:w-16 text-white - equivalent
+                data-ai-hint="chat bubble logo"
+              />
               <span className="text-3xl sm:text-4xl font-semibold text-white">Echo</span>
             </div>
           </div>
