@@ -75,22 +75,16 @@ export default function WelcomePage() {
         >
           {/* Logo Group */}
           <div className="flex items-center justify-center mb-auto pt-20 sm:pt-32">
+            {/* Google G Logo */}
             <Image
-              src="/images/google_icon.png" 
+              src="/images/google_icon.png"
               alt="Google G Logo"
               width={64}
               height={64}
               className="object-contain mr-4 sm:mr-6"
             />
+            {/* Echo Text Group */}
             <div className="flex items-center space-x-2 sm:space-x-3">
-              <Image
-                src="/images/echo_icon.png"
-                alt="Echo Icon"
-                width={56} // Adjust size as needed
-                height={56} // Adjust size as needed
-                className="object-contain" // h-14 w-14 sm:h-16 sm:w-16 text-white - equivalent
-                data-ai-hint="chat bubble logo"
-              />
               <span className="text-3xl sm:text-4xl font-semibold text-white">Echo</span>
             </div>
           </div>
