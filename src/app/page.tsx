@@ -244,8 +244,9 @@ export default function HomePage() {
     }
   };
 
-  const rolesWithCustomPersonas = userPersonas.map(p => p.role);
-  const displayedStandardRoles = selectedRoles.filter(role => !rolesWithCustomPersonas.includes(role));
+  const standardRolesToDisplay = selectedRoles.filter(
+    role => !userPersonas.some(p => p.role === role)
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -297,7 +298,7 @@ export default function HomePage() {
               placeholder={isRecordingHomepage ? "Listening..." : "Describe the meeting topic or scenario you want to practice..."}
               value={simulationDescription}
               onChange={(e) => setSimulationDescription(e.target.value)}
-              className="flex-grow !p-3 !border-0 !shadow-none !ring-0 resize-none min-h-[50px] bg-transparent focus:outline-none placeholder-gray-500"
+              className="flex-grow !p-3 !border-0 !shadow-none !ring-0 resize-none min-h-[50px] bg-transparent focus:outline-none focus-visible:!ring-transparent focus-visible:!ring-offset-0 placeholder-gray-500"
               rows={1}
               disabled={isRecordingHomepage}
             />
@@ -322,7 +323,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
-            <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
+             <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
                  <Button
                   variant="outline"
@@ -390,7 +391,7 @@ export default function HomePage() {
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Meeting Participants
           </h2>
-          {userPersonas.length > 0 || displayedStandardRoles.length > 0 ? (
+          {userPersonas.length > 0 || standardRolesToDisplay.length > 0 ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
@@ -422,7 +423,7 @@ export default function HomePage() {
                 </div>
               ))}
 
-              {displayedStandardRoles.map((role) => (
+              {standardRolesToDisplay.map((role) => (
                   <Button
                     key={role}
                     variant="outline"
