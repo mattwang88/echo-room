@@ -43,7 +43,7 @@ import {
   MessageCircle,
   Loader2,
   Pencil,
-  Trash2
+  X // Changed from Trash2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addUserCreatedScenario } from '@/lib/userScenarios';
@@ -188,8 +188,9 @@ export default function HomePage() {
     }
   };
   
-  const customPersonaRoles = userPersonas.map(p => p.role);
-  const standardRolesToDisplay = selectedRoles.filter(role => !customPersonaRoles.includes(role));
+  const displayedSelectedRoles = selectedRoles.filter(
+    (role) => !userPersonas.some((persona) => persona.role === role)
+  );
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
@@ -326,7 +327,7 @@ export default function HomePage() {
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Meeting Participants
           </h2>
-          {(userPersonas.length > 0 || standardRolesToDisplay.length > 0) ? (
+          {(userPersonas.length > 0 || displayedSelectedRoles.length > 0) ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
@@ -337,11 +338,10 @@ export default function HomePage() {
                   >
                     {persona.name}
                   </Button>
-                  <div className="absolute top-1 right-1 flex space-x-0.5 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
+                   <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-gray-500 hover:text-gray-700"
+                      className="absolute top-1 right-7 h-6 w-6 text-gray-500 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
                       onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
                       title="Edit Persona"
                     >
@@ -350,17 +350,16 @@ export default function HomePage() {
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-6 w-6 text-destructive hover:text-destructive/80"
+                      className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
                       onClick={(e) => { e.stopPropagation(); handleDeletePersonaRequest(persona.id); }}
-                      title="Delete Persona"
+                      title="Remove Persona"
                     >
-                      <Trash2 className="h-3.5 w-3.5" />
+                      <X className="h-3.5 w-3.5" />
                     </Button>
-                  </div>
                 </div>
               ))}
 
-              {standardRolesToDisplay.map((role) => (
+              {displayedSelectedRoles.map((role) => (
                   <Button
                     key={role}
                     variant="outline"
