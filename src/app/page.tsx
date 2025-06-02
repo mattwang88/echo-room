@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import Image from 'next/image';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -35,6 +35,7 @@ import {
   UserCircle2,
   Sparkles,
   Mic,
+  MicOff, // Added
   Users,
   Plus,
   Upload,
@@ -52,7 +53,7 @@ import type { Scenario, AgentRole, Persona } from '@/lib/types';
 import { useToast } from "@/hooks/use-toast";
 import { PersonaManager } from '@/components/PersonaManager';
 import { getAllUserPersonas, deleteUserPersona } from '@/lib/userPersonas';
-
+import { useSpeechToText } from '@/hooks/useSpeechToText'; // Added
 
 const scenariosForButtons = [
   { id: 'product-pitch', title: 'New Product Pitch' },
@@ -68,7 +69,7 @@ export default function HomePage() {
   const { toast } = useToast();
   const [simulationDescription, setSimulationDescription] = useState('');
   const [selectedRoles, setSelectedRoles] = useState<AgentRole[]>([]);
-  const [isGenerating, setIsGenerating] = useState(false);
+  const [isGeneratingScenario, setIsGeneratingScenario] = useState(false); // Renamed from isGenerating
 
   const [userPersonas, setUserPersonas] = useState<Persona[]>([]);
   const [isPersonaManagerOpen, setIsPersonaManagerOpen] = useState(false);
@@ -76,6 +77,57 @@ export default function HomePage() {
 
   const [personaToDeleteId, setPersonaToDeleteId] = useState<string | null>(null);
   const [isDeleteConfirmOpen, setIsDeleteConfirmOpen] = useState(false);
+
+  // --- Speech-to-Text State and Logic for Homepage ---
+  const [isRecordingHomepage, setIsRecordingHomepage] = useState(false);
+  const baseTextForSTT = useRef<string>(""); // Stores textarea content before STT starts for current session
+
+  const {
+    isListening: sttIsListeningHomepageHook, // Renamed to avoid conflict if STT is used elsewhere
+    startListening: startSttListeningHomepage,
+    stopListening: stopSttListeningHomepage,
+    sttError: sttErrorHomepage,
+    isSTTSupported: isSTTSupportedHomepage,
+    clearSTTError: clearSTTErrorHomepage,
+  } = useSpeechToText({
+    onTranscript: (finalTranscriptSegment: string) => {
+      // This segment is the newly finalized part of speech
+      const newTextWithFinalSegment = baseTextForSTT.current + (baseTextForSTT.current ? " " : "") + finalTranscriptSegment.trim();
+      setSimulationDescription(newTextWithFinalSegment);
+      baseTextForSTT.current = newTextWithFinalSegment; // Update base for continuous speech
+    },
+    onInterimTranscript: (interimTranscriptSegment: string) => {
+      setSimulationDescription(baseTextForSTT.current + (baseTextForSTT.current ? " " : "") + interimTranscriptSegment.trim());
+    },
+    onListeningChange: (listening: boolean) => {
+      setIsRecordingHomepage(listening);
+    },
+  });
+
+  useEffect(() => {
+    setIsRecordingHomepage(sttIsListeningHomepageHook);
+  }, [sttIsListeningHomepageHook]);
+
+  useEffect(() => {
+    if (sttErrorHomepage) {
+      toast({
+        title: "Voice Input Error",
+        description: sttErrorHomepage,
+        variant: "destructive",
+      });
+    }
+  }, [sttErrorHomepage, toast]);
+
+  const handleHomepageMicClick = () => {
+    clearSTTErrorHomepage();
+    if (isRecordingHomepage) {
+      stopSttListeningHomepage();
+    } else {
+      baseTextForSTT.current = simulationDescription; // Capture current content
+      startSttListeningHomepage();
+    }
+  };
+  // --- End Speech-to-Text Logic ---
 
   const loadPersonas = () => {
     setUserPersonas(getAllUserPersonas());
@@ -101,7 +153,7 @@ export default function HomePage() {
   const handleClosePersonaManager = () => {
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas();
+    loadPersonas(); // Reload personas when dialog closes
   };
 
   const handleDeletePersonaRequest = (id: string) => {
@@ -120,16 +172,16 @@ export default function HomePage() {
   };
 
   const handleGenerateScenario = async () => {
-    if (!simulationDescription.trim()) {
+    if (!simulationDescription.trim() || isRecordingHomepage) { // Prevent generation if recording
       toast({
-        title: "Description Missing",
-        description: "Please describe the simulation topic.",
+        title: "Input Issue",
+        description: isRecordingHomepage ? "Please stop voice input before generating." : "Please describe the simulation topic.",
         variant: "destructive",
       });
       return;
     }
 
-    setIsGenerating(true);
+    setIsGeneratingScenario(true);
     try {
       const aiInput: GenerateCustomScenarioInput = {
         simulationDescription,
@@ -184,10 +236,11 @@ export default function HomePage() {
         variant: "destructive",
       });
     } finally {
-      setIsGenerating(false);
+      setIsGeneratingScenario(false);
     }
   };
 
+  // Filter selected roles that don't have a custom persona already displayed
   const displayedStandardRoles = selectedRoles.filter(
     (role) => !userPersonas.some((persona) => persona.role === role)
   );
@@ -240,33 +293,41 @@ export default function HomePage() {
           <div className="relative flex items-center w-full p-1 bg-card border border-gray-300 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-primary">
             <Sparkles className="h-5 w-5 text-gray-400 mx-3 flex-shrink-0" />
             <Textarea
-              placeholder="Describe the meeting topic or scenario you want to practice..."
+              placeholder={isRecordingHomepage ? "Listening..." : "Describe the meeting topic or scenario you want to practice..."}
               value={simulationDescription}
               onChange={(e) => setSimulationDescription(e.target.value)}
               className="flex-grow !p-3 !border-0 !shadow-none !ring-0 resize-none min-h-[50px] bg-transparent focus:outline-none placeholder-gray-500"
               rows={1}
+              disabled={isRecordingHomepage} // Disable textarea while recording
             />
-            <Button variant="ghost" size="icon" className="text-gray-500 hover:text-gray-700 mx-2">
-              <Mic className="h-5 w-5" />
-              <span className="sr-only">Use microphone</span>
+            <Button
+              variant="ghost"
+              size="icon"
+              onClick={handleHomepageMicClick}
+              disabled={!isSTTSupportedHomepage || isGeneratingScenario}
+              className="text-gray-500 hover:text-gray-700 mx-2"
+              title={isRecordingHomepage ? "Stop voice input" : "Use microphone"}
+            >
+              {isRecordingHomepage ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
+              <span className="sr-only">{isRecordingHomepage ? "Stop voice input" : "Use microphone"}</span>
             </Button>
              <Button
                 onClick={handleGenerateScenario}
-                disabled={!simulationDescription.trim() || isGenerating}
+                disabled={!simulationDescription.trim() || isGeneratingScenario || isRecordingHomepage}
                 className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-md px-6 py-2.5 text-sm font-medium ml-1 mr-1 my-1 flex-shrink-0"
               >
-              {isGenerating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate"}
+              {isGeneratingScenario ? <Loader2 className="h-4 w-4 animate-spin" /> : "Generate"}
             </Button>
           </div>
 
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
             <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
-                <Button
+                 <Button
                   variant="outline"
                   size="icon"
                   className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
-                  aria-label="Manage Personas"
+                  aria-label="Customize Persona"
                   onClick={() => handleOpenPersonaManager()}
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
@@ -274,7 +335,7 @@ export default function HomePage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                  <PersonaManager
-                  personas={userPersonas}
+                  personas={userPersonas} // Pass current personas
                   onFormSubmitSuccess={handleClosePersonaManager}
                   personaToEdit={editingPersona}
                 />
@@ -340,13 +401,13 @@ export default function HomePage() {
                     {persona.name}
                   </Button>
                   <Button
-                    variant="ghost"
-                    size="icon"
-                    className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                    onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
-                    title="Edit Persona"
-                  >
-                    <Pencil className="h-3.5 w-3.5" />
+                      variant="ghost"
+                      size="icon"
+                      className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                      onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
+                      title="Edit Persona"
+                    >
+                      <Pencil className="h-3.5 w-3.5" />
                   </Button>
                   <Button
                       variant="ghost"
@@ -373,7 +434,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-left ml-1">
-              Create custom personas or select participants using the <Users className="inline h-3 w-3 -mt-0.5"/> icon above to see them here.
+              Create or select participants using the icons above to see them here.
             </p>
           )}
         </div>
@@ -426,3 +487,4 @@ export default function HomePage() {
     </div>
   );
 }
+
