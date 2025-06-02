@@ -101,7 +101,7 @@ export default function HomePage() {
   const handleClosePersonaManager = () => {
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas(); // Reload personas when dialog closes
+    loadPersonas(); 
   };
 
   const handleDeletePersonaRequest = (id: string) => {
@@ -112,7 +112,7 @@ export default function HomePage() {
   const confirmDeleteHomepagePersona = () => {
     if (personaToDeleteId) {
       deleteUserPersona(personaToDeleteId);
-      loadPersonas(); // Refresh persona list on homepage
+      loadPersonas(); 
       toast({ title: "Persona Deleted", description: "The persona has been successfully removed." });
     }
     setPersonaToDeleteId(null);
@@ -155,8 +155,6 @@ export default function HomePage() {
           }
           personaConf[key] = personaInstruction;
         } else {
-          // Provide a default or minimal instruction even if not actively selected,
-          // as simulateAiAgents might still expect all persona fields.
           personaConf[key] = `You are the ${stdRole}. You are not actively participating in this specific custom scenario titled "${aiGeneratedDetails.scenarioTitle}".`;
         }
       });
@@ -172,7 +170,7 @@ export default function HomePage() {
         },
         agentsInvolved: selectedRoles,
         personaConfig: personaConf,
-        maxTurns: 10, // Default max turns for custom scenarios
+        maxTurns: 10, 
       };
 
       addUserCreatedScenario(newScenario);
@@ -189,13 +187,11 @@ export default function HomePage() {
       setIsGenerating(false);
     }
   };
-
-  // Roles that have a custom persona created by the user
+  
   const customPersonaRolesDisplayed = userPersonas.map(p => p.role);
 
   return (
     <div className="min-h-screen flex flex-col bg-background text-foreground">
-      {/* Header */}
       <header className="px-4 sm:px-6 py-3 border-b border-gray-200">
         <div className="flex justify-between items-center max-w-screen-xl mx-auto">
           <div className="flex items-center space-x-4">
@@ -224,7 +220,6 @@ export default function HomePage() {
         </div>
       </header>
 
-      {/* Main Content */}
       <main className="flex-1 flex flex-col items-center justify-center text-center pt-10 pb-4 px-4">
         <div className="w-full max-w-2xl">
           <div className="mb-8">
@@ -279,7 +274,7 @@ export default function HomePage() {
                     key={role}
                     checked={selectedRoles.includes(role)}
                     onSelect={(event) => {
-                      event.preventDefault(); // Prevent default closing behavior
+                      event.preventDefault(); 
                       handleRoleSelect(role);
                     }}
                   >
@@ -296,13 +291,14 @@ export default function HomePage() {
                   size="icon"
                   className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
                   aria-label="Manage Personas"
-                  onClick={() => handleOpenPersonaManager()} // Opens dialog for new persona
+                  onClick={() => handleOpenPersonaManager()} 
                 >
                   <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                  <PersonaManager
+                  initialPersonas={userPersonas}
                   onFormSubmitSuccess={handleClosePersonaManager}
                   personaToEdit={editingPersona}
                 />
@@ -324,7 +320,6 @@ export default function HomePage() {
         </div>
       </main>
 
-      {/* Section for Meeting Participants */}
       <section className="pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
@@ -332,13 +327,12 @@ export default function HomePage() {
           </h2>
           {userPersonas.length > 0 || selectedRoles.length > 0 ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
-              {/* Display all user-created custom personas */}
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
                   <Button
                     variant="outline"
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-10"
-                    onClick={() => handleOpenPersonaManager(persona)} // Clicking main button can also edit
+                    onClick={() => handleOpenPersonaManager(persona)} 
                   >
                     {persona.name}
                   </Button>
@@ -365,7 +359,6 @@ export default function HomePage() {
                 </div>
               ))}
 
-              {/* Display selected standard roles that DON'T have a custom persona */}
               {selectedRoles
                 .filter(role => !customPersonaRolesDisplayed.includes(role))
                 .map((role) => (
@@ -373,7 +366,7 @@ export default function HomePage() {
                     key={role}
                     variant="outline"
                     className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
-                    disabled // These are just indicators
+                    disabled 
                   >
                     {role}
                   </Button>
