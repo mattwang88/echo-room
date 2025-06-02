@@ -81,11 +81,11 @@ export default function WelcomePage() {
               alt="Google G Logo"
               width={128}
               height={128}
-              className="object-contain absolute left-1/2 -translate-x-1/2 -translate-x-25"
+              className="object-contain absolute left-1/4 -translate-x-1/2"
               data-ai-hint="google logo multicolor"
             />
             {/* Echo Text Span directly */}
-            <span className="absolute left-1/2 -translate-x-1/2 translate-x-25 text-6xl sm:text-7xl font-semibold text-white">
+            <span className="absolute left-3/4 -translate-x-1/2 text-6xl sm:text-7xl font-semibold text-white">
               Echo
             </span>
           </div>
@@ -118,4 +118,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
