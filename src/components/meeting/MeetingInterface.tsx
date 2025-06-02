@@ -22,7 +22,6 @@ interface MeetingInterfaceProps {
   scenarioId: string;
 }
 
-// Updated avatar paths based on user's new filenames and format
 const maleAvatarPaths = [
     '/images/males/M-1.jpg',
     '/images/males/M-2.jpg',
@@ -77,11 +76,10 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
 
   useEffect(() => {
     console.log(`[AvatarDebug] Effect triggered. meetingActive: ${meetingActive}, isTTSSpeaking: ${isTTSSpeaking}, currentSpeakingRole: ${currentSpeakingRole}, currentSpeakingGender: ${currentSpeakingGender}`);
-
     if (!meetingActive) {
-        setCurrentDisplayAvatarPath(null);
-        console.log(`[AvatarDebug] Meeting not active. Cleared currentDisplayAvatarPath.`);
-        return;
+      setCurrentDisplayAvatarPath(null);
+      console.log(`[AvatarDebug] Meeting not active. Cleared currentDisplayAvatarPath.`);
+      return;
     }
 
     if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && currentSpeakingRole !== 'System') {
@@ -89,25 +87,23 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
         const randomIndex = Math.floor(Math.random() * maleAvatarPaths.length);
         chosenPath = maleAvatarPaths[randomIndex];
-        console.log(`[AvatarDebug] Male avatar selected. List length: ${maleAvatarPaths.length}, Chosen: ${chosenPath}`);
+        console.log(`[AvatarDebug] Male avatar selected by useEffect. List length: ${maleAvatarPaths.length}, Chosen: ${chosenPath}`);
       } else if (currentSpeakingGender === 'female' && femaleAvatarPaths.length > 0) {
         const randomIndex = Math.floor(Math.random() * femaleAvatarPaths.length);
         chosenPath = femaleAvatarPaths[randomIndex];
-        console.log(`[AvatarDebug] Female avatar selected. List length: ${femaleAvatarPaths.length}, Chosen: ${chosenPath}`);
+        console.log(`[AvatarDebug] Female avatar selected by useEffect. List length: ${femaleAvatarPaths.length}, Chosen: ${chosenPath}`);
       } else {
-        // Fallback if gender is not male/female or paths are empty (should not happen with current setup)
         chosenPath = neutralAvatarPath;
-        console.log(`[AvatarDebug] Neutral/default avatar selected for gender '${currentSpeakingGender}' or empty list: ${chosenPath}`);
+        console.log(`[AvatarDebug] Neutral/default avatar selected by useEffect for gender '${currentSpeakingGender}' or empty list for AI agent: ${chosenPath}`);
       }
       setCurrentDisplayAvatarPath(chosenPath);
-      console.log(`[AvatarDebug] setCurrentDisplayAvatarPath called with: ${chosenPath}`);
-
+      console.log(`[AvatarDebug] setCurrentDisplayAvatarPath (useEffect) called with: ${chosenPath}`);
     } else if (isTTSSpeaking && currentSpeakingRole === 'System') {
       setCurrentDisplayAvatarPath(neutralAvatarPath);
-      console.log(`[AvatarDebug] System speaking, using neutral avatar: ${neutralAvatarPath}`);
+      console.log(`[AvatarDebug] System speaking, useEffect setting neutral avatar: ${neutralAvatarPath}`);
     } else if (!isTTSSpeaking) {
       setCurrentDisplayAvatarPath(null);
-      console.log(`[AvatarDebug] Not speaking or User is speaking. Cleared currentDisplayAvatarPath.`);
+      console.log(`[AvatarDebug] Not speaking or User is speaking. useEffect cleared currentDisplayAvatarPath.`);
     }
   }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender, meetingActive]);
 
@@ -126,17 +122,92 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     );
   }
 
-  const getAvatarAiHint = () => {
-    if (!currentDisplayAvatarPath) return "placeholder avatar";
-    if (currentDisplayAvatarPath === neutralAvatarPath) return "system icon";
-    if (maleAvatarPaths.includes(currentDisplayAvatarPath)) return "male professional";
-    if (femaleAvatarPaths.includes(currentDisplayAvatarPath)) return "female professional";
+  const getAvatarAiHint = (path: string | null) => {
+    if (!path) return "placeholder avatar";
+    if (path === neutralAvatarPath) return "system icon";
+    if (maleAvatarPaths.includes(path)) return "male professional";
+    if (femaleAvatarPaths.includes(path)) return "female professional";
     return "professional person";
   }
 
 
   const isMicButtonDisabled = !meetingActive || !browserSupportsSTT || meetingEnded || isTTSSpeaking || isAiThinking;
   const isEndMeetingButtonDisabled = meetingEnded;
+
+  const renderCentralDisplay = () => {
+    if (meetingActive && isRecording) {
+      return <SoundWaveAnimation width={512} height={256} isAnimating={true} />;
+    }
+    
+    if (meetingActive && currentDisplayAvatarPath) {
+      console.log(`[AvatarDebug] Render: Displaying Image with currentDisplayAvatarPath: ${currentDisplayAvatarPath}`);
+      return (
+        <Image
+          key={currentDisplayAvatarPath || 'default-avatar-key'}
+          src={currentDisplayAvatarPath}
+          alt={currentSpeakingRole ? `${getAgentName(currentSpeakingRole, scenarioId)} avatar` : "Agent avatar"}
+          width={256}
+          height={256}
+          className="rounded-full object-cover animate-breathing shadow-xl"
+          data-ai-hint={getAvatarAiHint(currentDisplayAvatarPath)}
+          onError={(e) => {
+            console.error(`[AvatarDebug] Error loading PRIMARY avatar. Attempted src: ${(e.target as HTMLImageElement).src}. Event:`, e);
+          }}
+        />
+      );
+    }
+    
+    if (meetingActive) {
+      // This is the branch where currentDisplayAvatarPath is null/falsy,
+      // user is not recording, and meeting is active.
+      if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && currentSpeakingRole !== 'System') {
+        // Fallback: TTS is active for an AI agent, but currentDisplayAvatarPath wasn't set.
+        // Render an avatar directly.
+        let fallbackDisplayPath = neutralAvatarPath; // Default to neutral
+        let hintPathType = 'neutral';
+
+        if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
+          fallbackDisplayPath = maleAvatarPaths[Math.floor(Math.random() * maleAvatarPaths.length)];
+          hintPathType = 'male';
+        } else if (currentSpeakingGender === 'female' && femaleAvatarPaths.length > 0) {
+          fallbackDisplayPath = femaleAvatarPaths[Math.floor(Math.random() * femaleAvatarPaths.length)];
+          hintPathType = 'female';
+        }
+        console.warn(`[AvatarDebug] Render Fallback: Displaying avatar for ${currentSpeakingRole} (${currentSpeakingGender}) as currentDisplayAvatarPath was null. Path: ${fallbackDisplayPath}`);
+        return (
+          <Image
+            key={fallbackDisplayPath + '-render-fallback'} 
+            src={fallbackDisplayPath}
+            alt={`${currentSpeakingRole || 'Agent'} avatar (render fallback)`}
+            width={256}
+            height={256}
+            className="rounded-full object-cover animate-breathing shadow-xl"
+            data-ai-hint={getAvatarAiHint(fallbackDisplayPath)}
+            onError={(e) => {
+              console.error(`[AvatarDebug] Error loading RENDER FALLBACK avatar. Attempted src: ${(e.target as HTMLImageElement).src}. Event:`, e);
+            }}
+          />
+        );
+      } else {
+        // TTS is not active for an AI agent, or role is User/System, show static sound wave.
+        console.log(`[AvatarDebug] Render: Displaying static SoundWaveAnimation because currentDisplayAvatarPath is null and AI agent is not speaking.`);
+        return <SoundWaveAnimation width={512} height={256} isAnimating={false} />;
+      }
+    }
+
+    if (!meetingEnded) {
+       console.log(`[AvatarDebug] Render: Displaying PlayCircle (meeting not active, not ended).`);
+      return (
+        <div className="flex flex-col items-center text-center">
+          <PlayCircle className="h-32 w-32 text-primary/30 mb-4" />
+          <p className="text-xl text-muted-foreground">Click "Start Meeting" in the chat to begin.</p>
+        </div>
+      );
+    }
+
+    console.log(`[AvatarDebug] Render: Displaying AlertTriangle (meeting ended).`);
+    return <AlertTriangle className="h-32 w-32 text-destructive/70 mb-4" />;
+  };
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background">
@@ -168,31 +239,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
             )}
           </div>
 
-          {meetingActive && isRecording ? (
-            <SoundWaveAnimation width={512} height={256} isAnimating={true} />
-          ) : meetingActive && currentDisplayAvatarPath ? (
-            <Image
-              key={currentDisplayAvatarPath || 'default-avatar-key'}
-              src={currentDisplayAvatarPath}
-              alt={currentSpeakingRole ? `${getAgentName(currentSpeakingRole, scenarioId)} avatar` : "Agent avatar"}
-              width={256}
-              height={256}
-              className="rounded-full object-cover animate-breathing shadow-xl"
-              data-ai-hint={getAvatarAiHint()}
-              onError={(e) => {
-                console.error(`[AvatarDebug] Error loading avatar. Attempted src: ${(e.target as HTMLImageElement).src}. Event:`, e);
-              }}
-            />
-          ) : meetingActive ? (
-            <SoundWaveAnimation width={512} height={256} isAnimating={false} />
-          ) : !meetingEnded ? (
-            <div className="flex flex-col items-center text-center">
-                <PlayCircle className="h-32 w-32 text-primary/30 mb-4" />
-                <p className="text-xl text-muted-foreground">Click "Start Meeting" in the chat to begin.</p>
-            </div>
-          ) : (
-             <AlertTriangle className="h-32 w-32 text-destructive/70 mb-4" />
-          )}
+          {renderCentralDisplay()}
 
           <div className="flex items-center justify-center gap-4 mt-20">
             <Button
@@ -273,3 +320,4 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     </div>
   );
 }
+
