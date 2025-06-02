@@ -30,7 +30,7 @@ interface UseTextToSpeechProps {
   sessionKey: string | null; // To reset voice assignments when the session/scenario changes
 }
 
-export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps) {
+export function useTextToSpeech({ sessionKey }: UseTextToSpeechProps = { sessionKey: null }) {
   const { toast } = useToast();
   const [isSpeakingState, setIsSpeakingState] = useState(false);
   const [currentSpeakingRole, setCurrentSpeakingRole] = useState<ParticipantRole | null>(null);
