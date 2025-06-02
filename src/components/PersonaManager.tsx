@@ -22,23 +22,32 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 import { Pencil, Trash2 } from 'lucide-react';
-import type { Persona } from '@/lib/types';
+import type { Persona, AgentRole } from '@/lib/types';
 import { addUserPersona, deleteUserPersona, getAllUserPersonas } from '@/lib/userPersonas';
 
 interface PersonaManagerProps {
   personas: Persona[];
   onFormSubmitSuccess?: () => void;
   personaToEdit?: Persona | null;
+  availableRoles: AgentRole[];
 }
 
 export function PersonaManager({
   personas: initialPersonas,
   onFormSubmitSuccess,
-  personaToEdit
+  personaToEdit,
+  availableRoles,
 }: PersonaManagerProps) {
   const [name, setName] = useState('');
-  const [role, setRole] = useState('');
+  const [role, setRole] = useState<AgentRole>('');
   const [instructionPrompt, setInstructionPrompt] = useState('');
   const [currentEditingId, setCurrentEditingId] = useState<string | null>(null);
 
@@ -49,15 +58,15 @@ export function PersonaManager({
 
   const resetForm = useCallback(() => {
     setName('');
-    setRole('');
+    setRole(availableRoles.length > 0 ? availableRoles[0] : '');
     setInstructionPrompt('');
     setCurrentEditingId(null);
-  }, []);
+  }, [availableRoles]);
 
   useEffect(() => {
     if (personaToEdit) {
       setName(personaToEdit.name);
-      setRole(personaToEdit.role);
+      setRole(personaToEdit.role as AgentRole);
       setInstructionPrompt(personaToEdit.instructionPrompt);
       setCurrentEditingId(personaToEdit.id);
     } else {
@@ -83,19 +92,19 @@ export function PersonaManager({
     };
 
     addUserPersona(persona);
-    const updatedLivePersonas = getAllUserPersonas(); // Get the latest list from storage
-    setInternalPersonas(updatedLivePersonas); // Update internal list for display within manager
+    const updatedLivePersonas = getAllUserPersonas();
+    setInternalPersonas(updatedLivePersonas);
 
 
     if (onFormSubmitSuccess) {
-      onFormSubmitSuccess(); // This will close the dialog and trigger homepage refresh
+      onFormSubmitSuccess();
     }
     resetForm();
   };
 
   const handleEditInternalPersona = (persona: Persona) => {
     setName(persona.name);
-    setRole(persona.role);
+    setRole(persona.role as AgentRole);
     setInstructionPrompt(persona.instructionPrompt);
     setCurrentEditingId(persona.id);
   };
@@ -103,7 +112,7 @@ export function PersonaManager({
   const confirmDeleteInternalPersona = () => {
     if (personaToDeleteInternallyId) {
       deleteUserPersona(personaToDeleteInternallyId);
-      const updatedLivePersonas = getAllUserPersonas(); // Get the latest list
+      const updatedLivePersonas = getAllUserPersonas();
       setInternalPersonas(updatedLivePersonas);
 
 
@@ -112,7 +121,7 @@ export function PersonaManager({
       }
       setPersonaToDeleteInternallyId(null);
       setIsInternalAlertOpen(false);
-      if (onFormSubmitSuccess) { // Notify parent if a delete happened here
+      if (onFormSubmitSuccess) {
         onFormSubmitSuccess();
       }
     }
@@ -146,15 +155,18 @@ export function PersonaManager({
         </div>
         <div>
           <label htmlFor="personaRole" className="block text-sm font-medium text-gray-700 mb-1">Role</label>
-          <Input
-            id="personaRole"
-            type="text"
-            className="w-full border rounded px-3 py-2"
-            placeholder="e.g., Senior Product Manager, Skeptic"
-            value={role}
-            onChange={e => setRole(e.target.value)}
-            required
-          />
+          <Select value={role} onValueChange={(value) => setRole(value as AgentRole)} required>
+            <SelectTrigger className="w-full">
+              <SelectValue placeholder="Select a role" />
+            </SelectTrigger>
+            <SelectContent>
+              {availableRoles.map((roleOption) => (
+                <SelectItem key={roleOption} value={roleOption}>
+                  {roleOption}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
         </div>
         <div>
           <label htmlFor="personaInstruction" className="block text-sm font-medium text-gray-700 mb-1">Instruction Prompt</label>
@@ -183,10 +195,9 @@ export function PersonaManager({
         </DialogFooter>
       </form>
 
-      {/* List of personas *within* this dialog - can be kept or removed if homepage buttons are primary */}
-      {(internalPersonas || []).length > 0 && !personaToEdit && ( // Show list only if not in edit mode from homepage
+      {(internalPersonas || []).length > 0 && !personaToEdit && (
         <div className="mt-6 pt-4 border-t">
-          <h4 className="text-md font-semibold mb-3">Existing Personas (Internal List)</h4>
+          <h4 className="text-md font-semibold mb-3">Existing Personas</h4>
           <div className="max-h-[200px] overflow-y-auto pr-2 space-y-3">
             {(internalPersonas || []).map((persona) => (
               <div key={persona.id} className="p-3 border rounded-lg relative group bg-muted/30">
@@ -204,7 +215,7 @@ export function PersonaManager({
                     <Button
                       variant="ghost"
                       size="icon"
-                      onClick={() => handleEditInternalPersona(persona)} // Uses internal edit
+                      onClick={() => handleEditInternalPersona(persona)}
                       className="h-7 w-7"
                       title="Edit Persona from list"
                     >
@@ -232,7 +243,7 @@ export function PersonaManager({
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This action cannot be undone. This will permanently delete the persona from this list.
+              This action cannot be undone. This will permanently delete the persona.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

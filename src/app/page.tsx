@@ -334,7 +334,7 @@ export default function HomePage() {
             <button
               type="button"
               onClick={handleGenerateRandomTopic}
-              className="p-2 text-gray-400 hover:text-yellow-500 transition-colors duration-150 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 flex-shrink-0 mx-1"
+              className="p-2 text-gray-400 hover:text-yellow-500 transition-colors duration-150 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 flex-shrink-0 mx-1 disabled:opacity-50 disabled:cursor-not-allowed"
               title="Generate random topic"
               disabled={isGeneratingScenario || isRecordingHomepage}
             >
@@ -387,6 +387,7 @@ export default function HomePage() {
                   personas={userPersonas}
                   onFormSubmitSuccess={handleClosePersonaManager}
                   personaToEdit={editingPersona}
+                  availableRoles={availableParticipantRoles}
                 />
               </DialogContent>
             </Dialog>
@@ -450,7 +451,7 @@ export default function HomePage() {
                     >
                       {persona.name}
                     </Button>
-                    <Button
+                     <Button
                         variant="ghost"
                         size="icon"
                         className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
@@ -475,8 +476,7 @@ export default function HomePage() {
                     <Button
                       key={role}
                       variant="outline"
-                      className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
-                      disabled
+                      className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default"
                     >
                       {role}
                     </Button>
@@ -534,4 +534,3 @@ export default function HomePage() {
     </div>
   );
 }
-
