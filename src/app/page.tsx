@@ -18,7 +18,7 @@ export default function WelcomePage() {
     if (isExitingWelcome) return;
 
     setIsExitingWelcome(true);
-    const animationDuration = 1000; 
+    const animationDuration = 1000;
 
     setTimeout(() => {
       setShowHomePage(true);
@@ -40,7 +40,7 @@ export default function WelcomePage() {
       <div
         className={cn(
           "absolute inset-0 z-10 flex flex-col items-center justify-center transition-opacity duration-300",
-          isExitingWelcome ? "opacity-100" : "opacity-100" 
+          isExitingWelcome ? "opacity-100" : "opacity-100"
         )}
       >
         {/* Background Image Container for Welcome */}
@@ -79,9 +79,10 @@ export default function WelcomePage() {
             <Image
               src="/images/google_icon.png"
               alt="Google G Logo"
-              width={64}
-              height={64}
-              className="object-contain mr-10"
+              width={128}
+              height={128}
+              className="object-contain mr-10 -translate-x-32"
+              data-ai-hint="google logo multicolor"
             />
             {/* Echo Text Span directly */}
             <span className="text-3xl sm:text-4xl font-semibold text-white ml-10">Echo</span>
@@ -92,7 +93,7 @@ export default function WelcomePage() {
             onClick={handleEnterClick}
             variant="ghost"
             size="icon"
-            className="bg-white hover:bg-gray-100 text-primary rounded-full p-4 w-16 h-16 sm:w-20 sm:h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent absolute bottom-[15%] left-1/2 -translate-x-1/2"
+            className="bg-white hover:bg-gray-100 text-primary rounded-full p-4 w-16 h-16 sm:w-20 sm:h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent absolute bottom-[15%] left-1/2 -translate-x-1/2 translate-y-[12.5rem] translate-x-5"
             disabled={isExitingWelcome}
             aria-label="Enter EchoRoom"
           >
@@ -115,4 +116,3 @@ export default function WelcomePage() {
     </div>
   );
 }
-
