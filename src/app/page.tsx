@@ -43,7 +43,7 @@ import {
   MessageCircle,
   Loader2,
   Pencil,
-  X // Changed from Trash2
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addUserCreatedScenario } from '@/lib/userScenarios';
@@ -188,7 +188,7 @@ export default function HomePage() {
     }
   };
   
-  const displayedSelectedRoles = selectedRoles.filter(
+  const displayedSelectedStandardRoles = selectedRoles.filter(
     (role) => !userPersonas.some((persona) => persona.role === role)
   );
 
@@ -327,7 +327,7 @@ export default function HomePage() {
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Meeting Participants
           </h2>
-          {(userPersonas.length > 0 || displayedSelectedRoles.length > 0) ? (
+          {(userPersonas.length > 0 || displayedSelectedStandardRoles.length > 0) ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
@@ -338,28 +338,28 @@ export default function HomePage() {
                   >
                     {persona.name}
                   </Button>
-                   <Button
+                  <Button
                       variant="ghost"
                       size="icon"
-                      className="absolute top-1 right-7 h-6 w-6 text-gray-500 hover:text-gray-700 opacity-0 group-hover:opacity-100 transition-opacity"
-                      onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
-                      title="Edit Persona"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                      className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
                       onClick={(e) => { e.stopPropagation(); handleDeletePersonaRequest(persona.id); }}
                       title="Remove Persona"
                     >
                       <X className="h-3.5 w-3.5" />
-                    </Button>
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                    onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
+                    title="Edit Persona"
+                  >
+                    <Pencil className="h-3.5 w-3.5" />
+                  </Button>
                 </div>
               ))}
 
-              {displayedSelectedRoles.map((role) => (
+              {displayedSelectedStandardRoles.map((role) => (
                   <Button
                     key={role}
                     variant="outline"
@@ -372,7 +372,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-left ml-1">
-              Select participants or create custom personas to see them here.
+             Create custom personas or select participants using the <Users className="inline h-3 w-3 -mt-0.5"/> icon above to see them here.
             </p>
           )}
         </div>
