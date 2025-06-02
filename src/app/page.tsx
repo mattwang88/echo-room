@@ -92,7 +92,7 @@ export default function WelcomePage() {
             onClick={handleEnterClick}
             variant="ghost"
             size="icon"
-            className="bg-white hover:bg-gray-100 text-primary rounded-full p-5 w-20 h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent mt-8 translate-y-20 translate-x-5"
+            className="bg-white hover:bg-gray-100 text-primary rounded-full p-5 w-20 h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent mt-8 translate-y-30 translate-x-5"
             disabled={isExitingWelcome}
             aria-label="Enter EchoRoom"
           >
