@@ -61,7 +61,17 @@ const scenariosForButtons = [
   { id: 'job-resignation', title: 'Practice Resignation' },
 ];
 
-const availableParticipantRoles: AgentRole[] = ["CTO", "Finance", "Product", "HR", "Manager"];
+const availableParticipantRoles: AgentRole[] = [
+  "CTO", "Finance", "Product", "HR", "Manager", // Existing
+  "CEO", "COO", "CFO", "CMO", "CIO", "Chief Sales Officer",
+  "General Counsel", "VP Engineering", "VP Marketing", "VP Sales", "VP Product",
+  "Engineering Manager", "Senior Software Engineer", "Software Engineer", "DevOps Engineer", "QA Engineer",
+  "Product Manager", "UX Designer", "UI Designer",
+  "Data Scientist", "Data Analyst", "Business Analyst",
+  "Project Manager", "Sales Representative", "Account Executive",
+  "Customer Support Agent", "Customer Success Manager", "Recruiter"
+];
+
 
 const randomMeetingTopics = [
   "Pitch Q3 marketing strategy.",
@@ -171,11 +181,11 @@ export default function HomePage() {
   };
 
   const handleClosePersonaManager = () => {
-    const rolesBeforeLoad = [...selectedRoles];
+    const rolesBeforeLoad = [...selectedRoles]; // Snapshot selectedRoles
     setIsPersonaManagerOpen(false);
     setEditingPersona(null);
-    loadPersonas();
-    setSelectedRoles(rolesBeforeLoad);
+    loadPersonas(); // This updates userPersonas and might trigger re-renders
+    setSelectedRoles(rolesBeforeLoad); // Restore selectedRoles
   };
 
 
@@ -197,8 +207,7 @@ export default function HomePage() {
   const handleGenerateRandomTopic = () => {
     const randomIndex = Math.floor(Math.random() * randomMeetingTopics.length);
     const randomTopic = randomMeetingTopics[randomIndex];
-    if (randomTopic.split(" ").length > 10) { // Simple word count
-        // Fallback or retry logic if a topic is unexpectedly too long
+    if (randomTopic.split(" ").length > 10) { 
         const shorterTopic = randomMeetingTopics.find(t => t.split(" ").length <=10) || "Discuss team goals.";
         setSimulationDescription(shorterTopic);
         baseTextForSTT.current = shorterTopic;
@@ -233,15 +242,13 @@ export default function HomePage() {
       const personaConf: Record<string, string> = {};
 
       availableParticipantRoles.forEach(stdRole => {
-        const keyForConfig = `${stdRole.toLowerCase()}Persona`;
+        const keyForConfig = `${stdRole.toLowerCase().replace(/\s+/g, '')}Persona`; // Ensure keys are consistent e.g. chiefsalesofficerPersona
 
         if (activeAgentsForThisScenario.includes(stdRole)) {
           let personaInstruction = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
           const customPersonaForRole = userPersonas.find(p => p.role === stdRole);
           if (customPersonaForRole) {
              personaInstruction = customPersonaForRole.instructionPrompt;
-          } else if (stdRole === "Manager") {
-            personaInstruction = `You are the Manager. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively, providing guidance, feedback, and asking relevant questions from a managerial perspective.`;
           }
           personaConf[keyForConfig] = personaInstruction;
         } else {
@@ -383,7 +390,7 @@ export default function HomePage() {
           </div>
 
           <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
-             <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
+            <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
                  <Button
                   variant="outline"
