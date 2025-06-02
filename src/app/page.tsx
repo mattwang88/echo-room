@@ -62,9 +62,9 @@ const scenariosForButtons = [
 ];
 
 const availableParticipantRoles: AgentRole[] = [
-  "CTO", "Finance", "Product", "HR", "Manager", // Existing
   "CEO", "COO", "CFO", "CMO", "CIO", "Chief Sales Officer",
   "General Counsel", "VP Engineering", "VP Marketing", "VP Sales", "VP Product",
+  "CTO", "Product", "Finance", "HR", "Manager", // Existing
   "Engineering Manager", "Senior Software Engineer", "Software Engineer", "DevOps Engineer", "QA Engineer",
   "Product Manager", "UX Designer", "UI Designer",
   "Data Scientist", "Data Analyst", "Business Analyst",
@@ -242,7 +242,7 @@ export default function HomePage() {
       const personaConf: Record<string, string> = {};
 
       availableParticipantRoles.forEach(stdRole => {
-        const keyForConfig = `${stdRole.toLowerCase().replace(/\s+/g, '')}Persona`; // Ensure keys are consistent e.g. chiefsalesofficerPersona
+        const keyForConfig = `${stdRole.toLowerCase().replace(/\s+/g, '')}Persona`; 
 
         if (activeAgentsForThisScenario.includes(stdRole)) {
           let personaInstruction = `You are the ${stdRole}. The meeting is about: "${simulationDescription}". The user's objective is: "${aiGeneratedDetails.scenarioObjective}". Engage constructively based on your role's expertise, asking relevant questions and providing feedback.`;
@@ -423,7 +423,7 @@ export default function HomePage() {
                   <Users className="h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent>
+              <DropdownMenuContent className="max-h-72 overflow-y-auto">
                 {availableParticipantRoles.map((role) => (
                   <DropdownMenuCheckboxItem
                     key={role}
