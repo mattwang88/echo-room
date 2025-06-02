@@ -266,8 +266,6 @@ export default function HomePage() {
       });
       setIsGeneratingScenario(false);
     }
-    // No finally block to set isGeneratingScenario to false here, as navigation will unmount.
-    // It's reset in the catch block.
   };
   
   const handleNavigateToSignatureScenario = (scenarioId: string) => {
@@ -334,10 +332,10 @@ export default function HomePage() {
 
           <div className="relative flex items-center w-full p-1 bg-card border border-gray-300 rounded-lg shadow-sm">
             <button
+              type="button"
               onClick={handleGenerateRandomTopic}
               className="p-2 text-gray-400 hover:text-yellow-500 transition-colors duration-150 rounded-full focus:outline-none focus-visible:ring-2 focus-visible:ring-yellow-400 flex-shrink-0 mx-1"
               title="Generate random topic"
-              type="button"
               disabled={isGeneratingScenario || isRecordingHomepage}
             >
               <Sparkles className="h-5 w-5" />
@@ -437,56 +435,54 @@ export default function HomePage() {
 
       <section className="pt-6 px-4">
         <div className="w-full max-w-3xl mx-auto">
-          <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
-            Meeting Participants
-          </h2>
-          {userPersonas.length > 0 || displayedParticipantRoles.length > 0 ? (
-            <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
-              {userPersonas.map((persona) => (
-                <div key={persona.id} className="relative group">
-                  <Button
-                    variant="outline"
-                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-14"
-                    onClick={() => handleOpenPersonaManager(persona)}
-                  >
-                    {persona.name}
-                  </Button>
-                   <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                      onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
-                      title="Edit Persona"
+          {(userPersonas.length > 0 || displayedParticipantRoles.length > 0) && (
+            <>
+              <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
+                Meeting Participants
+              </h2>
+              <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
+                {userPersonas.map((persona) => (
+                  <div key={persona.id} className="relative group">
+                    <Button
+                      variant="outline"
+                      className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto pr-14"
+                      onClick={() => handleOpenPersonaManager(persona)}
                     >
-                      <Pencil className="h-3.5 w-3.5" />
-                  </Button>
-                  <Button
-                      variant="ghost"
-                      size="icon"
-                      className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
-                      onClick={(e) => { e.stopPropagation(); handleDeletePersonaRequest(persona.id); }}
-                      title="Remove Persona"
-                    >
-                      <X className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              ))}
-
-              {displayedParticipantRoles.map((role) => (
-                  <Button
-                    key={role}
-                    variant="outline"
-                    className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
-                    disabled
-                  >
-                    {role}
-                  </Button>
+                      {persona.name}
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-[-6px] right-5 h-5 w-5 p-0.5 rounded-full bg-background text-primary hover:bg-primary hover:text-primary-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                        onClick={(e) => { e.stopPropagation(); handleOpenPersonaManager(persona);}}
+                        title="Edit Persona"
+                      >
+                        <Pencil className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-[-6px] right-[-6px] h-5 w-5 p-0.5 rounded-full bg-background text-destructive hover:bg-destructive hover:text-destructive-foreground opacity-0 group-hover:opacity-100 transition-opacity shadow-md"
+                        onClick={(e) => { e.stopPropagation(); handleDeletePersonaRequest(persona.id); }}
+                        title="Remove Persona"
+                      >
+                        <X className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 ))}
-            </div>
-          ) : (
-            <p className="text-sm text-gray-500 text-left ml-1">
-              Create custom personas or select participants from the dropdown.
-            </p>
+
+                {displayedParticipantRoles.map((role) => (
+                    <Button
+                      key={role}
+                      variant="outline"
+                      className="bg-card border-gray-300 text-gray-700 hover:bg-gray-100 rounded-full text-xs sm:text-sm px-3 py-1.5 sm:px-4 sm:py-2 h-auto cursor-default opacity-75"
+                      disabled
+                    >
+                      {role}
+                    </Button>
+                  ))}
+              </div>
+            </>
           )}
         </div>
       </section>
