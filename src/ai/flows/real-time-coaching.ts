@@ -100,7 +100,7 @@ Analyze the user's communication throughout the meeting, considering:
 3. Areas where they showed improvement or could improve
 4. The overall flow and effectiveness of their communication
 
-When providing feedback, include specific examples from the user's responses to illustrate your points. For example, if you notice a pattern in their communication style, quote the relevant parts of their responses.
+When providing feedback, include specific examples from the user's responses to illustrate your points. For example, if you notice a pattern in their communication style, quote the relevant parts of their responses. Keep each section concise and focused - aim for 2-3 key points per section.
 
 Provide a comprehensive summary of feedback on the following aspects:
 1.  Clarity: How clear and easy to understand were the responses overall? Identify patterns in communication clarity and any evolution in clarity throughout the meeting. Include specific examples of clear or unclear communication.
