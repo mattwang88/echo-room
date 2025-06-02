@@ -291,7 +291,7 @@ export default function HomePage() {
             />
           </div>
 
-          <div className="relative flex items-center w-full p-1 bg-card border border-gray-300 rounded-lg shadow-sm focus-within:ring-2 focus-within:ring-primary">
+          <div className="relative flex items-center w-full p-1 bg-card border border-gray-300 rounded-lg shadow-sm">
             <Sparkles className="h-5 w-5 text-gray-400 mx-3 flex-shrink-0" />
             <Textarea
               placeholder={isRecordingHomepage ? "Listening..." : "Describe the meeting topic or scenario you want to practice..."}
@@ -390,7 +390,7 @@ export default function HomePage() {
           <h2 className="text-sm font-medium text-gray-500 mb-3 text-left ml-1">
             Meeting Participants
           </h2>
-          {(userPersonas.length > 0 || displayedStandardRoles.length > 0) ? (
+          {userPersonas.length > 0 || displayedStandardRoles.length > 0 ? (
             <div className="flex flex-wrap justify-start gap-2 sm:gap-3">
               {userPersonas.map((persona) => (
                 <div key={persona.id} className="relative group">
@@ -435,7 +435,7 @@ export default function HomePage() {
             </div>
           ) : (
             <p className="text-sm text-gray-500 text-left ml-1">
-              No custom personas created or participants selected.
+              Create custom personas or select participants from the dropdown.
             </p>
           )}
         </div>
