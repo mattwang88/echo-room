@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -409,17 +410,17 @@ export default function HomePage() {
             </Button>
           </div>
 
-          <div className="flex justify-center space-x-2 sm:space-x-3 mt-4">
+          <div className="flex justify-center items-center space-x-2 sm:space-x-3 mt-4">
             <Dialog open={isPersonaManagerOpen} onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}>
               <DialogTrigger asChild>
                  <Button
                   variant="outline"
-                  size="icon"
-                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
-                  aria-label="Customize Persona"
+                  className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100"
+                  aria-label="Add or Customize Persona"
                   onClick={() => handleOpenPersonaManager()}
                 >
-                  <Plus className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Plus className="h-5 w-5 mr-2" />
+                  Add Persona
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
@@ -436,11 +437,11 @@ export default function HomePage() {
               <DropdownMenuTrigger asChild>
                 <Button
                   variant="outline"
-                  size="icon"
-                  className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
-                  aria-label="Select Participants"
+                  className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100"
+                  aria-label="Select Agents"
                 >
-                  <Users className="h-4 w-4 sm:h-5 sm:w-5" />
+                  <Users className="h-5 w-5 mr-2" />
+                  Select Agents
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent className="max-h-72 overflow-y-auto">
@@ -597,5 +598,7 @@ export default function HomePage() {
     </div>
   );
 }
+
+    
 
     
