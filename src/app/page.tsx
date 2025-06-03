@@ -3,7 +3,7 @@
 
 import Image from 'next/image';
 import { Button } from '@/components/ui/button';
-import { LogIn } from 'lucide-react';
+// LogIn import removed
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
@@ -94,12 +94,12 @@ export default function WelcomePage() {
           <Button
             onClick={handleEnterClick}
             variant="ghost"
-            size="icon"
+            // size="icon" prop removed
             className="bg-white hover:bg-gray-100 text-primary rounded-full p-5 w-20 h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent mt-8 translate-y-[17.5rem] translate-x-5"
             disabled={isExitingWelcome}
             aria-label="Enter EchoRoom"
           >
-            <LogIn className="h-8 w-8 sm:h-10 sm:h-10" />
+            <span className="text-lg font-semibold">Enter</span>
           </Button>
         </div>
 
