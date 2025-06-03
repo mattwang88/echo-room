@@ -36,7 +36,7 @@ const femaleAvatarPaths = [
     '/images/females/F-4.jpg',
     '/images/females/F-5.jpg',
 ];
-const neutralAvatarPath = 'https://placehold.co/256x256/cccccc/e0e0e0.png';
+const neutralAvatarPath = '/images/Sundar_Pichai.png';
 
 
 export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
