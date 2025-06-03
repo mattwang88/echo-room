@@ -545,3 +545,67 @@ Aurora is hosted entirely in AWS; see AWS SOC reports.
 | Logs | S3 Glacier | AES‑256 | 7 years |
 
 -- End --
+
+# 🌌 Project Aurora – Task Tracker
+
+## 📅 Project Timeline
+- **Kickoff Date:** June 3, 2025  
+- **Target MVP Launch:** August 15, 2025  
+- **Final Release:** October 1, 2025
+
+---
+
+## ✅ Milestones and Tasks
+
+### Phase 1: Planning & Research *(June 3 – June 14)*
+| Task                             | Owner         | Deadline     | Status     | Notes                             |
+|----------------------------------|---------------|--------------|------------|-----------------------------------|
+| Project Scope Definition         | Clara H.      | June 5       | ✅ Done     | Final scope shared with team      |
+| Competitor Analysis              | Ravi M.       | June 7       | ✅ Done     | Summary doc in shared drive       |
+| Technical Feasibility Study      | Jae L.        | June 10      | 🕐 In Progress | Waiting for DB benchmarks       |
+| UX Research Interviews           | Zoe P.        | June 14      | ⏳ Planned  | Scheduling 5 user interviews      |
+
+---
+
+### Phase 2: Design & Prototyping *(June 15 – July 1)*
+| Task                             | Owner         | Deadline     | Status     | Notes                             |
+|----------------------------------|---------------|--------------|------------|-----------------------------------|
+| Wireframes for Core Features     | Samira T.     | June 18      | ⏳ Planned  | Using Figma                       |
+| Initial UI Kit                   | Devon R.      | June 20      | ⏳ Planned  | Include color & typography tokens |
+| Interactive Prototype (v1)       | Zoe P.        | June 25      | ⏳ Planned  | Must cover onboarding flow        |
+| Design Review & Signoff          | Whole Team    | July 1       | ⏳ Planned  | Schedule review meeting           |
+
+---
+
+### Phase 3: Development *(July 2 – August 15)*
+| Task                             | Owner         | Deadline     | Status     | Notes                             |
+|----------------------------------|---------------|--------------|------------|-----------------------------------|
+| API Design & Documentation       | Jae L.        | July 5       | ⏳ Planned  | Use OpenAPI                       |
+| Authentication System            | Clara H.      | July 10      | ⏳ Planned  | Email/password, OAuth later      |
+| Frontend MVP                     | Devon R.      | July 25      | ⏳ Planned  | React + Tailwind                  |
+| Internal Alpha Testing           | QA Team       | August 1     | ⏳ Planned  | Test against sample data          |
+| MVP Release                      | Ravi M.       | August 15    | ⏳ Planned  | Deploy to staging                 |
+
+---
+
+### Phase 4: Sales & Marketing *(July 15 – September 30)*
+| Task                                  | Owner         | Deadline     | Status     | Notes                                      |
+|---------------------------------------|---------------|--------------|------------|--------------------------------------------|
+| Define Target Customer Personas       | Mia N.        | July 20      | ⏳ Planned  | Based on UX research & sales input         |
+| Create Go-To-Market Strategy          | Ravi M.       | July 30      | ⏳ Planned  | Focus on early adopters                    |
+| Develop Sales Deck & Demo Script      | Clara H.      | August 5     | ⏳ Planned  | Draft version for internal review          |
+| Launch Teaser Campaign (social/email) | Zoe P.        | August 10    | ⏳ Planned  | Use Canva + Mailchimp                      |
+| Schedule Demos with Early Partners    | Mia N.        | August 20    | ⏳ Planned  | Minimum 5 meetings                         |
+| Publish Blog Post & Landing Page      | Devon R.      | August 25    | ⏳ Planned  | Hosted on aurora.io                        |
+| Start Paid Ad Campaign (Google/Meta)  | Ravi M.       | September 1  | ⏳ Planned  | Targeted by persona + interest tags        |
+| Collect Feedback from Pilot Customers | Mia N.        | September 15 | ⏳ Planned  | Feed back into roadmap                     |
+
+---
+
+## 📌 Notes
+- Weekly syncs on Mondays at 10am
+- All design assets in the Figma "Aurora" project folder
+- Marketing materials to be stored in Notion > Aurora > Marketing
+- Use the `#aurora-dev` and `#aurora-marketing` Slack channels for updates
+
+---
