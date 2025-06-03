@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import { v4 as uuidv4 } from 'uuid';
@@ -44,7 +43,8 @@ import {
   Loader2,
   Pencil,
   X,
-  LogIn // LogIn might not be needed here anymore if this is not a direct entry point
+  LogIn,
+  GraduationCap
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { addUserCreatedScenario } from '@/lib/userScenarios';
@@ -54,6 +54,7 @@ import { useToast } from "@/hooks/use-toast";
 import { PersonaManager } from '@/components/PersonaManager';
 import { getAllUserPersonas, deleteUserPersona } from '@/lib/userPersonas';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
+import { getLearningMode, setLearningMode } from '@/lib/userSettings';
 
 const scenariosForButtons = [
   { id: 'product-pitch', title: 'New Product Pitch' },
@@ -297,6 +298,24 @@ export default function HomePage() {
 
   const hasActiveParticipantsToShow = userPersonas.length > 0 || displayedParticipantRoles.length > 0;
 
+  const [isLearningMode, setIsLearningMode] = useState(false);
+
+  // Load learning mode state on mount
+  useEffect(() => {
+    setIsLearningMode(getLearningMode());
+  }, []);
+
+  const handleToggleLearningMode = () => {
+    const newMode = !isLearningMode;
+    setIsLearningMode(newMode);
+    setLearningMode(newMode);
+    toast({
+      title: newMode ? "Learning Mode Enabled" : "Learning Mode Disabled",
+      description: newMode 
+        ? "Personas will now act as teachers, providing guidance and education."
+        : "Personas will now act as regular meeting participants.",
+    });
+  };
 
   if (showMeetingLoadingOverlay) {
     return (
@@ -440,17 +459,30 @@ export default function HomePage() {
               </DropdownMenuContent>
             </DropdownMenu>
 
-            {[Upload, Package, Layers].map((IconComponent, index) => (
+            <div className="flex items-center gap-2">
+              {[Upload, Package, Layers].map((IconComponent, index) => (
+                <Button
+                  key={index}
+                  variant="outline"
+                  className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100"
+                >
+                  <IconComponent className="h-5 w-5 mr-2" />
+                  {index === 0 ? 'Upload' : index === 1 ? 'Package' : 'Layers'}
+                </Button>
+              ))}
               <Button
-                key={index}
-                variant="outline"
-                size="icon"
-                className="bg-card border-gray-300 text-gray-600 hover:bg-gray-100 h-9 w-9 sm:h-10 sm:w-10"
-                aria-label={IconComponent.displayName ? IconComponent.displayName.replace('Icon', '').trim() : `Action ${index + 2}`}
+                variant={isLearningMode ? "default" : "outline"}
+                className={`rounded-full pl-3 pr-4 py-2 h-10 text-sm ${
+                  isLearningMode 
+                    ? 'bg-primary text-primary-foreground hover:bg-primary/90' 
+                    : 'bg-card border-gray-300 shadow-lg text-gray-700 hover:bg-gray-100'
+                }`}
+                onClick={handleToggleLearningMode}
               >
-                <IconComponent className="h-4 w-4 sm:h-5 sm:w-5" />
+                <GraduationCap className="h-5 w-5 mr-2" />
+                Learning Mode
               </Button>
-            ))}
+            </div>
           </div>
         </div>
       </main>

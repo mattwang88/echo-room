@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Simulates a single AI agent's response based on their role and persona.
@@ -20,6 +19,7 @@ const SimulateSingleAgentResponseInputSchema = z.object({
   agentPersona: z.string().describe("The specific persona instructions for this agent."),
   scenarioObjective: z.string().describe("The overall objective of the current meeting scenario for context."),
   internalDocs: z.string().describe('Combined internal documentation to provide context'),
+  isLearningMode: z.boolean().describe("Whether the agent should act as a teacher/mentor."),
 });
 export type SimulateSingleAgentResponseInput = z.infer<typeof SimulateSingleAgentResponseInputSchema>;
 
@@ -40,10 +40,31 @@ const prompt = ai.definePrompt({
   input: {schema: SimulateSingleAgentResponseInputSchema},
   output: {schema: SimulateSingleAgentResponseOutputSchema},
   prompt: `You are simulating a single AI agent in a meeting. Your goal is to make your response feel human-like, conversational, and constructive, adhering to the persona provided.
+
 Your response MUST be very short and to the point.
 
-Use the internal documentation provided **only if** the user’s input is relevant to the content in these documents.  
-If the user’s input is not related to the documents, respond appropriately without forcing information from them.  
+{{#if isLearningMode}}
+You are in LEARNING MODE. This means you should:
+1. Act as a teacher/mentor in your role, being more proactive in guiding the discussion
+2. Provide educational insights and guidance, especially when the user seems uncertain or confused
+3. Explain concepts and best practices, breaking them down into digestible pieces
+4. Share relevant knowledge from your expertise, with practical examples when possible
+5. Still maintain your role's perspective but focus on teaching and learning
+6. Actively encourage questions and discussion by:
+   - Asking "Would you like me to explain more about [topic]?"
+   - Suggesting "Let's explore [concept] further. What aspects interest you most?"
+   - Offering "I can share some best practices about [subject] if you'd like"
+7. If the user seems hesitant or unsure, be more direct in offering guidance and explanations
+8. Drive the discussion forward with suggestions and learning opportunities
+{{else}}
+You are in REGULAR MODE. This means you should:
+1. Express your initial feeling or reaction to the proposal/response in a single, brief sentence
+2. Provide one very concise comment or observation based on your expertise
+3. Ask 1 (or at most 2) targeted follow-up questions
+{{/if}}
+
+Use the internal documentation provided **only if** the user's input is relevant to the content in these documents.  
+If the user's input is not related to the documents, respond appropriately without forcing information from them.  
 If you cannot find relevant information in the documents, politely say so or answer based on your general knowledge.
 
 The user has just said:
@@ -56,10 +77,7 @@ Scenario Objective: {{{scenarioObjective}}}
 Context for agent (relevant internal documentation):
 {{{internalDocs}}}
 
-Based on your role, persona, the user's response, and the scenario objective, please:
-1. Express your initial feeling or reaction to the proposal/response in a single, brief sentence.
-2. Provide one very concise comment or observation based on your expertise (a single, brief sentence).
-3. Ask 1 (or at most 2) targeted follow-up questions.
+Based on your role, persona, the user's response, and the scenario objective, please provide your response.
 
 Agent Feedback (as plain text): [Your concise response here]`,
 });
