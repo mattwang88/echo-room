@@ -382,7 +382,7 @@ export default function HomePage() {
               <span className="sr-only">Generate random topic</span>
             </button>
             <Textarea
-              placeholder={isRecordingHomepage ? "Listening..." : "Describe the meeting topic or scenario you want to practice..."}
+              placeholder={isRecordingHomepage ? "Listening..." : "Describe the meeting topic and pick your persona"}
               value={simulationDescription}
               onChange={(e) => setSimulationDescription(e.target.value)}
               className="flex-grow !p-3 !border-0 !shadow-none !ring-0 resize-none min-h-[50px] bg-transparent focus:outline-none focus-visible:!ring-transparent focus-visible:!ring-offset-0 placeholder-gray-500"
