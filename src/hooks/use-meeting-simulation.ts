@@ -271,7 +271,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
       const activeAgents = scenario.agentsInvolved;
       if (activeAgents && activeAgents.length > 0) {
         // --- AGENT DETECTION LOGIC ---
-        const referencedAgent = detectReferencedAgent(userMsgText, activeAgents);
+        const referencedAgent = detectReferencedAgent(userMsgText, activeAgents, personas);
         let agentRolesToRespond: string[];
         if (referencedAgent) {
           agentRolesToRespond = [referencedAgent];
@@ -325,7 +325,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   }, [
     currentUserResponse, scenario, isAiThinking, addMessage, setCurrentUserResponse, meetingActive,
     setBaseTextForSpeech, setIsAiThinking, ttsCancel, currentAgentIndex, setCurrentAgentIndex,
-    currentTurn, setCurrentTurn, handleEndMeeting, toast, setMessages, isLearningMode
+    currentTurn, setCurrentTurn, handleEndMeeting, toast, setMessages, isLearningMode, personas
   ]);
 
 
@@ -415,22 +415,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
 
   useEffect(() => {
-    // Load personas on mount
-    const userPersonas = getAllUserPersonas();
-    setPersonas(userPersonas);
-    
     if (!isRecording && intentToSubmitAfterStop) {
-      console.log("[MeetingSimulation] useEffect detected isRecording is false and intentToSubmitAfterStop is true.");
       if (currentUserResponse.trim() && meetingActive) { 
-        console.log("[MeetingSimulation] Calling submitUserResponse due to intent after STT stop.");
         submitUserResponse();
-      } else {
-        console.log("[MeetingSimulation] STT stopped with intent to submit, but currentUserResponse is empty or meeting not active. Not submitting.");
       }
       if (isMountedRef.current) {
         setIntentToSubmitAfterStop(false); 
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps 
   }, [isRecording, intentToSubmitAfterStop, currentUserResponse, submitUserResponse, meetingActive]);
 
   const toggleTTS = useCallback(() => {
