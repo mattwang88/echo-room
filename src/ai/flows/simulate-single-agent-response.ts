@@ -20,6 +20,7 @@ const SimulateSingleAgentResponseInputSchema = z.object({
   scenarioObjective: z.string().describe("The overall objective of the current meeting scenario for context."),
   internalDocs: z.string().describe('Combined internal documentation to provide context'),
   isLearningMode: z.boolean().describe("Whether the agent should act as a teacher/mentor."),
+  agentPersonaName: z.string().optional().describe("The name of the persona, if applicable. If present, the agent should refer to themselves by this name if referenced by the user."),
 });
 export type SimulateSingleAgentResponseInput = z.infer<typeof SimulateSingleAgentResponseInputSchema>;
 
@@ -40,6 +41,11 @@ const prompt = ai.definePrompt({
   input: {schema: SimulateSingleAgentResponseInputSchema},
   output: {schema: SimulateSingleAgentResponseOutputSchema},
   prompt: `You are simulating a single AI agent in a meeting. Your goal is to make your response feel human-like, conversational, and constructive, adhering to the persona provided.
+
+{{#if agentPersonaName}}
+Your Name: {{{agentPersonaName}}}
+If the user references you by this name, respond in the first person as that persona (e.g., "Yes, I'm Alex...").
+{{/if}}
 
 {{#if isLearningMode}}
 You are in LEARNING MODE. This means you should:

@@ -282,6 +282,12 @@ export function useMeetingSimulation(scenarioId: string | null) {
           let agentPersona = "";
           const personaKey = `${agentToRespondRole.toLowerCase().replace(/\s+/g, '')}Persona`;
           agentPersona = scenario.personaConfig[personaKey] || `You are the ${agentToRespondRole}. Respond from this perspective.`;
+          // Find persona name if available
+          let agentPersonaName: string | undefined = undefined;
+          if (personas && personas.length > 0) {
+            const foundPersona = personas.find(p => p.role === agentToRespondRole);
+            if (foundPersona) agentPersonaName = foundPersona.name;
+          }
           if (agentPersona) {
             // Enhance the user's message with analysis for learning mode
             const enhancedUserMessage = isLearningMode 
@@ -294,10 +300,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
               scenarioObjective: scenario.objective,
               isLearningMode,
               internalDocs: "", // The function will read this from file internally
+              agentPersonaName,
             };
             const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
             if (agentResponse && agentResponse.agentFeedback) {
-              addMessage({participant: agentToRespondRole, text: agentResponse.agentFeedback});
+              addMessage({
+                participant: agentToRespondRole,
+                text: agentResponse.agentFeedback,
+                participantName: agentPersonaName,
+              });
             }
           } else {
             console.warn(`[MeetingSimulation] No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
