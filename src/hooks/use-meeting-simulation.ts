@@ -12,6 +12,7 @@ import { useSpeechToText } from './useSpeechToText';
 import { useTextToSpeech } from './useTextToSpeech'; // Re-added
 import { getAllUserPersonas } from '@/lib/userPersonas';
 import { getLearningMode, setLearningMode } from '@/lib/userSettings';
+import { detectReferencedAgent } from '@/lib/utils';
 
 const START_MEETING_PROMPT_ID = 'system-start-meeting-prompt';
 
@@ -269,34 +270,52 @@ export function useMeetingSimulation(scenarioId: string | null) {
       console.time("simulateSingleAgentResponse");
       const activeAgents = scenario.agentsInvolved;
       if (activeAgents && activeAgents.length > 0) {
-        const agentToRespondRole = activeAgents[currentAgentIndex];
-        let agentPersona = "";
-        
-        const personaKey = `${agentToRespondRole.toLowerCase().replace(/\s+/g, '')}Persona`;
-        agentPersona = scenario.personaConfig[personaKey] || `You are the ${agentToRespondRole}. Respond from this perspective.`;
-        
-        if (agentPersona) {
-          // Enhance the user's message with analysis for learning mode
-          const enhancedUserMessage = isLearningMode 
-            ? `${userMsgText}\n\n[User State Analysis: ${JSON.stringify(userMessageAnalysis)}]`
-            : userMsgText;
-
-          const singleAgentSimInput: SimulateSingleAgentResponseInput = {
-            userResponse: enhancedUserMessage,
-            agentRole: agentToRespondRole as AgentRole,
-            agentPersona: agentPersona,
-            scenarioObjective: scenario.objective,
-            isLearningMode,
-            internalDocs: "", // The function will read this from file internally
-          };
-          const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
-          if (agentResponse && agentResponse.agentFeedback) {
-            addMessage({participant: agentToRespondRole, text: agentResponse.agentFeedback});
-          }
-          if(isMountedRef.current) setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
+        // --- AGENT DETECTION LOGIC ---
+        const referencedAgent = detectReferencedAgent(userMsgText, activeAgents, personas);
+        let agentRolesToRespond: string[];
+        if (referencedAgent) {
+          agentRolesToRespond = [referencedAgent];
         } else {
-           console.warn(`[MeetingSimulation] No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
+          agentRolesToRespond = [activeAgents[currentAgentIndex]];
         }
+        for (const agentToRespondRole of agentRolesToRespond) {
+          let agentPersona = "";
+          const personaKey = `${agentToRespondRole.toLowerCase().replace(/\s+/g, '')}Persona`;
+          agentPersona = scenario.personaConfig[personaKey] || `You are the ${agentToRespondRole}. Respond from this perspective.`;
+          // Find persona name if available
+          let agentPersonaName: string | undefined = undefined;
+          if (personas && personas.length > 0) {
+            const foundPersona = personas.find(p => p.role === agentToRespondRole);
+            if (foundPersona) agentPersonaName = foundPersona.name;
+          }
+          if (agentPersona) {
+            // Enhance the user's message with analysis for learning mode
+            const enhancedUserMessage = isLearningMode 
+              ? `${userMsgText}\n\n[User State Analysis: ${JSON.stringify(userMessageAnalysis)}]`
+              : userMsgText;
+            const singleAgentSimInput: SimulateSingleAgentResponseInput = {
+              userResponse: enhancedUserMessage,
+              agentRole: agentToRespondRole as AgentRole,
+              agentPersona: agentPersona,
+              scenarioObjective: scenario.objective,
+              isLearningMode,
+              internalDocs: "", // The function will read this from file internally
+              agentPersonaName,
+            };
+            const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
+            if (agentResponse && agentResponse.agentFeedback) {
+              addMessage({
+                participant: agentToRespondRole,
+                text: agentResponse.agentFeedback,
+                participantName: agentPersonaName,
+              });
+            }
+          } else {
+            console.warn(`[MeetingSimulation] No persona found for agent role: ${agentToRespondRole} in scenario ${scenario.id}`);
+          }
+        }
+        // Only increment agent index if not a direct reference (i.e., round-robin mode)
+        if (!referencedAgent && isMountedRef.current) setCurrentAgentIndex(prev => (prev + 1) % activeAgents.length);
       }
       console.timeEnd("simulateSingleAgentResponse");
 
@@ -317,7 +336,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   }, [
     currentUserResponse, scenario, isAiThinking, addMessage, setCurrentUserResponse, meetingActive,
     setBaseTextForSpeech, setIsAiThinking, ttsCancel, currentAgentIndex, setCurrentAgentIndex,
-    currentTurn, setCurrentTurn, handleEndMeeting, toast, setMessages, isLearningMode
+    currentTurn, setCurrentTurn, handleEndMeeting, toast, setMessages, isLearningMode, personas
   ]);
 
 
@@ -407,22 +426,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
 
 
   useEffect(() => {
-    // Load personas on mount
-    const userPersonas = getAllUserPersonas();
-    setPersonas(userPersonas);
-    
     if (!isRecording && intentToSubmitAfterStop) {
-      console.log("[MeetingSimulation] useEffect detected isRecording is false and intentToSubmitAfterStop is true.");
       if (currentUserResponse.trim() && meetingActive) { 
-        console.log("[MeetingSimulation] Calling submitUserResponse due to intent after STT stop.");
         submitUserResponse();
-      } else {
-        console.log("[MeetingSimulation] STT stopped with intent to submit, but currentUserResponse is empty or meeting not active. Not submitting.");
       }
       if (isMountedRef.current) {
         setIntentToSubmitAfterStop(false); 
       }
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps 
   }, [isRecording, intentToSubmitAfterStop, currentUserResponse, submitUserResponse, meetingActive]);
 
   const toggleTTS = useCallback(() => {

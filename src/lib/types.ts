@@ -81,3 +81,6 @@ export interface CurrentSpeakerInfo {
   gender: VoiceGender;
   voiceName: string; // Could be useful for debugging or advanced features
 }
+
+// Utility type for agent reference detection
+export type DetectReferencedAgentFn = (userMessage: string, agentRoles: string[]) => string | null;
