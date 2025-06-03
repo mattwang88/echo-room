@@ -33,19 +33,36 @@ const evaluateSemanticSkillPrompt = ai.definePrompt({
   name: 'evaluateSemanticSkillPrompt',
   input: {schema: EvaluateSemanticSkillInputSchema},
   output: {schema: EvaluateSemanticSkillOutputSchema},
-  prompt: `You are an AI assistant that evaluates the semantic quality of user responses in a given context.
+  prompt: `You are an AI assistant that evaluates the semantic quality of user responses in a given context. Your evaluation should be consistent and based on clear criteria.
 
   Context: {{{context}}}
 
   Evaluate the following response:
   {{{responseText}}}
 
-  Provide a score (0-1), feedback, and guidance based on the semantic quality of the response.
-  Consider clarity, persuasiveness, and technical soundness in your evaluation.
+  Use the following criteria to evaluate the response and assign a score between 0 and 1:
 
-  Score:
-  Feedback:
-  Guidance:`,
+  1. Clarity (40% of total score):
+     - 0.4: Response is clear, well-structured, and easy to understand
+     - 0.2: Response is somewhat clear but could be better organized
+     - 0.0: Response is unclear or poorly structured
+
+  2. Technical Accuracy (30% of total score):
+     - 0.3: Response demonstrates accurate technical knowledge
+     - 0.15: Response shows basic understanding but has some inaccuracies
+     - 0.0: Response contains significant technical errors
+
+  3. Relevance to Context (30% of total score):
+     - 0.3: Response directly addresses the context and objectives
+     - 0.15: Response is somewhat relevant but misses key points
+     - 0.0: Response is not relevant to the context
+
+  Calculate the total score by summing the scores from each criterion.
+  Provide specific feedback for each criterion and overall guidance for improvement.
+
+  Score (0-1):
+  Feedback (address each criterion):
+  Guidance (specific steps for improvement):`,
 });
 
 const evaluateSemanticSkillFlow = ai.defineFlow(

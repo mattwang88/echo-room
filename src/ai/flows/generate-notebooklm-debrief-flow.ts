@@ -1,4 +1,3 @@
-
 'use server';
 /**
  * @fileOverview Generates a structured, reflective learning debrief based on meeting performance and coaching feedback.
@@ -55,13 +54,19 @@ User's Responses and Coaching Received:
     Suggested Learning: {{this.coachingFeedback.suggestedLearningMaterials}}
 {{/each}}
 
-Based on ALL the information above, generate a structured "Learning Debrief". The debrief should:
-1.  Start with a brief recap of the scenario and objective.
+Based on ALL the information above, generate a structured "Learning Debrief". The debrief MUST include ALL of the following sections in order:
+1.  **Scenario Recap**: A brief recap of the scenario and objective.
 2.  **Key Strengths Observed**: Identify 2-3 core strengths the user demonstrated, supported by examples or themes from their responses. Use bullet points.
 3.  **Key Areas for Development**: Identify 2-3 primary areas where the user could improve, referencing specific coaching insights. Use bullet points.
 4.  **Actionable Insights & Next Steps**: Based on the "Suggested Learning Materials" and overall feedback, provide 2-3 concrete, actionable steps or resources the user can explore. Use bullet points.
 5.  **Reflection Prompts**: Include 2-3 open-ended questions to encourage the user to reflect further on their experience and learnings (e.g., "What was the most challenging part of this simulation for you and why?", "How might you approach a similar situation differently next time?"). Use bullet points.
-6.  Conclude with an encouraging, forward-looking statement.
+6.  **Final Thoughts**: Conclude with an encouraging, forward-looking statement.
+
+IMPORTANT:
+- You MUST complete ALL sections listed above
+- Do not cut off mid-sentence or mid-section
+- If you're running out of space, prioritize completing the current section over starting a new one
+- Each section should be self-contained and complete
 
 The tone should be insightful, constructive, and supportive, aiming to facilitate self-reflection and continuous learning.
 Format the output clearly using headings (e.g., "**Scenario Recap:**", "**Key Strengths Observed:**", "**Areas for Development:**", "**Actionable Insights & Next Steps:**", "**Reflection Prompts:**", "**Final Thoughts:**") and bullet points where appropriate for readability. Ensure headings are bold.

@@ -2,7 +2,8 @@
 'use client';
 
 import { useEffect, useState } from 'react';
-import type { MeetingSummaryData, Message, AnalyzeResponseOutput, EvaluateSemanticSkillOutput } from '@/lib/types';
+import type { MeetingSummaryData, Message, AnalyzeResponseOutput } from '@/lib/types';
+import type { EvaluateSemanticSkillOutput } from '@/ai/flows/semantic-skill-evaluation';
 import { FeedbackReport } from '@/components/summary/FeedbackReport';
 import { Logo } from '@/components/Logo';
 import { Loader2, Copy, AlertTriangle } from 'lucide-react';
@@ -14,6 +15,7 @@ import { useToast } from "@/hooks/use-toast";
 import { generateNotebookLMDebrief, type NotebookLMDebriefInput, type NotebookLMDebriefOutput } from '@/ai/flows/generate-notebooklm-debrief-flow';
 import { analyzeResponse, type AnalyzeResponseInput } from '@/ai/flows/real-time-coaching';
 import { evaluateSemanticSkill, type EvaluateSemanticSkillInput } from '@/ai/flows/semantic-skill-evaluation';
+import ReactMarkdown from 'react-markdown';
 
 export default function SummaryPage() {
   const [rawSummaryData, setRawSummaryData] = useState<MeetingSummaryData | null>(null);
@@ -45,12 +47,29 @@ export default function SummaryPage() {
         for (const message of rawSummaryData.messages) {
           if (message.participant === 'User') {
             try {
-              const coachingInput: AnalyzeResponseInput = { response: message.text, context: rawSummaryData.objective };
-              const coachingResult = await analyzeResponse(coachingInput);
+              // Check if we already have cached feedback for this message
+              const cachedFeedback = localStorage.getItem(`echoRoomFeedback_${message.id}`);
+              let coachingResult: AnalyzeResponseOutput;
+              let semanticResult: EvaluateSemanticSkillOutput;
 
-              const semanticInput: EvaluateSemanticSkillInput = { responseText: message.text, context: rawSummaryData.objective };
-              const semanticResult = await evaluateSemanticSkill(semanticInput);
+              if (cachedFeedback) {
+                const { coaching, semantic } = JSON.parse(cachedFeedback);
+                coachingResult = coaching;
+                semanticResult = semantic;
+              } else {
+                const coachingInput: AnalyzeResponseInput = { response: message.text, context: rawSummaryData.objective };
+                coachingResult = await analyzeResponse(coachingInput);
 
+                const semanticInput: EvaluateSemanticSkillInput = { responseText: message.text, context: rawSummaryData.objective };
+                semanticResult = await evaluateSemanticSkill(semanticInput);
+
+                // Cache the feedback
+                localStorage.setItem(`echoRoomFeedback_${message.id}`, JSON.stringify({
+                  coaching: coachingResult,
+                  semantic: semanticResult
+                }));
+              }
+              
               enrichedMessages.push({
                 ...message,
                 coachingFeedback: coachingResult,
@@ -204,18 +223,8 @@ export default function SummaryPage() {
             {!isLoadingDebrief && notebookLMDebriefContent && (
               <>
                 <ScrollArea className="h-[300px] w-full p-4 border rounded-md bg-muted/20 mb-4">
-                  <div className="whitespace-pre-wrap text-sm sm:text-base leading-relaxed text-foreground">
-                    {notebookLMDebriefContent.split('\n').map((paragraph, index) => {
-                        const isHeading = paragraph.trim().endsWith(':') && !paragraph.trim().startsWith('-');
-                        const isListItem = paragraph.trim().startsWith('-') || paragraph.trim().startsWith('•');
-
-                        if (isHeading) {
-                          return <h4 key={index} className="text-md font-semibold mt-3 mb-1 text-primary">{paragraph.replace(/\*\*/g, '')}</h4>;
-                        } else if (isListItem) {
-                           return <p key={index} className="mb-1 ml-4">{paragraph}</p>;
-                        }
-                        return <p key={index} className={paragraph.trim() === '' ? 'my-2' : 'mb-3'}>{paragraph}</p>;
-                      })}
+                  <div className="prose prose-sm sm:prose-base dark:prose-invert max-w-none">
+                    <ReactMarkdown>{notebookLMDebriefContent}</ReactMarkdown>
                   </div>
                 </ScrollArea>
                 <Button onClick={handleCopyToClipboard} className="w-full" disabled={!notebookLMDebriefContent}>
