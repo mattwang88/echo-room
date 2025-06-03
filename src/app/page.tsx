@@ -94,8 +94,7 @@ export default function WelcomePage() {
           <Button
             onClick={handleEnterClick}
             variant="ghost"
-            // size="icon" prop removed
-            className="bg-white hover:bg-gray-100 text-primary rounded-full p-5 w-20 h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-offset-2 focus-visible:ring-offset-transparent mt-8 translate-y-[17.5rem] translate-x-5"
+            className="bg-white/30 hover:bg-white/50 text-white rounded-full p-5 w-20 h-20 shadow-xl transition-all duration-300 ease-in-out transform hover:scale-110 backdrop-blur-sm focus-visible:ring-2 focus-visible:ring-white focus-visible:ring-offset-2 focus-visible:ring-offset-transparent mt-8 translate-y-[17.5rem] translate-x-5"
             disabled={isExitingWelcome}
             aria-label="Enter EchoRoom"
           >
