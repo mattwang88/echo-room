@@ -301,6 +301,21 @@ export function useMeetingSimulation(scenarioId: string | null) {
               isLearningMode,
               internalDocs: "", // The function will read this from file internally
               agentPersonaName,
+              meetingContext: {
+                messageHistory: messages,
+                otherAgents: activeAgents
+                  .filter(role => role !== agentToRespondRole)
+                  .map(role => {
+                    const personaKey = `${role.toLowerCase().replace(/\s+/g, '')}Persona`;
+                    const persona = scenario.personaConfig[personaKey] || `You are the ${role}. Respond from this perspective.`;
+                    const foundPersona = personas?.find(p => p.role === role);
+                    return {
+                      role,
+                      name: foundPersona?.name,
+                      persona,
+                    };
+                  }),
+              },
             };
             const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
             if (agentResponse && agentResponse.agentFeedback) {

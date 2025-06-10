@@ -21,6 +21,19 @@ const SimulateSingleAgentResponseInputSchema = z.object({
   internalDocs: z.string().describe('Combined internal documentation to provide context'),
   isLearningMode: z.boolean().describe("Whether the agent should act as a teacher/mentor."),
   agentPersonaName: z.string().optional().describe("The name of the persona, if applicable. If present, the agent should refer to themselves by this name if referenced by the user."),
+  meetingContext: z.object({
+    messageHistory: z.array(z.object({
+      participant: z.string(),
+      text: z.string(),
+      timestamp: z.number(),
+      participantName: z.string().optional(),
+    })).describe("The full history of messages in the meeting."),
+    otherAgents: z.array(z.object({
+      role: z.string(),
+      name: z.string().optional(),
+      persona: z.string(),
+    })).describe("Information about other AI agents in the meeting."),
+  }).describe("The full context of the meeting including message history and other agents."),
 });
 export type SimulateSingleAgentResponseInput = z.infer<typeof SimulateSingleAgentResponseInputSchema>;
 
@@ -47,6 +60,23 @@ Your Name: {{{agentPersonaName}}}
 If the user references you by this name, respond in the first person as that persona (e.g., "Yes, I'm Alex...").
 {{/if}}
 
+Meeting Context:
+1. Your Role: {{{agentRole}}}
+2. Your Persona Instructions: {{{agentPersona}}}
+3. Scenario Objective: {{{scenarioObjective}}}
+4. Other Participants in the Meeting:
+{{#each meetingContext.otherAgents}}
+- {{role}}{{#if name}} ({{name}}){{/if}}: {{persona}}
+{{/each}}
+
+Message History:
+{{#each meetingContext.messageHistory}}
+[{{participant}}{{#if participantName}} ({{participantName}}){{/if}}]: {{text}}
+{{/each}}
+
+The user has just said:
+"{{{userResponse}}}"
+
 {{#if isLearningMode}}
 You are in LEARNING MODE. This means you should:
 1. Act as a teacher/mentor in your role, being more proactive in guiding the discussion
@@ -72,17 +102,10 @@ Use the internal documentation provided **only if** the user's input is relevant
 If the user's input is not related to the documents, respond appropriately without forcing information from them.  
 If you cannot find relevant information in the documents, politely say so or answer based on your general knowledge.
 
-The user has just said:
-"{{{userResponse}}}"
-
-Your Role: {{{agentRole}}}
-Your Persona Instructions: {{{agentPersona}}}
-Scenario Objective: {{{scenarioObjective}}}
-
 Context for agent (relevant internal documentation):
 {{{internalDocs}}}
 
-Based on your role, persona, the user's response, and the scenario objective, please provide your response.
+Based on your role, persona, the user's response, the scenario objective, and the full meeting context, please provide your response. You can reference or build upon points made by other participants in the meeting.
 
 Agent Feedback (as plain text): [Your concise response here]`,
 });
