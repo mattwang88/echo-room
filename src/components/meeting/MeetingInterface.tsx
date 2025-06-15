@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useRef, useState, useCallback } from 'react';
@@ -83,6 +82,15 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
     }
 
     if (isTTSSpeaking && currentSpeakingRole && currentSpeakingRole !== 'User' && currentSpeakingRole !== 'System') {
+      // First try to find the persona's avatar
+      const persona = personas.find(p => p.role === currentSpeakingRole);
+      if (persona?.avatar) {
+        setCurrentDisplayAvatarPath(`/images/${persona.avatar}`);
+        console.log(`[AvatarDebug] Using persona's avatar: ${persona.avatar}`);
+        return;
+      }
+
+      // Fallback to gender-based avatars if no persona avatar is set
       let chosenPath: string | null = null;
       if (currentSpeakingGender === 'male' && maleAvatarPaths.length > 0) {
         const randomIndex = Math.floor(Math.random() * maleAvatarPaths.length);
@@ -105,7 +113,7 @@ export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
       setCurrentDisplayAvatarPath(null);
       console.log(`[AvatarDebug] Not speaking or User is speaking. useEffect cleared currentDisplayAvatarPath.`);
     }
-  }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender, meetingActive]);
+  }, [isTTSSpeaking, currentSpeakingRole, currentSpeakingGender, meetingActive, personas]);
 
 
   if (!scenario && !meetingEnded) {

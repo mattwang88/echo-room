@@ -37,7 +37,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
   const [baseTextForSpeech, setBaseTextForSpeech] = useState<string>("");
   const [intentToSubmitAfterStop, setIntentToSubmitAfterStop] = useState(false);
 
-  const { speak: ttsSpeak, cancel: ttsCancel, isSpeaking: isTTSSpeaking, currentSpeakingRole: ttsCurrentSpeaker } = useTextToSpeech();
+  const { speak: ttsSpeak, cancel: ttsCancel, isSpeaking: isTTSSpeaking, currentSpeakingRole: ttsCurrentSpeakingRole, currentSpeakingGender: ttsCurrentSpeakingGender } = useTextToSpeech({ sessionKey: scenarioId });
 
   const handleSttListeningChange = useCallback((listening: boolean) => {
     if (!isMountedRef.current) return;
@@ -144,6 +144,15 @@ export function useMeetingSimulation(scenarioId: string | null) {
       ...messageData,
       timestamp: Date.now(),
     };
+
+    // Find the persona for this message to get their avatar
+    if (messageData.participant !== 'User' && messageData.participant !== 'System') {
+      const persona = personas.find(p => p.role === messageData.participant);
+      if (persona?.avatar) {
+        newMessage.avatar = `/images/${persona.avatar}`;
+      }
+    }
+
     setMessages(prev => [...prev, newMessage]);
 
     // Only speak if TTS is enabled
@@ -160,7 +169,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
     } else if (messageData.participant !== 'User') {
       console.log(`[MeetingSimulation] AddMessage: SKIPPING TTS (standard). Participant: ${messageData.participant}, Active: ${meetingActive}, Has Action: ${!!messageData.action}, Text: "${messageData.text.substring(0,30)}..."`);
     }
-  }, [setMessages, ttsSpeak, meetingActive, scenario, isTTSEnabled]);
+  }, [setMessages, ttsSpeak, meetingActive, scenario, isTTSEnabled, personas]);
 
 
   const handleMeetingAction = useCallback((messageId: string, actionKey: string) => {
@@ -506,7 +515,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
     isSTTSupported: browserSupportsSTT,
     sttInternalIsListening, 
     isTTSSpeaking, 
-    currentSpeakingRole: ttsCurrentSpeaker,
+    currentSpeakingRole: ttsCurrentSpeakingRole, 
+    currentSpeakingGender: ttsCurrentSpeakingGender, 
     personas,
     isTTSEnabled,
     toggleTTS,

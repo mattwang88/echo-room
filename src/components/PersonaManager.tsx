@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
@@ -50,17 +49,36 @@ export function PersonaManager({
   const [role, setRole] = useState<AgentRole>('');
   const [instructionPrompt, setInstructionPrompt] = useState('');
   const [currentEditingId, setCurrentEditingId] = useState<string | null>(null);
+  const [selectedAvatar, setSelectedAvatar] = useState<string>('');
+  const [availableAvatars, setAvailableAvatars] = useState<string[]>([]);
 
   const [internalPersonas, setInternalPersonas] = useState<Persona[]>(initialPersonas || []);
 
   const [isInternalAlertOpen, setIsInternalAlertOpen] = useState(false);
   const [personaToDeleteInternallyId, setPersonaToDeleteInternallyId] = useState<string | null>(null);
 
+  // Load available avatars on mount
+  useEffect(() => {
+    const loadAvatars = async () => {
+      try {
+        const response = await fetch('/api/avatars');
+        if (response.ok) {
+          const avatars = await response.json();
+          setAvailableAvatars(avatars);
+        }
+      } catch (error) {
+        console.error('Failed to load avatars:', error);
+      }
+    };
+    loadAvatars();
+  }, []);
+
   const resetForm = useCallback(() => {
     setName('');
     setRole(availableRoles.length > 0 ? availableRoles[0] : '');
     setInstructionPrompt('');
     setCurrentEditingId(null);
+    setSelectedAvatar('');
   }, [availableRoles]);
 
   useEffect(() => {
@@ -69,6 +87,7 @@ export function PersonaManager({
       setRole(personaToEdit.role as AgentRole);
       setInstructionPrompt(personaToEdit.instructionPrompt);
       setCurrentEditingId(personaToEdit.id);
+      setSelectedAvatar(personaToEdit.avatar || '');
     } else {
       resetForm();
     }
@@ -77,7 +96,6 @@ export function PersonaManager({
   useEffect(() => {
     setInternalPersonas(initialPersonas || []);
   }, [initialPersonas]);
-
 
   const handleCreateOrUpdatePersona = (e: React.FormEvent) => {
     e.preventDefault();
@@ -89,12 +107,12 @@ export function PersonaManager({
       name: name.trim(),
       role: role.trim(),
       instructionPrompt: instructionPrompt.trim(),
+      avatar: selectedAvatar || undefined,
     };
 
     addUserPersona(persona);
     const updatedLivePersonas = getAllUserPersonas();
     setInternalPersonas(updatedLivePersonas);
-
 
     if (onFormSubmitSuccess) {
       onFormSubmitSuccess();
@@ -107,6 +125,7 @@ export function PersonaManager({
     setRole(persona.role as AgentRole);
     setInstructionPrompt(persona.instructionPrompt);
     setCurrentEditingId(persona.id);
+    setSelectedAvatar(persona.avatar || '');
   };
 
   const confirmDeleteInternalPersona = () => {
@@ -114,7 +133,6 @@ export function PersonaManager({
       deleteUserPersona(personaToDeleteInternallyId);
       const updatedLivePersonas = getAllUserPersonas();
       setInternalPersonas(updatedLivePersonas);
-
 
       if (currentEditingId === personaToDeleteInternallyId) {
         resetForm();
@@ -133,7 +151,7 @@ export function PersonaManager({
   };
 
   return (
-    <>
+    <div className="max-h-[80vh] overflow-y-auto">
       <DialogHeader>
         <DialogTitle>{currentEditingId ? 'Edit Persona' : 'Create New Persona'}</DialogTitle>
         <DialogDescription>
@@ -180,6 +198,26 @@ export function PersonaManager({
             rows={5}
           />
         </div>
+        <div>
+          <label className="block text-sm font-medium text-gray-700 mb-1">Avatar</label>
+          <div className="grid grid-cols-4 gap-2 max-h-[200px] overflow-y-auto p-2 border rounded">
+            {availableAvatars.map((avatar) => (
+              <div
+                key={avatar}
+                className={`cursor-pointer p-1 rounded ${
+                  selectedAvatar === avatar ? 'ring-2 ring-primary' : 'hover:bg-muted'
+                }`}
+                onClick={() => setSelectedAvatar(avatar)}
+              >
+                <img
+                  src={`/images/${avatar}`}
+                  alt="Avatar"
+                  className="w-full h-auto rounded"
+                />
+              </div>
+            ))}
+          </div>
+        </div>
         <DialogFooter className="pt-2">
           {currentEditingId && (
             <Button type="button" variant="outline" onClick={() => { resetForm(); if (onFormSubmitSuccess) onFormSubmitSuccess(); }} className="mr-auto">
@@ -198,7 +236,7 @@ export function PersonaManager({
       {(internalPersonas || []).length > 0 && !personaToEdit && (
         <div className="mt-6 pt-4 border-t">
           <h4 className="text-md font-semibold mb-3">Existing Personas</h4>
-          <div className="max-h-[200px] overflow-y-auto pr-2 space-y-3">
+          <div className="space-y-3">
             {(internalPersonas || []).map((persona) => (
               <div key={persona.id} className="p-3 border rounded-lg relative group bg-muted/30">
                 <div className="flex justify-between items-start">
@@ -248,12 +286,10 @@ export function PersonaManager({
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel onClick={() => setPersonaToDeleteInternallyId(null)}>Cancel</AlertDialogCancel>
-            <AlertDialogAction onClick={confirmDeleteInternalPersona} className="bg-destructive hover:bg-destructive/90 text-destructive-foreground">
-              Delete
-            </AlertDialogAction>
+            <AlertDialogAction onClick={confirmDeleteInternalPersona}>Delete</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-    </>
+    </div>
   );
 }
