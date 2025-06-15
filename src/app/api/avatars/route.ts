@@ -1,29 +1,25 @@
 import { NextResponse } from 'next/server';
-import fs from 'fs';
-import path from 'path';
+import { readdir } from 'fs/promises';
+import { join } from 'path';
 
 export async function GET() {
-  const categories = ['avatars', 'females', 'males'];
-  const allImages: string[] = [];
-
   try {
-    for (const category of categories) {
-      const imagesDir = path.join(process.cwd(), 'public', 'images', category);
-      if (fs.existsSync(imagesDir)) {
-        const files = fs.readdirSync(imagesDir);
-        const imageFiles = files.filter(file => 
-          file.toLowerCase().endsWith('.png') || 
-          file.toLowerCase().endsWith('.jpg') || 
-          file.toLowerCase().endsWith('.jpeg')
-        );
-        // Add category prefix to each image path
-        allImages.push(...imageFiles.map(file => `${category}/${file}`));
-      }
-    }
+    const imagesDir = join(process.cwd(), 'public/images');
+    const files = await readdir(imagesDir);
+    
+    // Filter for image files and exclude user-uploaded images
+    const avatars = files.filter(file => {
+      const isImage = /\.(jpg|jpeg|png|gif)$/i.test(file);
+      const isPredefined = !file.startsWith('user-');
+      return isImage && isPredefined;
+    });
 
-    return NextResponse.json(allImages);
+    return NextResponse.json({ avatars });
   } catch (error) {
     console.error('Error reading avatars directory:', error);
-    return NextResponse.json({ error: 'Failed to read avatars' }, { status: 500 });
+    return NextResponse.json(
+      { error: 'Failed to load avatars' },
+      { status: 500 }
+    );
   }
 } 
