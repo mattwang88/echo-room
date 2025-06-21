@@ -79,7 +79,10 @@ export function PersonaManager({
         const response = await fetch('/api/avatars');
         const data = await response.json();
         setPredefinedAvatars(data.avatars || []);
-        setAvailableAvatars(data.avatars || []);
+        
+        const storedUserAvatars = JSON.parse(localStorage.getItem('userAvatars') || '[]');
+        setUserAvatars(storedUserAvatars);
+
       } catch (error) {
         console.error('Error loading avatars:', error);
         toast({
@@ -91,6 +94,12 @@ export function PersonaManager({
     };
     loadAvatars();
   }, [toast]);
+
+  useEffect(() => {
+    const combinedAvatars = [...predefinedAvatars, ...userAvatars];
+    const uniqueAvatars = Array.from(new Set(combinedAvatars));
+    setAvailableAvatars(uniqueAvatars);
+  }, [predefinedAvatars, userAvatars]);
 
   const resetForm = useCallback(() => {
     setName('');
@@ -190,8 +199,13 @@ export function PersonaManager({
       }
 
       // Add the new avatar to the list
-      setUserAvatars(prev => [...prev, data.filename]);
-      setSelectedAvatar(data.filename);
+      const newAvatarFilename = data.filename;
+      setUserAvatars(prev => {
+        const updatedAvatars = [...prev, newAvatarFilename];
+        localStorage.setItem('userAvatars', JSON.stringify(updatedAvatars));
+        return updatedAvatars;
+      });
+      setSelectedAvatar(newAvatarFilename);
       
       toast({
         title: "Success",
@@ -276,7 +290,7 @@ export function PersonaManager({
           {currentEditingId ? 'Modify the details of this AI persona.' : 'Define a new AI persona that can participate in your meeting scenarios.'}
         </DialogDescription>
       </DialogHeader>
-      <form onSubmit={handleSubmit} className="space-y-4 py-4">
+      <form onSubmit={handleCreateOrUpdatePersona} className="space-y-4 py-4">
         <div>
           <label htmlFor="personaName" className="block text-sm font-medium text-gray-700 mb-1">Name</label>
           <Input
