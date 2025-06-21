@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useCallback } from 'react';
@@ -425,6 +424,8 @@ export default function HomePage() {
               </DialogTrigger>
               <DialogContent className="sm:max-w-[600px]">
                  <PersonaManager
+                  open={isPersonaManagerOpen}
+                  onOpenChange={(open) => { if (!open) handleClosePersonaManager(); else setIsPersonaManagerOpen(true); }}
                   personas={userPersonas}
                   onFormSubmitSuccess={handleClosePersonaManager}
                   personaToEdit={editingPersona}

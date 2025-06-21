@@ -28,4 +28,16 @@ export function getUserPersonaById(id: string): Persona | undefined {
   if (typeof window === 'undefined') return undefined;
   const personas = getAllUserPersonas();
   return personas.find(p => p.id === id);
+}
+
+export function saveUserPersona(persona: Persona) {
+  const personas = getAllUserPersonas();
+  const index = personas.findIndex(p => p.id === persona.id);
+  
+  if (index === -1) {
+    throw new Error('Persona not found');
+  }
+  
+  personas[index] = persona;
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(personas));
 } 

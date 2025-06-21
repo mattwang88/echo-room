@@ -66,6 +66,7 @@ export type Persona = {
   name: string;
   role: string;
   instructionPrompt: string;
+  avatar?: string; // Path to the avatar image
 };
 
 export type VoiceGender = 'male' | 'female' | 'neutral';
