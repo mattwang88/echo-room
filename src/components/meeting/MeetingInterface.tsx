@@ -19,6 +19,7 @@ import { SoundWaveAnimation } from '@/components/animations/SoundWaveAnimation';
 
 interface MeetingInterfaceProps {
   scenarioId: string;
+  meetingType: 'chat' | 'real-time';
 }
 
 const maleAvatarPaths = [
@@ -38,7 +39,7 @@ const femaleAvatarPaths = [
 const neutralAvatarPath = '/images/Sundar_Pichai.png';
 
 
-export function MeetingInterface({ scenarioId }: MeetingInterfaceProps) {
+export function MeetingInterface({ scenarioId, meetingType }: MeetingInterfaceProps) {
   const {
     scenario,
     messages,

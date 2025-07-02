@@ -55,6 +55,7 @@ import { PersonaManager } from '@/components/PersonaManager';
 import { getAllUserPersonas, deleteUserPersona } from '@/lib/userPersonas';
 import { useSpeechToText } from '@/hooks/useSpeechToText';
 import { getLearningMode, setLearningMode } from '@/lib/userSettings';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 
 const scenariosForButtons = [
   { id: 'product-pitch', title: 'New Product Pitch' },
@@ -274,7 +275,7 @@ export default function HomePage() {
 
       addUserCreatedScenario(newScenario);
       setShowMeetingLoadingOverlay(true);
-      router.push(`/meeting/${newScenarioId}`);
+      router.push(`/meeting/${newScenarioId}?type=${meetingType}`);
 
     } catch (error) {
       console.error("Failed to generate scenario:", error);
@@ -289,7 +290,7 @@ export default function HomePage() {
 
   const handleNavigateToSignatureScenario = (scenarioId: string) => {
     setShowMeetingLoadingOverlay(true);
-    router.push(`/meeting/${scenarioId}`);
+    router.push(`/meeting/${scenarioId}?type=${meetingType}`);
   };
 
   const displayedParticipantRoles = selectedRoles.filter(
@@ -316,6 +317,8 @@ export default function HomePage() {
         : "Personas will now act as regular meeting participants.",
     });
   };
+
+  const [meetingType, setMeetingType] = useState<'chat' | 'real-time'>('chat');
 
   if (showMeetingLoadingOverlay) {
     return (
@@ -356,8 +359,23 @@ export default function HomePage() {
         </div>
       </header>
 
-      <main className="flex-1 flex flex-col items-center justify-center text-center pt-10 pb-4 px-4">
-        <div className="w-full max-w-2xl">
+      <main className="flex-1 px-4 sm:px-6 py-8">
+        <div className="w-full max-w-2xl mx-auto">
+          <div className="mb-4 flex flex-col sm:flex-row sm:items-center gap-2">
+            <span className="font-medium text-gray-700 mr-4">Meeting Type:</span>
+            <RadioGroup
+              value={meetingType}
+              onValueChange={v => {
+                if (v === 'chat' || v === 'real-time') setMeetingType(v);
+              }}
+              className="flex flex-row gap-4"
+            >
+              <RadioGroupItem value="chat" id="chat-meeting" />
+              <label htmlFor="chat-meeting" className="mr-4 cursor-pointer">Chat Meeting</label>
+              <RadioGroupItem value="real-time" id="real-time-meeting" />
+              <label htmlFor="real-time-meeting" className="cursor-pointer">Real-Time Meeting</label>
+            </RadioGroup>
+          </div>
           <div className="mb-8">
             <Image
               src="/images/front-page.gif"
