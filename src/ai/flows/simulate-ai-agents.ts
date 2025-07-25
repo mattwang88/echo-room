@@ -13,6 +13,7 @@
 
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
+import { fetchInternalKnowledge } from '@/lib/fetchInternalKnowledge';
 
 import { promises as fs } from 'fs';
 
@@ -35,7 +36,11 @@ const SimulateAiAgentsOutputSchema = z.object({
 export type SimulateAiAgentsOutput = z.infer<typeof SimulateAiAgentsOutputSchema>;
 
 export async function simulateAiAgents(input: SimulateAiAgentsInput): Promise<SimulateAiAgentsOutput> {
-  const internalDocs = await fs.readFile('./internal_docs_combined.txt', 'utf-8');
+  console.log("🛠 simulateAiAgents called with input:", input);
+
+  const internalDocs = await fetchInternalKnowledge(input.proposal);
+  console.log("🛠 Internal docs fetched");
+
   const inputWithDocs = { ...input, internalDocs };
 
   return simulateAiAgentsFlow(inputWithDocs);

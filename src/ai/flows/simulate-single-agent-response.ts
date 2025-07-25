@@ -10,6 +10,7 @@
 import {ai} from '@/ai/genkit';
 import {z} from 'genkit';
 import type { AgentRole } from '@/lib/types';
+import { fetchInternalKnowledge } from '@/lib/fetchInternalKnowledge';
 
 import { promises as fs } from 'fs';
 
@@ -43,7 +44,7 @@ const SimulateSingleAgentResponseOutputSchema = z.object({
 export type SimulateSingleAgentResponseOutput = z.infer<typeof SimulateSingleAgentResponseOutputSchema>;
 
 export async function simulateSingleAgentResponse(input: SimulateSingleAgentResponseInput): Promise<SimulateSingleAgentResponseOutput> {
-  const internalDocs = await fs.readFile('./internal_docs_combined.txt', 'utf-8');
+  const internalDocs = await fetchInternalKnowledge(input.userResponse);
   const inputWithDocs = { ...input, internalDocs };
 
   return simulateSingleAgentResponseFlow(inputWithDocs);

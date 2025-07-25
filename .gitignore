@@ -49,9 +49,7 @@ firestore-debug.log
 # testing 
 create_docs.py
 docs_test.py
-faiss_index/
 find_faiss_path.py
 list_models.py
-rag_pipeline.py
 rag_test.py
 random_tests.py
