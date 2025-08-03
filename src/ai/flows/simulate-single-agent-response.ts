@@ -35,6 +35,7 @@ const SimulateSingleAgentResponseInputSchema = z.object({
       persona: z.string(),
     })).describe("Information about other AI agents in the meeting."),
   }).describe("The full context of the meeting including message history and other agents."),
+  sessionId: z.string().optional(), // Added for session management
 });
 export type SimulateSingleAgentResponseInput = z.infer<typeof SimulateSingleAgentResponseInputSchema>;
 
@@ -44,7 +45,7 @@ const SimulateSingleAgentResponseOutputSchema = z.object({
 export type SimulateSingleAgentResponseOutput = z.infer<typeof SimulateSingleAgentResponseOutputSchema>;
 
 export async function simulateSingleAgentResponse(input: SimulateSingleAgentResponseInput): Promise<SimulateSingleAgentResponseOutput> {
-  const internalDocs = await fetchInternalKnowledge(input.userResponse);
+  const internalDocs = await fetchInternalKnowledge(input.userResponse, 3, input.sessionId);
   const inputWithDocs = { ...input, internalDocs };
 
   return simulateSingleAgentResponseFlow(inputWithDocs);

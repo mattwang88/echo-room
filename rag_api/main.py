@@ -1,4 +1,5 @@
 from fastapi import FastAPI, HTTPException, File, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 from langchain_community.vectorstores import FAISS
 from langchain_huggingface import HuggingFaceEmbeddings
@@ -100,6 +101,15 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
+# Allow frontend to talk to backend
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # You can specify your frontend URL here in production
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
+
 @app.get("/")
 def root():
     return {"status": "ok"}
@@ -167,6 +177,9 @@ def retrieve_documents(request: QueryRequest):
     """
     Retrieve documents from either the default index or a session-specific index
     """
+
+    print(f"[retrieve] Incoming request — query: '{request.query}', session_id: '{request.session_id}', top_k: {request.top_k}")
+
     # Determine which index to use
     if request.session_id and request.session_id in session_indexes:
         # Use session-specific index
@@ -195,6 +208,19 @@ def delete_session(session_id: str):
         del session_indexes[session_id]
         print(f"[session] Session deleted: {session_id}")
         return {"message": f"Session {session_id} deleted successfully"}
+    else:
+        raise HTTPException(status_code=404, detail="Session not found")
+
+# This is for POST to delete session when page is closed or reloaded
+@app.post("/session/clear/{session_id}")
+def clear_session_post(session_id: str):
+    """
+    Clear session via POST (for use with sendBeacon)
+    """
+    if session_id in session_indexes:
+        del session_indexes[session_id]
+        print(f"[session] (via POST) Session deleted: {session_id}")
+        return {"message": f"Session {session_id} deleted via POST"}
     else:
         raise HTTPException(status_code=404, detail="Session not found")
 

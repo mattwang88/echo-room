@@ -1,15 +1,21 @@
 // Function to request to rag api
-export async function fetchInternalKnowledge(query: string, topK: number = 3): Promise<string> {
+export async function fetchInternalKnowledge(query: string, topK: number = 3, sessionId?: string): Promise<string> {
     console.log("📣 fetchInternalKnowledge called with:", query);
     // Start a try block in case something goes wrong (e.g., server is down)
     try {
+      const body = {
+        query,
+        top_k: topK,
+        ...(sessionId ? { session_id: sessionId } : {})  // Include session_id only if defined
+      };
+
       // Send a POST request to your FastAPI server at /retrieve
       const response = await fetch("http://localhost:8000/retrieve", {
         method: "POST",  // We're sending data
         headers: {
           "Content-Type": "application/json",  // We're sending JSON
         },
-        body: JSON.stringify({ query, top_k: topK }),  // Convert our input to JSON
+        body: JSON.stringify(body),  // Convert our input to JSON
       });
   
       // If the server gives back an error (not 200 OK), handle it

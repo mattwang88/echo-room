@@ -1,5 +1,7 @@
 'use client';
 
+import { useDocumentSessionStore } from '@/store/useDocumentSessionStore'; // Session store
+import { useSessionCleanup } from "@/hooks/useSessionCleanup"; // Session cleanup 
 import { useState, useEffect, useRef, useCallback } from 'react';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -115,6 +117,24 @@ export default function HomePage() {
 
   const [isRecordingHomepage, setIsRecordingHomepage] = useState(false);
   const baseTextForSTT = useRef<string>("");
+
+  // Document upload state
+  const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
+  const [selectedFiles, setSelectedFiles] = useState<File[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState<string>('');
+  const [documentSession, setDocumentSession] = useState<{ session_id: string; document_count: number } | null>(null);
+  // Session store
+  const { setDocumentSession: setGlobalDocumentSession } = useDocumentSessionStore();
+
+  useSessionCleanup(documentSession?.session_id || null); // Session cleanup
+
+  useEffect(() => {
+    console.log('Syncing documentSession to Zustand store:', documentSession);
+    setGlobalDocumentSession(documentSession);
+  }, [documentSession]);
+    
+  
 
   const {
     isListening: sttIsListeningHomepageHook,
@@ -317,6 +337,137 @@ export default function HomePage() {
     });
   };
 
+  // File upload handlers
+  const handleFileSelect = (files: FileList | File[]) => {
+    console.log('handleFileSelect called with:', files.length, 'files');
+    const fileArray = Array.from(files);
+    const validFiles = fileArray.filter(file => {
+      const isValidType = file.name.match(/\.(txt|md|csv|pdf|docx)$/i);
+      const isValidSize = file.size <= 10 * 1024 * 1024; // 10MB limit
+      return isValidType && isValidSize;
+    });
+    
+    console.log('Valid files:', validFiles.length, 'out of', fileArray.length);
+    
+    if (validFiles.length !== fileArray.length) {
+      toast({
+        title: "Some files were skipped",
+        description: "Only .txt, .md, .csv, .pdf, .docx files under 10MB are supported.",
+        variant: "destructive",
+      });
+    }
+    
+    setSelectedFiles(prev => {
+      const newFiles = [...prev, ...validFiles];
+      console.log('Updated selectedFiles:', newFiles.length);
+      return newFiles;
+    });
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const files = e.dataTransfer.files;
+    if (files.length > 0) {
+      handleFileSelect(files);
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setSelectedFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleUpload = async () => {
+    console.log('handleUpload called with files:', selectedFiles.length);
+    if (selectedFiles.length === 0) return;
+
+    setIsUploading(true);
+    setUploadProgress('Preparing files...');
+
+    try {
+      const formData = new FormData();
+      selectedFiles.forEach(file => {
+        formData.append('files', file);
+      });
+
+      setUploadProgress('Uploading to server...');
+      const response = await fetch('/api/upload/route-docs', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to upload documents');
+      }
+
+      const data = await response.json();
+      console.log('Upload response data:', data);
+      setDocumentSession({
+        session_id: data.session_id,
+        document_count: data.document_count
+      });
+      console.log('Local documentSession state set');
+
+      setUploadProgress('Processing documents...');
+      
+      toast({
+        title: "Documents Uploaded Successfully",
+        description: `Processed ${data.document_count} documents. They will be used as context for your meeting.`,
+      });
+
+      // Close modal and reset
+      setIsUploadModalOpen(false);
+      setSelectedFiles([]);
+      setUploadProgress('');
+
+    } catch (error) {
+      console.error('Upload error:', error);
+      toast({
+        title: "Upload Failed",
+        description: error instanceof Error ? error.message : "Failed to upload documents",
+        variant: "destructive",
+      });
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+    }
+  };
+
+  const clearDocuments = async () => {
+    if (!documentSession?.session_id) return;
+  
+    try {
+      const response = await fetch(`http://localhost:8000/session/${documentSession.session_id}`, {
+        method: "DELETE",
+      });
+  
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Failed to delete session:", errorText);
+      } else {
+        console.log(`Session ${documentSession.session_id} deleted`);
+      }
+    } catch (err) {
+      console.error("Error calling delete session:", err);
+    }
+  
+    setDocumentSession(null);
+    setSelectedFiles([]);
+    setIsUploading(false);
+  
+    toast({
+      title: "Documents Cleared",
+      description: "Uploaded documents have been removed from the session.",
+    });
+  };
+  
+
   if (showMeetingLoadingOverlay) {
     return (
       <div className="fixed inset-0 bg-background/90 backdrop-blur-sm flex flex-col items-center justify-center z-50">
@@ -462,14 +613,42 @@ export default function HomePage() {
             </DropdownMenu>
 
             <div className="flex items-center gap-2">
-              {[Upload, Package, Layers].map((IconComponent, index) => (
+              {/* Upload Documents Button */}
+              <Button
+                variant={documentSession ? "default" : "outline"}
+                className={`rounded-full pl-3 pr-4 py-2 h-10 text-sm ${
+                  documentSession 
+                    ? 'bg-green-600 text-white hover:bg-green-700' 
+                    : 'bg-card border-gray-300 shadow-lg text-gray-700 hover:bg-gray-100'
+                }`}
+                onClick={() => setIsUploadModalOpen(true)}
+              >
+                <Upload className="h-5 w-5 mr-2" />
+                {documentSession ? `${documentSession.document_count} Docs` : 'Upload'}
+              </Button>
+
+              {/* Clear Documents Button (only show if documents are uploaded) */}
+              {documentSession && (
+                <Button
+                  variant="outline"
+                  className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100"
+                  onClick={clearDocuments}
+                  title="Clear uploaded documents"
+                >
+                  <X className="h-5 w-5 mr-2" />
+                  Clear
+                </Button>
+              )}
+
+              {/* Package and Layers buttons */}
+              {[Package, Layers].map((IconComponent, index) => (
                 <Button
                   key={index}
                   variant="outline"
                   className="bg-card border-gray-300 shadow-lg rounded-full pl-3 pr-4 py-2 h-10 text-sm text-gray-700 hover:bg-gray-100"
                 >
                   <IconComponent className="h-5 w-5 mr-2" />
-                  {index === 0 ? 'Upload' : index === 1 ? 'Package' : 'Layers'}
+                  {index === 0 ? 'Package' : 'Layers'}
                 </Button>
               ))}
               <Button
@@ -596,10 +775,130 @@ export default function HomePage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Document Upload Modal */}
+      <Dialog open={isUploadModalOpen} onOpenChange={(open) => {
+        if (!open && !isUploading) {
+          setIsUploadModalOpen(false);
+          setSelectedFiles([]);
+        }
+      }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <div className="space-y-6">
+            <div className="text-center">
+              <h2 className="text-2xl font-semibold text-gray-900">Upload Documents</h2>
+              <p className="text-sm text-gray-600 mt-2">
+                Upload documents to provide context for your meeting. Supported formats: PDF, DOCX, TXT, MD, CSV (max 10MB each)
+              </p>
+            </div>
+
+            {/* Drag and Drop Zone */}
+            <div
+              className={`border-2 border-dashed rounded-lg p-8 text-center transition-colors ${
+                selectedFiles.length > 0 
+                  ? 'border-green-300 bg-green-50' 
+                  : 'border-gray-300 hover:border-gray-400'
+              }`}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            >
+              <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
+              <div className="space-y-2">
+                <p className="text-lg font-medium text-gray-900">
+                  {selectedFiles.length > 0 ? `${selectedFiles.length} file(s) selected` : 'Drag and drop files here'}
+                </p>
+                <p className="text-sm text-gray-500">
+                  or{' '}
+                  <label className="text-blue-600 hover:text-blue-500 cursor-pointer">
+                    browse files
+                    <input
+                      type="file"
+                      multiple
+                      accept=".txt,.md,.csv,.pdf,.docx"
+                      onChange={(e) => {
+                        console.log('File input change event:', e.target.files?.length);
+                        if (e.target.files && e.target.files.length > 0) {
+                          handleFileSelect(e.target.files);
+                        }
+                      }}
+                      className="hidden"
+                    />
+                  </label>
+                </p>
+              </div>
+            </div>
+
+            {/* File List */}
+            {selectedFiles.length > 0 && (
+              <div className="space-y-3">
+                <h3 className="font-medium text-gray-900">Selected Files:</h3>
+                <div className="space-y-2 max-h-40 overflow-y-auto">
+                  {selectedFiles.map((file, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+                      <div className="flex items-center space-x-3">
+                        <div className="w-8 h-8 bg-blue-100 rounded flex items-center justify-center">
+                          <span className="text-xs font-medium text-blue-600">
+                            {file.name.split('.').pop()?.toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-gray-900">{file.name}</p>
+                          <p className="text-xs text-gray-500">
+                            {(file.size / 1024 / 1024).toFixed(2)} MB
+                          </p>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeFile(index)}
+                        className="text-red-500 hover:text-red-700"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* Upload Progress */}
+            {isUploading && (
+              <div className="text-center space-y-2">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-blue-600" />
+                <p className="text-sm text-gray-600">{uploadProgress}</p>
+              </div>
+            )}
+
+            {/* Action Buttons */}
+            <div className="flex justify-end space-x-4 pt-4 border-t">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setIsUploadModalOpen(false);
+                  setSelectedFiles([]);
+                }}
+                disabled={isUploading}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="default"
+                onClick={handleUpload}
+                disabled={selectedFiles.length === 0 || isUploading}
+              >
+                Upload {selectedFiles.length} File{selectedFiles.length !== 1 ? 's' : ''}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
 
-    
+
+
+
 
     

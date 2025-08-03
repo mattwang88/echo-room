@@ -1,5 +1,7 @@
 "use client";
 
+import { useDocumentSessionStore } from '../store/useDocumentSessionStore'; // Session store
+import { useSessionCleanup } from "@/hooks/useSessionCleanup"; // Session cleanup
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Scenario, Message, MeetingSummaryData, ParticipantRole, AgentRole, Persona, AnalyzeResponseOutput, MessageAction } from '@/lib/types';
@@ -17,6 +19,10 @@ import { detectReferencedAgent } from '@/lib/utils';
 const START_MEETING_PROMPT_ID = 'system-start-meeting-prompt';
 
 export function useMeetingSimulation(scenarioId: string | null) {
+  const documentSession = useDocumentSessionStore(state => state.documentSession); // Session store
+  useSessionCleanup(documentSession?.session_id || null); // Session cleanup
+  const { clearSession } = useDocumentSessionStore();
+  console.log('[MeetingSimulation] documentSession:', documentSession);
   const router = useRouter();
   const { toast } = useToast();
   const [scenario, setScenario] = useState<Scenario | null>(null);
@@ -223,6 +229,8 @@ export function useMeetingSimulation(scenarioId: string | null) {
     // Add a small delay to ensure TTS cleanup is complete before state changes
     setTimeout(() => {
       if (!isMountedRef.current) return;
+
+      clearSession(); // Clear document session
       
       setMeetingEnded(true);
       setMeetingActive(false);
@@ -309,6 +317,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
               scenarioObjective: scenario.objective,
               isLearningMode,
               internalDocs: "", // The function will read this from file internally
+              sessionId: documentSession?.session_id, // For session management
               agentPersonaName,
               meetingContext: {
                 messageHistory: messages,
@@ -326,6 +335,7 @@ export function useMeetingSimulation(scenarioId: string | null) {
                   }),
               },
             };
+            console.log("[MeetingSimulation] sessionId passed to simulateSingleAgentResponse:", documentSession?.session_id);
             const agentResponse = await simulateSingleAgentResponse(singleAgentSimInput);
             if (agentResponse && agentResponse.agentFeedback) {
               addMessage({
